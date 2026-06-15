@@ -1,0 +1,88 @@
+@model IEnumerable<AdminWeb.Models.Tour>
+@{
+    ViewData["Title"] = "Tour du lịch";
+}
+
+<div class="page-heading">
+    <div>
+        <div class="page-title">Tour du lịch</div>
+        <div class="page-subtitle">Xây dựng lộ trình, sắp xếp POI và quản lý nội dung đa ngôn ngữ.</div>
+    </div>
+    <div class="page-actions">
+        <a asp-action="ExportExcel" class="btn btn-secondary"><i class="fa-solid fa-file-export"></i> Xuất CSV</a>
+        <a asp-action="Create" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Tạo tour</a>
+    </div>
+</div>
+
+<div class="toolbar">
+    <form asp-action="Index" method="get">
+        <input type="search" name="searchString" value="@ViewBag.SearchString" class="form-control" placeholder="Tìm theo tên tour..." />
+        <button type="submit" class="btn btn-secondary"><i class="fa-solid fa-magnifying-glass"></i> Tìm</button>
+        @if (!string.IsNullOrWhiteSpace(ViewBag.SearchString as string))
+        {
+            <a asp-action="Index" class="btn btn-secondary"><i class="fa-solid fa-xmark"></i></a>
+        }
+    </form>
+</div>
+
+@if (!Model.Any())
+{
+    <div class="card">
+        <div class="empty-state">
+            <i class="fa-solid fa-route"></i>
+            <h2>Chưa có tour phù hợp</h2>
+            <p>Tạo tour đầu tiên để tổ chức các điểm tham quan thành một lộ trình.</p>
+            <a asp-action="Create" class="btn btn-primary">Tạo tour</a>
+        </div>
+    </div>
+}
+else
+{
+    <div class="tour-grid">
+        @foreach (var tour in Model)
+        {
+            var vi = tour.Translations.FirstOrDefault(item => item.LanguageCode == "vi");
+            var poiCount = tour.TourPois.Count;
+            var badge = tour.Status == "active" ? "green" : tour.Status == "draft" ? "amber" : "red";
+            <article class="tour-card">
+                <div class="tour-card-cover"><i class="fa-solid fa-route"></i></div>
+                <div class="tour-card-body">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+                        <span class="badge @badge">@tour.Status</span>
+                        <span style="color:var(--text-soft);font-size:10px">#@tour.Id</span>
+                    </div>
+                    <div class="tour-card-title" style="margin-top:12px">@(vi?.Title ?? $"Tour #{tour.Id}")</div>
+                    <div class="tour-card-meta">
+                        <span><i class="fa-solid fa-clock"></i> @tour.EstimatedTime phút</span>
+                        <span><i class="fa-solid fa-map-pin"></i> @poiCount POI</span>
+                        <span><i class="fa-solid fa-language"></i> @tour.Translations.Count ngôn ngữ</span>
+                    </div>
+                    <div class="tour-card-stats">
+                        <span>@tour.CreatedAt.ToString("dd/MM/yyyy")</span>
+                        <div class="actions" style="margin-left:auto">
+                            <a asp-action="Edit" asp-route-id="@tour.Id" class="btn btn-secondary btn-sm" title="Chỉnh sửa"><i class="fa-solid fa-pen"></i></a>
+                            <a asp-controller="TourTranslation" asp-action="Index" asp-route-tourId="@tour.Id" class="btn btn-secondary btn-sm" title="Bản dịch"><i class="fa-solid fa-language"></i></a>
+                            <a asp-action="ManagePois" asp-route-id="@tour.Id" class="btn btn-secondary btn-sm" title="Lộ trình"><i class="fa-solid fa-list-ol"></i></a>
+                            <form asp-action="Delete" method="post" onsubmit="return confirm('Xóa tour này?');">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@tour.Id" />
+                                <button type="submit" class="btn btn-danger btn-sm" title="Xóa"><i class="fa-solid fa-trash"></i></button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </article>
+        }
+    </div>
+}
+
+@if (ViewBag.TotalPages is int totalPages && totalPages > 1)
+{
+    <nav style="margin-top:18px">
+        <ul class="pagination justify-content-center">
+            <li class="page-item @(ViewBag.CurrentPage == 1 ? "disabled" : "")"><a class="page-link" asp-action="Index" asp-route-page="@(ViewBag.CurrentPage - 1)" asp-route-searchString="@ViewBag.SearchString">Trước</a></li>
+            <li class="page-item disabled"><span class="page-link">Trang @ViewBag.CurrentPage / @totalPages</span></li>
+            <li class="page-item @(ViewBag.CurrentPage == totalPages ? "disabled" : "")"><a class="page-link" asp-action="Index" asp-route-page="@(ViewBag.CurrentPage + 1)" asp-route-searchString="@ViewBag.SearchString">Sau</a></li>
+        </ul>
+    </nav>
+}

@@ -1,0 +1,46 @@
+@model AdminWeb.Models.PoiTranslation
+
+@{
+    ViewData["Title"] = "Sửa bản dịch POI";
+}
+
+<div class="page-title">Sửa bản dịch Điểm tham quan</div>
+<div class="card" style="padding:28px;">
+    <form asp-action="Edit" method="post" enctype="multipart/form-data">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="Id" />
+        <input type="hidden" asp-for="PoiId" />
+        <input type="hidden" asp-for="LanguageCode" />
+        <input type="hidden" asp-for="AudioUrl" />
+        
+        <div class="form-grid">
+            <div class="form-group full">
+                <label class="form-label">Tên địa điểm (Theo ngôn ngữ <strong>@Model.LanguageCode.ToUpper()</strong>)</label>
+                <input class="form-control" asp-for="Name" type="text" required />
+            </div>
+            <div class="form-group full">
+                <label class="form-label">Mô tả ngắn</label>
+                <textarea class="form-control" asp-for="ShortDescription" rows="2"></textarea>
+            </div>
+            <div class="form-group full">
+                <label class="form-label">Mô tả chi tiết</label>
+                <textarea class="form-control" asp-for="FullDescription" rows="4"></textarea>
+            </div>
+            <div class="form-group full">
+                <label class="form-label">File Audio (Thuyết minh)</label>
+                @if (!string.IsNullOrEmpty(Model.AudioUrl))
+                {
+                    <div style="margin-bottom: 12px;">
+                        <audio controls src="@Model.AudioUrl" style="width: 100%; max-width: 400px;"></audio>
+                    </div>
+                }
+                <input class="form-control" type="file" name="audioFile" accept="audio/*" />
+                <small style="color:var(--text2);font-size:12px;margin-top:6px;display:block;">Để trống nếu không muốn thay đổi file hiện tại.</small>
+            </div>
+        </div>
+        <div style="display:flex;gap:12px; margin-top:24px;">
+            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Cập nhật bản dịch</button>
+            <a asp-action="Index" asp-route-poiId="@Model.PoiId" class="btn btn-secondary">Quay lại</a>
+        </div>
+    </form>
+</div>

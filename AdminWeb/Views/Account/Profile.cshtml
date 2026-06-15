@@ -1,0 +1,65 @@
+@model AdminWeb.Models.User
+@{
+    ViewData["Title"] = "Hồ sơ của tôi";
+}
+
+<div class="page-title">Hồ sơ cá nhân</div>
+<div class="page-subtitle">Xem và cập nhật thông tin tài khoản của bạn.</div>
+
+<div class="row">
+    <div class="col-lg-10 col-xl-8">
+        <div class="card">
+            
+            <div class="card-header" style="display: block; border-bottom: 1px solid var(--border); padding-bottom: 16px; margin-bottom: 20px;">
+                <h5 class="card-title mb-1">
+                    <i class="fa-solid fa-id-badge me-2" style="color: var(--accent);"></i> Thông tin tài khoản
+                </h5>
+                <p class="card-subtitle mt-1" style="color: var(--text2); font-size: 13px; margin-bottom: 0;">
+                    Quản lý định danh và địa chỉ liên lạc của bạn.
+                </p>
+            </div>
+
+            <form asp-action="Profile" method="post">
+                <div class="form-grid">
+                    
+                    <div class="form-group">
+                        <label class="form-label">Tên đăng nhập</label>
+                        <div style="position: relative;">
+                            <i class="fa-solid fa-user-shield" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text3); font-size: 13px;"></i>
+                            <input class="form-control" value="@Model.Username" style="padding-left: 38px; opacity: 0.6; cursor: not-allowed;" disabled />
+                        </div>
+                        <small style="color: var(--text3); font-size: 12px; margin-top: 6px; display: block;">Tên đăng nhập không thể thay đổi.</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Ngày tạo tài khoản</label>
+                        <div style="position: relative;">
+                            <i class="fa-solid fa-calendar-days" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text3); font-size: 13px;"></i>
+                            <input class="form-control" value="@Model.CreatedAt.ToString("dd/MM/yyyy HH:mm")" style="padding-left: 38px; opacity: 0.6; cursor: not-allowed;" disabled />
+                        </div>
+                    </div>
+
+                    <div class="form-group full" style="margin-top: 8px;">
+                        <label class="form-label">Email liên hệ <span class="text-danger">*</span></label>
+                        <div style="position: relative;">
+                            <i class="fa-solid fa-envelope" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text3); font-size: 13px;"></i>
+                            <input type="email" name="Email" value="@Model.Email" class="form-control" style="padding-left: 38px;" required />
+                        </div>
+                    </div>
+                </div>
+                
+                <hr style="border-color: var(--border); margin: 24px 0 20px;" />
+                
+                <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fa-solid fa-check"></i> Lưu thay đổi
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

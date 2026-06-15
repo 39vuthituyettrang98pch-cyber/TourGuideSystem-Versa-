@@ -1,0 +1,119 @@
+@model AdminWeb.Models.Tour
+
+@{
+    ViewData["Title"] = "Quản lý POI trong Tour";
+    var availablePois = ViewBag.AvailablePois as IEnumerable<AdminWeb.Models.Poi>;
+}
+
+<div class="page-title">Quản lý lộ trình Tour #@Model.Id</div>
+<div class="page-subtitle">Thêm, bớt và sắp xếp lại thứ tự các điểm tham quan trong tour bằng cách kéo thả.</div>
+
+<div class="toolbar">
+    <a asp-action="Index" class="btn btn-secondary btn-sm"><i class="fa-solid fa-arrow-left"></i> Quay lại danh sách Tour</a>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; margin-top: 24px;">
+    <!-- Cột trái: Các POI đang có trong Tour -->
+    <div class="card">
+        <div class="card-header" style="padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.1);">
+            <div class="card-title" style="font-weight: 700; font-size: 16px; color: var(--accent);">Lộ trình hiện tại (Kéo thả để sắp xếp)</div>
+        </div>
+        <div class="card-body" style="padding: 20px;">
+            @if (Model.TourPois != null && Model.TourPois.Any())
+            {
+                <div id="sortable-list" style="display: flex; flex-direction: column; gap: 12px;">
+                    @foreach (var tp in Model.TourPois.OrderBy(x => x.SequenceOrder))
+                    {
+                        var poiName = tp.Poi?.Translations?.FirstOrDefault(t => t.LanguageCode == "vi")?.Name ?? $"POI #{tp.PoiId}";
+                        <div class="poi-item" data-id="@tp.PoiId" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 12px 16px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center;">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <i class="fa-solid fa-grip-vertical drag-handle" style="color: var(--text2); cursor: grab; padding: 4px;"></i>
+                                <div>
+                                    <div style="font-weight: 600;">@poiName</div>
+                                    <div style="font-size: 12px; color: var(--text2);">Thứ tự: <span class="seq-num">@tp.SequenceOrder</span></div>
+                                </div>
+                            </div>
+                            <form asp-action="RemovePoi" method="post" style="margin: 0;">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="tourId" value="@Model.Id" />
+                                <input type="hidden" name="poiId" value="@tp.PoiId" />
+                                <button type="submit" class="btn btn-sm btn-danger" style="padding: 6px 10px;" title="Xóa khỏi Tour" onclick="return confirm('Bạn có chắc chắn muốn xóa điểm này khỏi lộ trình?');"><i class="fa-solid fa-trash"></i></button>
+                            </form>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div style="text-align: center; padding: 40px 20px; color: var(--text2);">
+                    <i class="fa-solid fa-route" style="font-size: 32px; margin-bottom: 12px; opacity: 0.5;"></i>
+                    <p>Chưa có điểm tham quan nào trong Tour này.</p>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Cột phải: Thêm POI mới vào Tour -->
+    <div class="card">
+        <div class="card-header" style="padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.1);">
+            <div class="card-title" style="font-weight: 700; font-size: 16px;">Thêm Điểm tham quan</div>
+        </div>
+        <div class="card-body" style="padding: 20px;">
+            <form asp-action="AddPoi" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="tourId" value="@Model.Id" />
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label class="form-label" style="display: block; margin-bottom: 8px; color: var(--text2); font-size: 13px;">Chọn POI</label>
+                    <select class="form-control" name="poiId" required style="width: 100%; padding: 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text);">
+                        <option value="">-- Chọn điểm tham quan --</option>
+                        @if (availablePois != null)
+                        {
+                            foreach (var p in availablePois)
+                            {
+                                var pName = p.Translations?.FirstOrDefault(t => t.LanguageCode == "vi")?.Name ?? $"POI #{p.Id}";
+                                <option value="@p.Id">@pName</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom: 24px;">
+                    <label class="form-label" style="display: block; margin-bottom: 8px; color: var(--text2); font-size: 13px;">Thứ tự (có thể kéo thả sau)</label>
+                    <input class="form-control" type="number" name="sequenceOrder" value="@((Model.TourPois?.Count ?? 0) + 1)" required style="width: 100%; padding: 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text);" />
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer;"><i class="fa-solid fa-plus"></i> Thêm vào lộ trình</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var el = document.getElementById('sortable-list');
+            if (el) {
+                var sortable = Sortable.create(el, {
+                    animation: 150,
+                    handle: '.drag-handle',
+                    ghostClass: 'sortable-ghost',
+                    onEnd: function (evt) {
+                        var itemEls = el.querySelectorAll('.poi-item');
+                        var newOrderIds = Array.from(itemEls).map(item => parseInt(item.getAttribute('data-id')));
+                        itemEls.forEach((item, index) => { item.querySelector('.seq-num').textContent = index + 1; });
+
+                        const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+                        fetch('/Tour/UpdatePoiSequence?tourId=@Model.Id', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'RequestVerificationToken': token
+                            },
+                            body: JSON.stringify(newOrderIds)
+                        }).catch(error => console.error('Error updating sequence:', error));
+                    }
+                });
+            }
+        });
+    </script>
+    <style>.sortable-ghost { opacity: 0.5; background: rgba(79, 139, 255, 0.15) !important; border: 1px dashed var(--accent) !important; } .drag-handle:active { cursor: grabbing !important; } .drag-handle:hover { color: var(--accent) !important; }</style>
+}

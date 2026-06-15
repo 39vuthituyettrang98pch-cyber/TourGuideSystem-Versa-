@@ -1,0 +1,314 @@
+@using System.Text.Json
+@{
+    ViewData["Title"] = "Dashboard";
+    var topPois = ViewBag.TopPois as Dictionary<string, int> ?? [];
+    var recentActivities = ViewBag.RecentActivities as List<AdminWeb.Models.VisitorPlaybackLog> ?? [];
+}
+
+<div class="page-heading">
+    <div>
+        <div class="page-title">Tổng quan hệ thống</div>
+        <div class="page-subtitle">Theo dõi nội dung, lượt phát và tình trạng vận hành của VERSA.</div>
+    </div>
+    <div class="page-actions">
+        <a asp-controller="Approval" asp-action="PoiPending" class="btn btn-secondary"><i class="fa-solid fa-circle-check"></i> Duyệt POI</a>
+        <a asp-controller="Poi" asp-action="Create" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Tạo POI</a>
+    </div>
+</div>
+
+<div class="stats-grid">
+    <a class="stat-card" asp-controller="Poi" asp-action="Index">
+        <span class="stat-icon"><i class="fa-solid fa-map-pin"></i></span>
+        <span><span class="stat-value">@ViewBag.TotalPois</span><span class="stat-label">Điểm tham quan</span></span>
+    </a>
+    <a class="stat-card" asp-controller="Tour" asp-action="Index">
+        <span class="stat-icon"><i class="fa-solid fa-route"></i></span>
+        <span><span class="stat-value">@ViewBag.TotalTours</span><span class="stat-label">Tour du lịch</span></span>
+    </a>
+    <a class="stat-card" asp-controller="ActivityLog" asp-action="Index">
+        <span class="stat-icon"><i class="fa-solid fa-headphones"></i></span>
+        <span><span class="stat-value">@ViewBag.TotalListens</span><span class="stat-label">Tổng lượt phát</span></span>
+    </a>
+    <a class="stat-card" asp-controller="AudioTasks" asp-action="Index">
+        <span class="stat-icon"><i class="fa-solid fa-file-audio"></i></span>
+        <span><span class="stat-value">@ViewBag.TotalAudioFiles</span><span class="stat-label">File audio đa ngôn ngữ</span></span>
+    </a>
+</div>
+
+<div class="detail-grid">
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <div class="card-title"><i class="fa-solid fa-chart-line"></i> Lượt phát 7 ngày</div>
+                <div class="card-subtitle">Số lượt tương tác theo ngày.</div>
+            </div>
+        </div>
+        <div style="height:300px"><canvas id="lineChart"></canvas></div>
+    </section>
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <div class="card-title"><i class="fa-solid fa-chart-pie"></i> Ngôn ngữ được chọn</div>
+                <div class="card-subtitle">Tỷ trọng ngôn ngữ trong lịch sử phát.</div>
+            </div>
+        </div>
+        <div style="height:300px"><canvas id="pieChart"></canvas></div>
+    </section>
+</div>
+
+<div class="detail-grid" style="margin-top:18px">
+    <section class="card">
+        <div class="card-header">
+            <div class="card-title"><i class="fa-solid fa-ranking-star"></i> POI nổi bật</div>
+            <a asp-controller="Analytics" asp-action="Index" class="btn btn-secondary btn-sm">Xem phân tích</a>
+        </div>
+        <div class="table-wrapper">
+            <table class="data-table">
+                <thead><tr><th>Hạng</th><th>Điểm tham quan</th><th>Lượt phát</th></tr></thead>
+                <tbody>
+                    @if (topPois.Count > 0)
+                    {
+                        var rank = 1;
+                        foreach (var poi in topPois)
+                        {
+                            <tr><td><span class="badge blue">#@rank</span></td><td><strong>@poi.Key</strong></td><td>@poi.Value</td></tr>
+                            rank++;
+                        }
+                    }
+                    else
+                    {
+                        <tr><td colspan="3"><div class="empty-state compact"><i class="fa-solid fa-chart-simple"></i><p>Chưa có dữ liệu lượt phát.</p></div></td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+    <section class="card">
+        <div class="card-header">
+            <div class="card-title"><i class="fa-solid fa-clock-rotate-left"></i> Hoạt động gần đây</div>
+            <a asp-controller="ActivityLog" asp-action="Index" class="btn btn-secondary btn-sm">Xem tất cả</a>
+        </div>
+        <div class="table-wrapper">
+            <table class="data-table">
+                <thead><tr><th>Thời gian</th><th>Điểm tham quan</th><th>Ngôn ngữ</th></tr></thead>
+                <tbody>
+                    @if (recentActivities.Count > 0)
+                    {
+                        foreach (var log in recentActivities)
+                        {
+                            <tr><td>@log.CreatedAt.ToString("dd/MM HH:mm")</td><td>@log.PoiName</td><td><span class="badge blue">@log.LanguageCode.ToUpperInvariant()</span></td></tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr><td colspan="3"><div class="empty-state compact"><i class="fa-solid fa-clock"></i><p>Chưa có hoạt động.</p></div></td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+
+<section class="card" style="margin-top:18px">
+    <div class="card-header">
+        <div>
+            <div class="card-title"><i class="fa-solid fa-map-location-dot"></i> Bản đồ điểm tham quan</div>
+            <div class="card-subtitle">@ViewBag.TotalPois POI đã thêm. Heatmap thể hiện vị trí tương tác của du khách.</div>
+        </div>
+        <button type="button" class="btn btn-secondary btn-sm" id="btnLocateDashboard">
+            <i class="fa-solid fa-location-crosshairs"></i> Vị trí của tôi
+        </button>
+    </div>
+    <div id="heatmap-container" style="height:380px;border-radius:12px;overflow:hidden"></div>
+</section>
+
+@section Scripts {
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+    <style>
+        .custom-map-icon { background: transparent; border: none; }
+        .custom-marker {
+            display: flex; justify-content: center; align-items: center;
+            width: 32px; height: 32px; border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg); border: 2px solid #ffffff;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3); color: #ffffff; font-size: 14px;
+        }
+        .custom-marker i { transform: rotate(45deg); }
+        .custom-marker.approved { background: #3ad58b; }
+        .custom-marker.pending { background: #f5b942; }
+        .custom-marker.rejected { background: #ff6577; }
+    </style>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const styles = getComputedStyle(document.documentElement);
+        const textMuted = styles.getPropertyValue('--text-muted').trim();
+        const border = styles.getPropertyValue('--border').trim();
+        const surface = styles.getPropertyValue('--surface').trim();
+
+        new Chart(document.getElementById('lineChart'), {
+            type: 'line',
+            data: {
+                labels: @Html.Raw(JsonSerializer.Serialize(ViewBag.ChartLabels)),
+                datasets: [{
+                    data: @Html.Raw(JsonSerializer.Serialize(ViewBag.ChartData)),
+                    borderColor: '#5b8cff',
+                    backgroundColor: 'rgba(91,140,255,.12)',
+                    borderWidth: 2,
+                    tension: .35,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, ticks: { precision: 0, color: textMuted }, grid: { color: border } },
+                    x: { ticks: { color: textMuted }, grid: { display: false } }
+                }
+            }
+        });
+
+        new Chart(document.getElementById('pieChart'), {
+            type: 'doughnut',
+            data: {
+                labels: @Html.Raw(JsonSerializer.Serialize(ViewBag.PieLabels)),
+                datasets: [{
+                    data: @Html.Raw(JsonSerializer.Serialize(ViewBag.PieData)),
+                    backgroundColor: ['#5b8cff', '#3ad58b', '#f5b942', '#ff6577', '#b184ff'],
+                    borderColor: surface,
+                    borderWidth: 3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '68%',
+                plugins: { legend: { position: 'bottom', labels: { color: textMuted } } }
+            }
+        });
+
+        const map = L.map('heatmap-container').setView([10.762622, 106.660172], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors',
+            maxZoom: 19
+        }).addTo(map);
+        const rawData = @Html.Raw(JsonSerializer.Serialize(ViewBag.HeatmapData));
+        const poiData = @Html.Raw(JsonSerializer.Serialize(ViewBag.PoiMapData));
+        const mapBounds = [];
+
+        const markerClusterGroup = L.markerClusterGroup({
+            showCoverageOnHover: false,
+            maxClusterRadius: 40,
+            spiderfyOnMaxZoom: true
+        });
+
+        poiData?.forEach(poi => {
+            const position = [poi.latitude, poi.longitude];
+            
+            let statusClass = 'pending';
+            if (poi.status === 'Approved') statusClass = 'approved';
+            else if (poi.status === 'Rejected') statusClass = 'rejected';
+
+            const customIcon = L.divIcon({
+                className: 'custom-map-icon',
+                html: `<div class="custom-marker ${statusClass}"><i class="fa-solid fa-map-pin"></i></div>`,
+                iconSize: [32, 32],
+                iconAnchor: [16, 32],
+                popupAnchor: [0, -32]
+            });
+
+            const marker = L.marker(position, { icon: customIcon });
+
+            const popup = document.createElement('div');
+            const title = document.createElement('strong');
+            title.textContent = poi.name;
+            const details = document.createElement('div');
+            details.textContent = `POI #${poi.id} · ${poi.status} · bán kính ${poi.radius} m`;
+            details.style.margin = '5px 0 8px';
+            const editLink = document.createElement('a');
+            editLink.href = `/Poi/Edit/${poi.id}`;
+            editLink.textContent = 'Mở POI';
+            popup.append(title, details, editLink);
+            marker.bindPopup(popup);
+            
+            markerClusterGroup.addLayer(marker);
+
+            const color = statusClass === 'approved' ? '#3ad58b' : (statusClass === 'rejected' ? '#ff6577' : '#f5b942');
+            L.circle(position, {
+                radius: poi.radius,
+                color,
+                weight: 1,
+                fillColor: color,
+                fillOpacity: .08
+            }).addTo(map);
+            mapBounds.push(position);
+        });
+
+        map.addLayer(markerClusterGroup);
+
+        if (rawData?.length) {
+            const heatData = rawData.map(point => [point.lat, point.lng, point.intensity]);
+            L.heatLayer(heatData, { radius: 25, blur: 15, maxZoom: 17 }).addTo(map);
+            mapBounds.push(...heatData.map(point => [point[0], point[1]]));
+        }
+
+        if (mapBounds.length === 1) {
+            map.setView(mapBounds[0], 16);
+        } else if (mapBounds.length > 1) {
+            map.fitBounds(new L.LatLngBounds(mapBounds), { padding: [35, 35], maxZoom: 16 });
+        }
+
+        // Tính năng: Vị trí của tôi
+        let adminMarker = null;
+        let adminCircle = null;
+        
+        document.getElementById('btnLocateDashboard')?.addEventListener('click', function () {
+            const btn = this;
+            if (!navigator.geolocation) {
+                alert('Trình duyệt không hỗ trợ định vị.');
+                return;
+            }
+
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang tìm...';
+            btn.disabled = true;
+
+            navigator.geolocation.getCurrentPosition(position => {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                const acc = position.coords.accuracy;
+
+                if (adminMarker) {
+                    adminMarker.setLatLng([lat, lng]);
+                    adminCircle.setLatLng([lat, lng]);
+                    adminCircle.setRadius(acc);
+                } else {
+                    const adminIcon = L.divIcon({
+                        className: 'custom-map-icon',
+                        html: `<div class="custom-marker" style="background:#3b82f6; border-color:#ffffff;"><i class="fa-solid fa-user-tie"></i></div>`,
+                        iconSize: [32, 32],
+                        iconAnchor: [16, 32],
+                        popupAnchor: [0, -32]
+                    });
+                    
+                    adminMarker = L.marker([lat, lng], { icon: adminIcon }).addTo(map).bindPopup('Vị trí hiện tại của bạn');
+                    adminCircle = L.circle([lat, lng], { radius: acc, color: '#3b82f6', weight: 1, fillOpacity: 0.1 }).addTo(map);
+                }
+
+                map.setView([lat, lng], 16);
+                adminMarker.openPopup();
+
+                btn.innerHTML = '<i class="fa-solid fa-location-crosshairs"></i> Vị trí của tôi';
+                btn.disabled = false;
+            }, error => {
+                alert('Lỗi định vị: ' + error.message);
+                btn.innerHTML = '<i class="fa-solid fa-location-crosshairs"></i> Vị trí của tôi';
+                btn.disabled = false;
+            }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 });
+        });
+    </script>
+}

@@ -1,0 +1,26 @@
+@{
+    ViewData["Title"] = "Không có quyền truy cập";
+}
+
+<div class="card" style="max-width:760px;margin:8vh auto">
+    <div class="empty-state">
+        <i class="fa-solid fa-shield-halved" style="color:var(--amber)"></i>
+        <h2>Bạn không có quyền truy cập trang này</h2>
+        <p>Tài khoản hiện tại không được cấp quyền sử dụng chức năng được yêu cầu.</p>
+        <div class="page-actions" style="margin-top:8px">
+            <button type="button" class="btn btn-secondary" onclick="window.history.back()"><i class="fa-solid fa-arrow-left"></i> Quay lại</button>
+            @if (User.IsInRole("Editor"))
+            {
+                <a asp-area="Editor" asp-controller="Dashboard" asp-action="Index" class="btn btn-primary"><i class="fa-solid fa-house"></i> Khu vực biên tập</a>
+            }
+            else if (User.IsInRole("Reviewer"))
+            {
+                <a asp-area="Reviewer" asp-controller="Dashboard" asp-action="Index" class="btn btn-primary"><i class="fa-solid fa-house"></i> Khu vực kiểm duyệt</a>
+            }
+            else
+            {
+                <a asp-area="" asp-controller="Home" asp-action="Index" class="btn btn-primary"><i class="fa-solid fa-house"></i> Dashboard</a>
+            }
+        </div>
+    </div>
+</div>

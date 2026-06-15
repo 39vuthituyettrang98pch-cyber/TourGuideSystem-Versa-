@@ -1,0 +1,74 @@
+@model AdminWeb.ViewModels.UsageHistoryViewModel
+
+@{
+    ViewData["Title"] = "Nhật ký hoạt động";
+}
+
+<div class="page-title">Nhật ký hoạt động</div>
+<div class="page-subtitle">Lịch sử tương tác và phát audio của du khách tại các điểm tham quan.</div>
+
+<div class="toolbar">
+    <div>
+        <form asp-action="Index" method="get" style="display: flex; gap: 8px;">
+            <input type="text" name="searchString" value="@ViewBag.SearchString" class="form-control" placeholder="Tìm kiếm ID Thiết bị..." style="padding: 6px 12px; width: 250px; font-size: 13px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: var(--text); border-radius: 8px;" />
+            <button type="submit" class="btn btn-secondary btn-sm" title="Tìm kiếm"><i class="fa-solid fa-magnifying-glass"></i></button>
+            @if (!string.IsNullOrEmpty(ViewBag.SearchString as string))
+            {
+                <a asp-action="Index" class="btn btn-secondary btn-sm" title="Xóa tìm kiếm"><i class="fa-solid fa-xmark"></i></a>
+            }
+        </form>
+    </div>
+    <div>
+        <a asp-action="ExportExcel" class="btn btn-secondary btn-sm"><i class="fa-solid fa-file-excel"></i> Xuất Excel</a>
+    </div>
+</div>
+
+<div class="table-wrapper">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Thời gian</th>
+                <th>Thiết bị</th>
+                <th>Điểm tham quan</th>
+                <th>Ngôn ngữ</th>
+                <th>Kích hoạt</th>
+                <th>Vị trí</th>
+                <th>Thời lượng</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if(Model?.Logs != null && Model.Logs.Any()) {
+                foreach (var log in Model.Logs) {
+                    <tr>
+                        <td style="font-size:12px;color:var(--text2)">@log.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                        <td><span class="badge blue">@(string.IsNullOrEmpty(log.DeviceId) ? "Unknown" : (log.DeviceId.Length > 8 ? log.DeviceId.Substring(0, 8) : log.DeviceId))</span></td>
+                        <td>@log.PoiName</td>
+                        <td>@log.LanguageCode.ToUpper()</td>
+                        <td><span class="badge amber">@log.TriggerType</span></td>
+                        <td style="font-size:12px">@log.VisitorLatitude, @log.VisitorLongitude</td>
+                        <td>@log.ListenDuration giây</td>
+                    </tr>
+                }
+            } else {
+                <tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text2);">Chưa có dữ liệu nhật ký.</td></tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@if (ViewBag.TotalPages != null && ViewBag.TotalPages > 1)
+{
+    <div style="display:flex; justify-content:center; gap:8px; margin-top:20px;">
+        @if (ViewBag.CurrentPage > 1)
+        {
+            <a asp-action="Index" asp-route-page="@(ViewBag.CurrentPage - 1)" asp-route-searchString="@ViewBag.SearchString" class="btn btn-secondary btn-sm">Trang trước</a>
+        }
+        <span style="display:inline-flex; align-items:center; padding:0 12px; background:rgba(255,255,255,0.05); border-radius:8px; font-size:14px; font-weight: 600;">
+            Trang @ViewBag.CurrentPage / @ViewBag.TotalPages
+        </span>
+        @if (ViewBag.CurrentPage < ViewBag.TotalPages)
+        {
+            <a asp-action="Index" asp-route-page="@(ViewBag.CurrentPage + 1)" asp-route-searchString="@ViewBag.SearchString" class="btn btn-secondary btn-sm">Trang sau</a>
+        }
+    </div>
+}

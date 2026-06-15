@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="UserMobile.Views.RegisterPage"
+             Title="Tạo tài khoản"
+             BackgroundColor="{StaticResource PageBackground}">
+    <ScrollView>
+        <VerticalStackLayout Padding="24,22,24,36" Spacing="14">
+            <Label Text="BẮT ĐẦU HÀNH TRÌNH" Style="{StaticResource Eyebrow}" />
+            <Label Text="Tạo tài khoản du khách" Style="{StaticResource PageTitle}" />
+            <Label Text="Chỉ mất một phút để lưu địa điểm yêu thích và lịch sử khám phá của riêng bạn."
+                   Style="{StaticResource PageSubtitle}" Margin="0,0,0,8" />
+
+            <Label Text="HỌ VÀ TÊN" Style="{StaticResource Eyebrow}" />
+            <Border Style="{StaticResource InputCard}">
+                <Entry Placeholder="Nguyễn Văn A" Text="{Binding FullName}" ReturnType="Next" />
+            </Border>
+            <Label Text="EMAIL" Style="{StaticResource Eyebrow}" Margin="0,2,0,0" />
+            <Border Style="{StaticResource InputCard}">
+                <Entry Placeholder="tenban@example.com" Text="{Binding Email}" Keyboard="Email" ReturnType="Next" />
+            </Border>
+            <Label Text="MẬT KHẨU" Style="{StaticResource Eyebrow}" Margin="0,2,0,0" />
+            <Border Style="{StaticResource InputCard}">
+                <Entry Placeholder="Mật khẩu, ít nhất 8 ký tự"
+                       Text="{Binding Password}"
+                       IsPassword="True"
+                       ReturnType="Next" />
+            </Border>
+            <Border Style="{StaticResource InputCard}">
+                <Entry Placeholder="Nhập lại mật khẩu"
+                       Text="{Binding ConfirmPassword}"
+                       IsPassword="True"
+                       ReturnType="Go"
+                       ReturnCommand="{Binding RegisterCommand}" />
+            </Border>
+
+            <Border Padding="12,9"
+                    BackgroundColor="#FDECEF"
+                    Stroke="Transparent"
+                    StrokeShape="RoundRectangle 12"
+                    IsVisible="{Binding HasMessage}">
+                <Label Text="{Binding Message}"
+                       TextColor="#C83B55"
+                       HorizontalTextAlignment="Center" />
+            </Border>
+            <Button Text="Đăng ký" Command="{Binding RegisterCommand}" />
+            <Button Text="Đã có tài khoản? Đăng nhập"
+                    Clicked="OnLoginClicked"
+                    Style="{StaticResource SecondaryButton}" />
+            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

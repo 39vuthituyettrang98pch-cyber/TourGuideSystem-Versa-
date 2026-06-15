@@ -1,0 +1,60 @@
+@model AdminWeb.Models.PoiTranslation
+@{
+    ViewData["Title"] = "Thêm bản dịch POI";
+}
+
+<div class="page-heading">
+    <div>
+        <div class="page-title">Thêm bản dịch POI</div>
+        <div class="page-subtitle">Tạo nội dung thủ công và có thể tải lên audio thuyết minh có sẵn.</div>
+    </div>
+</div>
+
+<div class="form-shell">
+    <section class="card">
+        <form asp-action="Create" method="post" enctype="multipart/form-data">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="PoiId" />
+            <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label asp-for="LanguageCode" class="form-label">Mã ngôn ngữ</label>
+                    <input asp-for="LanguageCode" class="form-control" list="lang-list" placeholder="Ví dụ: en, ja, ko" required autocomplete="off" />
+                    <datalist id="lang-list">
+                        <option value="vi">Tiếng Việt</option>
+                        @foreach (var language in (IEnumerable<AdminWeb.Models.SupportedLanguage>)(ViewBag.Languages ?? Array.Empty<AdminWeb.Models.SupportedLanguage>()))
+                        {
+                            <option value="@language.LanguageCode">@language.LanguageName</option>
+                        }
+                    </datalist>
+                    <span asp-validation-for="LanguageCode" class="field-validation-error"></span>
+                </div>
+                <div class="form-group full">
+                    <label asp-for="Name" class="form-label">Tên hiển thị</label>
+                    <input asp-for="Name" class="form-control" required />
+                    <span asp-validation-for="Name" class="field-validation-error"></span>
+                </div>
+                <div class="form-group full">
+                    <label asp-for="ShortDescription" class="form-label">Mô tả ngắn</label>
+                    <textarea asp-for="ShortDescription" class="form-control" rows="2"></textarea>
+                </div>
+                <div class="form-group full">
+                    <label asp-for="FullDescription" class="form-label">Mô tả đầy đủ</label>
+                    <textarea asp-for="FullDescription" class="form-control" rows="5"></textarea>
+                </div>
+                <div class="form-group full">
+                    <label class="form-label" for="audioFile">Audio thuyết minh</label>
+                    <input class="form-control" id="audioFile" type="file" name="audioFile" accept="audio/*" />
+                </div>
+            </div>
+            <div class="form-actions">
+                <a asp-action="Index" asp-route-poiId="@Model.PoiId" class="btn btn-secondary">Hủy</a>
+                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Lưu bản dịch</button>
+            </div>
+        </form>
+    </section>
+</div>
+
+@section Scripts {
+    @{ await Html.RenderPartialAsync("_ValidationScriptsPartial"); }
+}

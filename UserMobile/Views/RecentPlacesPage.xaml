@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="UserMobile.Views.RecentPlacesPage"
+             Title="Gần đây"
+             BackgroundColor="#F5F7FB">
+    <Grid RowDefinitions="Auto,*" Padding="18,18,18,0">
+        <VerticalStackLayout Spacing="5">
+            <Label Text="Đã xem gần đây" FontSize="28" FontAttributes="Bold" TextColor="#172033" />
+            <Label Text="Quay lại những điểm tham quan bạn vừa mở." TextColor="#68748A" />
+        </VerticalStackLayout>
+
+        <Grid Grid.Row="1" Margin="0,18,0,0">
+            <VerticalStackLayout IsVisible="{Binding IsEmpty}" VerticalOptions="Center" Spacing="12">
+                <Label Text="◷" FontSize="54" TextColor="#7D69E8" HorizontalOptions="Center" />
+                <Label Text="{Binding Message}" FontSize="15" TextColor="#68748A" HorizontalTextAlignment="Center" />
+            </VerticalStackLayout>
+
+            <CollectionView x:Name="RecentList"
+                            ItemsSource="{Binding RecentPlaces}"
+                            SelectionMode="Single"
+                            SelectionChanged="OnSelectionChanged">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Border Margin="0,0,0,12" Padding="12" BackgroundColor="White" Stroke="#E5EAF2" StrokeShape="RoundRectangle 18">
+                            <Grid ColumnDefinitions="88,*" ColumnSpacing="14">
+                                <Border WidthRequest="88" HeightRequest="88" Stroke="Transparent" StrokeShape="RoundRectangle 14">
+                                    <Image Source="{Binding ImageUrl}" Aspect="AspectFill" />
+                                </Border>
+                                <VerticalStackLayout Grid.Column="1" Spacing="5" VerticalOptions="Center">
+                                    <Label Text="{Binding Title}" FontSize="16" FontAttributes="Bold" TextColor="#172033" />
+                                    <Label Text="{Binding Description}" FontSize="12" TextColor="#68748A" MaxLines="2" LineBreakMode="TailTruncation" />
+                                    <Label Text="Xem lại →" FontSize="12" TextColor="#6C55DD" />
+                                </VerticalStackLayout>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </Grid>
+    </Grid>
+</ContentPage>

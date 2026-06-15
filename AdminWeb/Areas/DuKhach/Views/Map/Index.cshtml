@@ -1,0 +1,495 @@
+@using System.Text.Json
+@model DuKhachMapViewModel
+@{
+    ViewData["Title"] = "Bản đồ du khách";
+    var poiJson = JsonSerializer.Serialize(Model.Pois, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+}
+
+@section Styles {
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+    <style>
+        .map-page {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 380px;
+            gap: 18px;
+            min-height: calc(100vh - 190px);
+        }
+        #touristMap {
+            min-height: 680px;
+            border-radius: 28px;
+            border: 1px solid var(--line);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            background: var(--panel2);
+        }
+        .map-side {
+            border: 1px solid var(--line);
+            background: var(--panel);
+            border-radius: 28px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            min-height: 680px;
+        }
+        .map-side-head { padding: 18px; border-bottom: 1px solid var(--line); }
+        .map-search {
+            display: flex; align-items: center; gap: 10px;
+            background: var(--panel2); border: 1px solid var(--line); border-radius: 16px;
+            padding: 0 12px; min-height: 46px; margin-top: 14px;
+        }
+        .map-search input { flex: 1; border: 0; outline: 0; background: transparent; color: var(--text); }
+        .poi-list { overflow: auto; padding: 12px; display: grid; gap: 10px; }
+        .poi-list-item {
+            border: 1px solid var(--line); border-radius: 18px; padding: 13px;
+            background: var(--panel2); cursor: pointer; transition: transform .15s ease, border-color .15s ease;
+        }
+        .poi-list-item:hover { transform: translateY(-1px); border-color: rgba(56,189,248,.42); }
+        .poi-list-item.active { border-color: var(--brand2); }
+        .poi-list-title { font-weight: 900; letter-spacing: -.02em; display: flex; gap: 8px; justify-content: space-between; }
+        .poi-list-desc { color: var(--muted); font-size: 13px; line-height: 1.5; margin-top: 6px; }
+        .badge-soft {
+            display: inline-flex; align-items: center; gap: 6px; padding: 5px 8px; border-radius: 999px;
+            background: rgba(34,197,94,.14); color: var(--brand); font-size: 12px; font-weight: 800; white-space: nowrap;
+        }
+        .badge-muted { background: rgba(148,163,184,.12); color: var(--muted); }
+        .map-toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+        .detail-panel { padding: 18px; border-top: 1px solid var(--line); background: rgba(0,0,0,.08); }
+        .detail-panel img { width:100%; max-height:180px; object-fit:cover; border-radius:18px; border:1px solid var(--line); margin-bottom:12px; }
+        .detail-title { font-weight: 900; letter-spacing: -.04em; font-size: 22px; margin-bottom: 8px; }
+        .detail-desc { color: var(--muted); line-height: 1.6; font-size: 14px; max-height: 140px; overflow:auto; }
+        .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: #0f172a; color: #e5f0ff; }
+        html[data-theme="light"] .leaflet-popup-content-wrapper, html[data-theme="light"] .leaflet-popup-tip { background: #fff; color: #0f172a; }
+        .map-message { margin-top: 12px; color: var(--muted); font-size: 14px; line-height: 1.5; }
+        .map-message.ok { color: var(--brand); }
+        .map-message.err { color: var(--danger); }
+
+        /* Style cho Custom Marker Pins */
+        .custom-map-icon {
+            background: transparent;
+            border: none;
+        }
+        .custom-marker {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg);
+            border: 2px solid #ffffff;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            color: #ffffff;
+            font-size: 14px;
+        }
+        .custom-marker i { transform: rotate(45deg); }
+        .custom-marker.discovered { background: #22c55e; } /* Green */
+        .custom-marker.undiscovered { background: #3b82f6; } /* Blue */
+
+        @@media (max-width: 1000px) {
+            .map-page { grid-template-columns: 1fr; }
+            #touristMap, .map-side { min-height: 520px; }
+        }
+    </style>
+}
+
+<div class="hero" style="padding:24px;margin-bottom:18px;">
+    <div class="eyebrow">Bản đồ POI</div>
+    <h1 style="font-size:clamp(30px,5vw,46px);">Tìm điểm tham quan gần bạn</h1>
+    <p>
+        Hiển thị các POI đã được duyệt. Đăng nhập du khách để check-in bằng GPS và đồng bộ tiến độ với app.
+    </p>
+    <div class="grid cols-3" style="margin-top:16px;">
+        <div class="cardx" style="padding:14px;"><span class="stat-value">@Model.TotalPoiCount</span><span class="stat-label">POI trên bản đồ</span></div>
+        <div class="cardx" style="padding:14px;"><span class="stat-value">@Model.DiscoveredCount</span><span class="stat-label">Đã check-in</span></div>
+        <div class="cardx" style="padding:14px;"><span class="stat-value">@(Model.IsTouristSignedIn ? "Đã đăng nhập" : "Khách")</span><span class="stat-label">Trạng thái</span></div>
+    </div>
+</div>
+
+@if (!Model.IsTouristSignedIn)
+{
+    <div class="alertx error">
+        <i class="fa-solid fa-circle-info"></i>
+        <span>Bạn vẫn xem được bản đồ, nhưng muốn check-in nhận điểm thì cần <a asp-area="DuKhach" asp-controller="Account" asp-action="Login" asp-route-returnUrl="/DuKhach/Map" style="color:var(--brand2);font-weight:900;">đăng nhập du khách</a>.</span>
+    </div>
+}
+
+<form id="antiForgeryForm" method="post" style="display:none;">
+    @Html.AntiForgeryToken()
+</form>
+
+<div class="map-page">
+    <div id="touristMap"></div>
+    <aside class="map-side">
+        <div class="map-side-head">
+            <div class="eyebrow">Danh sách POI</div>
+            <div style="font-size:22px;font-weight:900;letter-spacing:-.04em;">Khám phá trên bản đồ</div>
+            <div class="map-search">
+                <i class="fa-solid fa-magnifying-glass" style="color:var(--muted);"></i>
+                <input id="poiSearch" type="search" placeholder="Tìm POI theo tên hoặc mô tả..." />
+            </div>
+            <div class="map-toolbar">
+                <button class="btnx primary" type="button" id="btnLocate"><i class="fa-solid fa-location-crosshairs"></i> Vị trí của tôi</button>
+                <button class="btnx" type="button" id="btnFit"><i class="fa-solid fa-expand"></i> Xem tất cả</button>
+            </div>
+            <div id="mapMessage" class="map-message"></div>
+        </div>
+        <div id="poiList" class="poi-list"></div>
+        <div id="poiDetail" class="detail-panel">
+            <div class="detail-title">Chọn một POI</div>
+            <div class="detail-desc">Bấm marker hoặc chọn trong danh sách để xem mô tả, nghe audio và check-in khi bạn ở gần địa điểm.</div>
+        </div>
+    </aside>
+</div>
+
+@section Scripts {
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+    <script>
+        const pois = @Html.Raw(poiJson);
+        const isSignedIn = @Json.Serialize(Model.IsTouristSignedIn);
+        const checkInUrl = '@Url.Action("CheckIn", "Map", new { area = "DuKhach" })';
+        const mapMessage = document.getElementById('mapMessage');
+        const poiList = document.getElementById('poiList');
+        const poiSearch = document.getElementById('poiSearch');
+        const poiDetail = document.getElementById('poiDetail');
+        const token = document.querySelector('#antiForgeryForm input[name="__RequestVerificationToken"]')?.value;
+        let userLocation = null;
+        let userMarker = null;
+        let userCircle = null;
+        let activePoiId = null;
+        let routingControl = null;
+        let markerClusterGroup = null;
+        const markers = new Map();
+        const circles = new Map();
+
+        const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap contributors'
+        });
+
+        const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 19,
+            attribution: '&copy; Esri'
+        });
+
+        const topo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+            maxZoom: 17,
+            attribution: '&copy; OpenTopoMap'
+        });
+
+        const mapCenter = pois.length
+            ? [pois[0].latitude, pois[0].longitude]
+            : [10.7769, 106.7009];
+        const map = L.map('touristMap', { zoomControl: true, layers: [osm] }).setView(mapCenter, pois.length ? 14 : 12);
+
+        const baseMaps = {
+            "Bản đồ tiêu chuẩn": osm,
+            "Vệ tinh": satellite,
+            "Địa hình": topo
+        };
+
+        L.control.layers(baseMaps).addTo(map);
+
+        const escapeHtml = value => String(value ?? '')
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#039;');
+
+        const setMessage = (message, type = '') => {
+            mapMessage.textContent = message || '';
+            mapMessage.className = `map-message ${type}`;
+        };
+
+        const popupHtml = poi => `
+            <div style="min-width:220px;">
+                <div style="font-weight:900;font-size:15px;margin-bottom:6px;">${escapeHtml(poi.name)}</div>
+                <div style="opacity:.78;font-size:13px;line-height:1.45;margin-bottom:10px;">${escapeHtml(poi.shortDescription || 'Điểm tham quan')}</div>
+                <button type="button" data-select-poi="${poi.id}" style="border:0;border-radius:10px;padding:8px 10px;font-weight:800;cursor:pointer;">Xem chi tiết</button>
+            </div>`;
+
+        const renderDetail = poi => {
+            activePoiId = poi.id;
+            const imageHtml = poi.coverImageUrl ? `<img src="${escapeHtml(poi.coverImageUrl)}" alt="${escapeHtml(poi.name)}" />` : '';
+            const audioHtml = poi.audioUrl ? `<audio controls style="width:100%;margin:10px 0;"><source src="${escapeHtml(poi.audioUrl)}" /></audio>` : '';
+            const videoHtml = poi.videoUrl ? `<a class="btnx" href="${escapeHtml(poi.videoUrl)}" target="_blank" rel="noopener"><i class="fa-solid fa-video"></i> Xem video</a>` : '';
+            
+            poiDetail.innerHTML = `
+                ${imageHtml}
+                <div class="detail-title">${escapeHtml(poi.name)}</div>
+                <div style="margin-bottom:10px;">${poi.isDiscovered ? '<span class="badge-soft"><i class="fa-solid fa-circle-check"></i> Đã check-in</span>' : '<span class="badge-soft badge-muted"><i class="fa-regular fa-circle"></i> Chưa check-in</span>'}</div>
+                <div class="detail-desc">${escapeHtml(poi.fullDescription || poi.shortDescription || 'Chưa có mô tả chi tiết.')}</div>
+                ${audioHtml}
+                <div class="actions" style="margin-top:14px;">
+                    <button class="btnx primary" type="button" onclick="checkInPoi(${poi.id})"><i class="fa-solid fa-circle-check"></i> Check-in GPS</button>
+                    <button class="btnx" type="button" onclick="showRouteToPoi(${poi.latitude}, ${poi.longitude})"><i class="fa-solid fa-route"></i> Chỉ đường</button>
+                    ${videoHtml}
+                </div>`;
+        };
+
+        const focusPoi = poi => {
+            activePoiId = poi.id;
+            const marker = markers.get(poi.id);
+            if (markerClusterGroup && marker) {
+                markerClusterGroup.zoomToShowLayer(marker, function() {
+                    marker.openPopup();
+                });
+            } else {
+                map.setView([poi.latitude, poi.longitude], Math.max(map.getZoom(), 16));
+                marker?.openPopup();
+            }
+            renderDetail(poi);
+            document.querySelectorAll('.poi-list-item').forEach(item => {
+                item.classList.toggle('active', Number(item.dataset.poiId) === poi.id);
+            });
+            history.replaceState(null, '', `#poi-${poi.id}`);
+        };
+
+        const renderList = items => {
+            poiList.innerHTML = '';
+            if (items.length === 0) {
+                poiList.innerHTML = '<div class="cardx">Không tìm thấy POI phù hợp.</div>';
+                return;
+            }
+            for (const poi of items) {
+                const item = document.createElement('button');
+                const statusBadge = poi.isDiscovered
+                    ? '<span class="badge-soft"><i class="fa-solid fa-check"></i> Done</span>'
+                    : `<span class="badge-soft badge-muted">${poi.radius}m</span>`;
+                item.type = 'button';
+                item.className = 'poi-list-item';
+                item.dataset.poiId = poi.id;
+                item.innerHTML = `
+                    <div class="poi-list-title">
+                        <span>${escapeHtml(poi.name)}</span>
+                        ${statusBadge}
+                    </div>
+                    <div class="poi-list-desc">${escapeHtml(poi.shortDescription || 'Chạm để xem chi tiết và chỉ đường.')}</div>`;
+                item.addEventListener('click', () => focusPoi(poi));
+                poiList.appendChild(item);
+            }
+        };
+
+        const refreshDiscovered = poiId => {
+            const poi = pois.find(item => item.id === poiId);
+            if (!poi) return;
+            poi.isDiscovered = true;
+            
+            const marker = markers.get(poiId);
+            if (marker) {
+                const customIcon = L.divIcon({
+                    className: 'custom-map-icon',
+                    html: `<div class="custom-marker discovered"><i class="fa-solid fa-map-pin"></i></div>`,
+                    iconSize: [32, 32],
+                    iconAnchor: [16, 32],
+                    popupAnchor: [0, -32]
+                });
+                marker.setIcon(customIcon);
+                circles.get(poiId)?.setStyle({ color: '#22c55e' });
+            }
+            
+            renderList(filterPois());
+            renderDetail(poi);
+        };
+
+        const filterPois = () => {
+            const keyword = (poiSearch.value || '').trim().toLowerCase();
+            if (!keyword) return pois;
+            return pois.filter(poi =>
+                `${poi.name} ${poi.shortDescription} ${poi.fullDescription}`.toLowerCase().includes(keyword));
+        };
+
+        markerClusterGroup = L.markerClusterGroup({
+            showCoverageOnHover: false,
+            maxClusterRadius: 40,
+            spiderfyOnMaxZoom: true
+        });
+
+        for (const poi of pois) {
+            const isDiscovered = poi.isDiscovered;
+            const statusClass = isDiscovered ? 'discovered' : 'undiscovered';
+            const customIcon = L.divIcon({
+                className: 'custom-map-icon',
+                html: `<div class="custom-marker ${statusClass}"><i class="fa-solid fa-map-pin"></i></div>`,
+                iconSize: [32, 32],
+                iconAnchor: [16, 32],
+                popupAnchor: [0, -32]
+            });
+
+            const marker = L.marker([poi.latitude, poi.longitude], { icon: customIcon }).bindPopup(popupHtml(poi));
+            const circle = L.circle([poi.latitude, poi.longitude], {
+                radius: poi.radius,
+                color: isDiscovered ? '#22c55e' : '#3b82f6',
+                weight: 1,
+                fillOpacity: .08
+            }).addTo(map);
+            markers.set(poi.id, marker);
+            circles.set(poi.id, circle);
+            markerClusterGroup.addLayer(marker);
+            marker.on('click', () => renderDetail(poi));
+        }
+        map.addLayer(markerClusterGroup);
+
+        map.on('popupopen', e => {
+            const button = e.popup.getElement()?.querySelector('[data-select-poi]');
+            button?.addEventListener('click', () => {
+                const poi = pois.find(item => item.id === Number(button.dataset.selectPoi));
+                if (poi) focusPoi(poi);
+            });
+        });
+
+        renderList(pois);
+        if (pois.length > 1) {
+            map.fitBounds(markerClusterGroup.getBounds().pad(.18));
+        }
+
+        document.getElementById('btnFit')?.addEventListener('click', () => {
+            if (!pois.length) return;
+            map.fitBounds(markerClusterGroup.getBounds().pad(.18));
+        });
+
+        poiSearch.addEventListener('input', () => renderList(filterPois()));
+
+        document.getElementById('btnLocate')?.addEventListener('click', () => {
+            if (!navigator.geolocation) {
+                setMessage('Trình duyệt không hỗ trợ lấy vị trí.', 'err');
+                return;
+            }
+            setMessage('Đang lấy vị trí của bạn...');
+            navigator.geolocation.getCurrentPosition(position => {
+                userLocation = {
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude,
+                    accuracyMeters: position.coords.accuracy
+                };
+                const latLng = [userLocation.latitude, userLocation.longitude];
+                const radius = Math.min(userLocation.accuracyMeters || 30, 120);
+                
+                if (userMarker) {
+                    userMarker.setLatLng(latLng);
+                    userCircle.setLatLng(latLng);
+                    userCircle.setRadius(radius);
+                } else {
+                    const userIcon = L.divIcon({
+                        className: 'custom-map-icon',
+                        html: `<div class="custom-marker" style="background:#f59e0b; border-color:#ffffff;"><i class="fa-solid fa-user"></i></div>`,
+                        iconSize: [32, 32],
+                        iconAnchor: [16, 32],
+                        popupAnchor: [0, -32]
+                    });
+                    userMarker = L.marker(latLng, { icon: userIcon }).addTo(map).bindPopup('Vị trí của bạn');
+                    userCircle = L.circle(latLng, { radius: radius, color: '#f59e0b', weight: 1, fillOpacity: .1 }).addTo(map);
+                }
+                
+                map.setView(latLng, 16);
+                setMessage(`Đã lấy vị trí. Độ chính xác khoảng ${Math.round(userLocation.accuracyMeters || 0)}m.`, 'ok');
+            }, error => {
+                setMessage(error.message || 'Không lấy được vị trí. Hãy cấp quyền Location cho trình duyệt.', 'err');
+            }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 10000 });
+        });
+
+        window.checkInPoi = async poiId => {
+            if (!isSignedIn) {
+                const returnUrl = encodeURIComponent('/DuKhach/Map#poi-' + poiId);
+                window.location.href = `/DuKhach/Account/Login?returnUrl=${returnUrl}`;
+                return;
+            }
+            if (!navigator.geolocation) {
+                setMessage('Trình duyệt không hỗ trợ lấy vị trí.', 'err');
+                return;
+            }
+            setMessage('Đang kiểm tra vị trí để check-in...');
+            navigator.geolocation.getCurrentPosition(async position => {
+                userLocation = {
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude,
+                    accuracyMeters: position.coords.accuracy
+                };
+                try {
+                    const response = await fetch(checkInUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'RequestVerificationToken': token
+                        },
+                        body: JSON.stringify({
+                            poiId,
+                            latitude: userLocation.latitude,
+                            longitude: userLocation.longitude,
+                            accuracyMeters: userLocation.accuracyMeters
+                        })
+                    });
+                    const data = await response.json();
+                    if (!response.ok || !data.success) throw new Error(data.message || 'Check-in thất bại.');
+                    setMessage(data.message, 'ok');
+                    if (data.isNewDiscovery) refreshDiscovered(poiId);
+                } catch (error) {
+                    setMessage(error.message || 'Check-in thất bại.', 'err');
+                }
+            }, error => {
+                setMessage(error.message || 'Không lấy được vị trí. Hãy cấp quyền Location cho trình duyệt.', 'err');
+            }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 5000 });
+        };
+
+        window.showRouteToPoi = (destLat, destLng) => {
+            if (!userLocation) {
+                setMessage('Vui lòng lấy "Vị trí của tôi" trước khi chỉ đường.', 'err');
+                // Tự động kích hoạt nút lấy vị trí
+                document.getElementById('btnLocate')?.click();
+                return;
+            }
+
+            if (routingControl) {
+                map.removeControl(routingControl);
+            }
+
+            setMessage('Đang tính toán tuyến đường...', 'ok');
+
+            routingControl = L.Routing.control({
+                waypoints: [
+                    L.latLng(userLocation.latitude, userLocation.longitude),
+                    L.latLng(destLat, destLng)
+                ],
+                routeWhileDragging: false,
+                addWaypoints: false,
+                show: false, // Ẩn bảng hướng dẫn chi tiết mặc định để tránh che diện tích hiển thị trên điện thoại
+                lineOptions: {
+                    styles: [{ color: '#3b82f6', opacity: 0.9, weight: 5, dashArray: '10, 8' }]
+                },
+                createMarker: function() { return null; } // Không tạo thêm pin thừa gây rối bản đồ
+            }).addTo(map);
+
+            routingControl.on('routesfound', function(e) {
+                var routes = e.routes;
+                var summary = routes[0].summary;
+                var distance = summary.totalDistance > 1000 
+                    ? (summary.totalDistance / 1000).toFixed(2) + ' km' 
+                    : Math.round(summary.totalDistance) + ' m';
+                
+                var totalMinutes = Math.round(summary.totalTime / 60);
+                var hours = Math.floor(totalMinutes / 60);
+                var mins = totalMinutes % 60;
+                var timeStr = hours > 0 ? `${hours} giờ ${mins} phút` : `${mins} phút`;
+                
+                setMessage(`📍 Tuyến đường dài ${distance}, thời gian đi dự kiến ${timeStr}.`, 'ok');
+            });
+
+            routingControl.on('routingerror', function(e) {
+                setMessage('⚠️ Không thể tìm thấy tuyến đường đến POI này.', 'err');
+            });
+        };
+
+        const openHashPoi = () => {
+            const match = location.hash.match(/^#poi-(\d+)$/);
+            if (!match) return;
+            const poi = pois.find(item => item.id === Number(match[1]));
+            if (poi) focusPoi(poi);
+        };
+        setTimeout(openHashPoi, 300);
+    </script>
+}

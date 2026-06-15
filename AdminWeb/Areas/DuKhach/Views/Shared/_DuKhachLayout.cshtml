@@ -1,0 +1,360 @@
+@{
+    var title = ViewData["Title"] as string ?? "Du khách";
+    var isLoggedIn = User?.Identity?.IsAuthenticated == true;
+}
+
+<!DOCTYPE html>
+<html lang="vi" data-theme="dark">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@title - VERSA Travel</title>
+
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+
+    @RenderSection("Styles", required: false)
+
+    <style>
+        :root {
+            --bg: #06111f;
+            --bg-2: #091a2e;
+            --surface: rgba(15, 29, 52, 0.82);
+            --surface-2: rgba(20, 40, 70, 0.72);
+            --card: rgba(12, 24, 44, 0.88);
+            --text: #f4f8ff;
+            --muted: #a9bad7;
+            --soft: #6f82a7;
+            --border: rgba(148, 163, 184, 0.22);
+            --accent: #34d399;
+            --accent-2: #38bdf8;
+            --accent-3: #a78bfa;
+            --danger: #fb7185;
+            --warning: #fbbf24;
+            --shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+            --radius: 28px;
+        }
+
+        html[data-theme="light"] {
+            --bg: #f4f8ff;
+            --bg-2: #e9f3ff;
+            --surface: rgba(255, 255, 255, 0.86);
+            --surface-2: rgba(255, 255, 255, 0.74);
+            --card: rgba(255, 255, 255, 0.96);
+            --text: #102033;
+            --muted: #50627e;
+            --soft: #71809a;
+            --border: rgba(15, 23, 42, 0.12);
+            --shadow: 0 24px 70px rgba(15, 23, 42, 0.12);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            color: var(--text);
+            background:
+                radial-gradient(circle at 8% 12%, rgba(52, 211, 153, 0.18), transparent 32%),
+                radial-gradient(circle at 88% 18%, rgba(56, 189, 248, 0.18), transparent 34%),
+                radial-gradient(circle at 50% 92%, rgba(167, 139, 250, 0.15), transparent 34%),
+                linear-gradient(180deg, var(--bg), var(--bg-2));
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            background-image:
+                linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
+            background-size: 46px 46px;
+            mask-image: linear-gradient(to bottom, rgba(0,0,0,0.85), transparent);
+            z-index: -1;
+        }
+
+        a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        .dk-shell {
+            width: min(1180px, calc(100% - 32px));
+            margin: 0 auto;
+        }
+
+        .dk-navbar-wrap {
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            backdrop-filter: blur(22px);
+            background: rgba(6, 17, 31, 0.72);
+            border-bottom: 1px solid var(--border);
+        }
+
+        html[data-theme="light"] .dk-navbar-wrap {
+            background: rgba(244, 248, 255, 0.76);
+        }
+
+        .dk-navbar {
+            height: 82px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 18px;
+        }
+
+        .dk-brand {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 900;
+            letter-spacing: -0.02em;
+        }
+
+        .dk-brand-icon {
+            width: 46px;
+            height: 46px;
+            border-radius: 18px;
+            display: grid;
+            place-items: center;
+            color: #03131d;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            box-shadow: 0 16px 34px rgba(52, 211, 153, 0.28);
+        }
+
+        .dk-brand small {
+            display: block;
+            margin-top: 2px;
+            color: var(--muted);
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .dk-nav {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .dk-nav-link,
+        .dk-icon-btn,
+        .dk-btn {
+            border: 1px solid transparent;
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-weight: 800;
+            transition: 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .dk-nav-link {
+            padding: 10px 13px;
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        .dk-nav-link:hover {
+            color: var(--text);
+            background: rgba(148, 163, 184, 0.12);
+            border-color: var(--border);
+        }
+
+        .dk-icon-btn {
+            width: 42px;
+            height: 42px;
+            color: var(--muted);
+            background: rgba(148, 163, 184, 0.1);
+            border-color: var(--border);
+        }
+
+        .dk-icon-btn:hover {
+            color: var(--text);
+            transform: translateY(-1px);
+        }
+
+        .dk-btn {
+            padding: 12px 18px;
+            font-size: 14px;
+            border-color: var(--border);
+            color: var(--text);
+            background: rgba(148, 163, 184, 0.1);
+        }
+
+        .dk-btn:hover {
+            transform: translateY(-2px);
+            color: var(--text);
+            box-shadow: var(--shadow);
+        }
+
+        .dk-btn-primary {
+            color: #03131d;
+            border: none;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            box-shadow: 0 18px 46px rgba(52, 211, 153, 0.22);
+        }
+
+        .dk-btn-primary:hover {
+            color: #03131d;
+        }
+
+        .dk-btn-ghost {
+            background: rgba(255,255,255,0.06);
+            border-color: var(--border);
+        }
+
+        .dk-main {
+            min-height: calc(100vh - 164px);
+            padding: 34px 0 58px;
+        }
+
+        .dk-footer {
+            border-top: 1px solid var(--border);
+            padding: 28px 0;
+            color: var(--muted);
+            text-align: center;
+            background: rgba(6, 17, 31, 0.38);
+        }
+
+        html[data-theme="light"] .dk-footer {
+            background: rgba(255, 255, 255, 0.45);
+        }
+
+        .dk-footer strong {
+            color: var(--text);
+        }
+
+        @@media (max-width: 860px) {
+            .dk-navbar {
+                height: auto;
+                padding: 16px 0;
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .dk-nav {
+                width: 100%;
+                justify-content: flex-start;
+            }
+
+            .dk-nav-link span {
+                display: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header class="dk-navbar-wrap">
+        <div class="dk-shell dk-navbar">
+            <a asp-area="DuKhach" asp-controller="Home" asp-action="Index" class="dk-brand">
+                <span class="dk-brand-icon">
+                    <i class="fa-solid fa-location-dot"></i>
+                </span>
+                <span>
+                    VERSA Travel
+                    <small>Smart Tour Guide</small>
+                </span>
+            </a>
+
+            <nav class="dk-nav">
+                <a asp-area="DuKhach" asp-controller="Home" asp-action="Index" class="dk-nav-link">
+                    <i class="fa-solid fa-house"></i>
+                    <span>Trang chủ</span>
+                </a>
+
+                <a asp-area="DuKhach" asp-controller="Map" asp-action="Index" class="dk-nav-link">
+                    <i class="fa-solid fa-map-location-dot"></i>
+                    <span>Bản đồ</span>
+                </a>
+
+                <button type="button" class="dk-icon-btn" id="dkThemeToggle" title="Đổi giao diện">
+                    <i class="fa-solid fa-moon"></i>
+                </button>
+
+                @if (isLoggedIn)
+                {
+                    <a asp-area="DuKhach" asp-controller="Account" asp-action="Profile" class="dk-nav-link">
+                        <i class="fa-solid fa-user"></i>
+                        <span>Tài khoản</span>
+                    </a>
+
+                    <a asp-area="DuKhach" asp-controller="Account" asp-action="Logout" class="dk-btn dk-btn-ghost">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                        Đăng xuất
+                    </a>
+                }
+                else
+                {
+                    <a asp-area="DuKhach" asp-controller="Account" asp-action="Login" class="dk-nav-link">
+                        <i class="fa-solid fa-right-to-bracket"></i>
+                        <span>Đăng nhập</span>
+                    </a>
+
+                    <a asp-area="DuKhach" asp-controller="Account" asp-action="Register" class="dk-btn dk-btn-primary">
+                        <i class="fa-solid fa-user-plus"></i>
+                        Đăng ký
+                    </a>
+                }
+            </nav>
+        </div>
+    </header>
+
+    <main class="dk-main">
+        <div class="dk-shell">
+            @RenderBody()
+        </div>
+    </main>
+
+    <footer class="dk-footer">
+        <div class="dk-shell">
+            <strong>VERSA Travel</strong> · Bản đồ tham quan, tài khoản du khách và trải nghiệm dùng chung với app mobile.
+        </div>
+    </footer>
+
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        (function () {
+            const html = document.documentElement;
+            const button = document.getElementById('dkThemeToggle');
+
+            const saved = localStorage.getItem('versa-dukhach-theme') || 'dark';
+            html.setAttribute('data-theme', saved);
+
+            function updateIcon() {
+                if (!button) return;
+
+                const theme = html.getAttribute('data-theme');
+
+                button.innerHTML = theme === 'dark'
+                    ? '<i class="fa-solid fa-moon"></i>'
+                    : '<i class="fa-solid fa-sun"></i>';
+            }
+
+            updateIcon();
+
+            button?.addEventListener('click', function () {
+                const current = html.getAttribute('data-theme') || 'dark';
+                const next = current === 'dark' ? 'light' : 'dark';
+
+                html.setAttribute('data-theme', next);
+                localStorage.setItem('versa-dukhach-theme', next);
+                updateIcon();
+            });
+        })();
+    </script>
+
+    @RenderSection("Scripts", required: false)
+</body>
+</html>

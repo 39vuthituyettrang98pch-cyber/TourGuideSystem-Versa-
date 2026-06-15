@@ -1,0 +1,371 @@
+@model AdminWeb.Models.Tour
+@{
+    ViewData["Title"] = (Model != null && Model.Id > 0) ? "Sửa tuyến tham quan" : "Xây dựng tuyến tham quan (Tour Builder)";
+    var vi = Model?.Translations?.FirstOrDefault(t => t.LanguageCode == "vi");
+}
+
+<div class="page-title">@(Model != null && Model.Id > 0 ? $"Sửa Tour #{Model.Id}" : "Xây dựng tuyến tham quan")</div>
+<div class="page-subtitle">Chọn lần lượt các POI trên bản đồ để tạo thành một tuyến đường hoàn chỉnh.</div>
+
+<div class="grid cols-2" style="grid-template-columns: 350px 1fr; gap: 20px; align-items: start;">
+    <!-- Cột trái: Form thông tin Tour -->
+    <div class="card" style="padding: 24px;">
+        <form id="tourForm" asp-controller="Tour" asp-action="SaveBuilder" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="Id" value="@Model?.Id" />
+            <input type="hidden" id="orderedPoiIds" name="OrderedPoiIds" value="@(Model != null && Model.TourPois != null ? string.Join(",", Model.TourPois.OrderBy(x => x.SequenceOrder).Select(x => x.PoiId)) : "")" />
+
+            <div class="form-group full">
+                <label class="form-label">Tên tuyến (Tour Name)</label>
+                <input class="form-control" type="text" name="Name" value="@vi?.Title" placeholder="Ví dụ: Tour Lịch sử Sài Gòn" required />
+            </div>
+
+            <div class="form-group full" style="margin-top: 14px;">
+                <label class="form-label">Mô tả ngắn</label>
+                <textarea class="form-control" name="Description" rows="3" placeholder="Mô tả về tuyến đi này...">@vi?.Description</textarea>
+            </div>
+            
+            <div class="form-group full" style="margin-top: 14px;">
+                <label class="form-label">Phương tiện di chuyển</label>
+                <select class="form-control" id="travelMode" name="TravelMode">
+                    <option value="driving">🚗 Lái xe (Ô tô / Xe máy)</option>
+                    <option value="bike">🚲 Xe đạp</option>
+                    <option value="foot">🚶 Đi bộ</option>
+                </select>
+            </div>
+            
+            <div class="form-group full" style="margin-top: 14px;">
+                <label class="form-label">Thời gian ước tính (phút)</label>
+                <input class="form-control" type="number" id="estimatedTimeInput" name="EstimatedTime" value="@(Model?.EstimatedTime ?? 0)" min="0" required />
+                <small style="color:var(--text-soft); font-size:12px; display:block; margin-top:4px;">Tự động tính thời gian di chuyển. Bạn nên cộng thêm thời gian tham quan tại mỗi điểm.</small>
+            </div>
+
+            <div style="margin-top: 24px;">
+                <div style="font-weight: 700; margin-bottom: 10px;">Lộ trình (<span id="poiCount">0</span> điểm):</div>
+                <ul id="tourItinerary" style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px;">
+                    <li style="color: var(--text-soft); font-size: 13px;">Chưa chọn điểm nào. Hãy click vào các POI trên bản đồ.</li>
+                </ul>
+            </div>
+
+            <div id="routeStats" style="margin-top: 16px; padding: 12px; background: var(--surface-2); border-radius: 8px; font-size: 13px; display: none;">
+                <strong>Tổng độ dài:</strong> <span id="totalDist">0 km</span><br />
+                <strong>Thời gian đi dự kiến:</strong> <span id="totalTime">0 phút</span>
+            </div>
+
+            <div style="margin-top: 24px; display: flex; gap: 10px;">
+                <button type="submit" class="btn btn-primary" style="flex: 1;"><i class="fa-solid fa-floppy-disk"></i> @(Model != null && Model.Id > 0 ? "Lưu thay đổi" : "Lưu Tour")</button>
+                <button type="button" class="btn btn-secondary" id="btnClearRoute" title="Xóa làm lại"><i class="fa-solid fa-trash-can"></i></button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Cột phải: Bản đồ -->
+    <div class="card" style="padding: 0; overflow: hidden; border-radius: 20px; display: flex; flex-direction: column;">
+        <div style="padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--surface-2); display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-weight: 600; font-size: 14px; color: var(--text-soft);"><i class="fa-solid fa-map-location-dot"></i> Bản đồ tuyến tham quan</span>
+            <div style="display: flex; gap: 8px;">
+                <button type="button" class="btn btn-secondary btn-sm" id="btnLocateAdmin">
+                    <i class="fa-solid fa-location-crosshairs"></i> Vị trí của tôi
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm" id="btnFitMap">
+                    <i class="fa-solid fa-expand"></i> Xem tất cả
+                </button>
+            </div>
+        </div>
+        <div id="tourBuilderMap" style="height: 600px; width: 100%; z-index: 1;"></div>
+    </div>
+</div>
+
+@section Scripts {
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+    
+    <style>
+        .itinerary-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .itinerary-item button {
+            background: none;
+            border: none;
+            color: var(--danger);
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .sortable-ghost {
+            opacity: 0.5;
+            background: var(--accent-soft) !important;
+            border: 1px dashed var(--accent) !important;
+        }
+        /* Style cho Marker Vị trí của Admin */
+        .custom-map-icon {
+            background: transparent;
+            border: none;
+        }
+        .custom-marker {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg);
+            border: 2px solid #ffffff;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            color: #ffffff;
+            font-size: 14px;
+        }
+        .custom-marker i { transform: rotate(45deg); }
+        .poi-name-clickable:hover {
+            color: var(--accent);
+        }
+    </style>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+
+    <script>
+        (async function () {
+            const mapEl = document.getElementById('tourBuilderMap');
+            if (!mapEl) return;
+
+            const map = L.map(mapEl).setView([10.762622, 106.660172], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+
+            let allPois = [];
+            let selectedPois = [];
+            let routingControl = null;
+            let sortableInstance = null;
+            let adminMarker = null;
+            let adminCircle = null;
+            let mapMarkers = [];
+            
+            const itineraryEl = document.getElementById('tourItinerary');
+            const orderedInput = document.getElementById('orderedPoiIds');
+            const poiCountEl = document.getElementById('poiCount');
+            const statsEl = document.getElementById('routeStats');
+            const travelModeSelect = document.getElementById('travelMode');
+
+            // 1. Tải danh sách POI từ API có sẵn của bạn
+            try {
+                const res = await fetch('/Poi/MapData');
+                allPois = await res.json();
+            } catch(e) {
+                console.error("Lỗi tải POI", e);
+            }
+
+            // 2. Render tất cả POI lên bản đồ
+            allPois.forEach(poi => {
+                if (poi.status !== 'Approved') return; // Chỉ lấy POI đã duyệt
+                
+                const marker = L.marker([poi.latitude, poi.longitude]).addTo(map);
+                marker.bindTooltip(poi.name);
+                marker.poiId = poi.id;
+                mapMarkers.push(marker);
+
+                marker.on('click', function () {
+                    // Thêm POI vào lộ trình nếu chưa có
+                    if (!selectedPois.find(x => x.id === poi.id)) {
+                        selectedPois.push(poi);
+                        updateItinerary();
+                    }
+                });
+            });
+
+            // Nạp dữ liệu cũ nếu đang mở trang ở chế độ Edit Tour
+            if (orderedInput.value) {
+                const oldIds = orderedInput.value.split(',').map(id => parseInt(id));
+                oldIds.forEach(id => {
+                    const p = allPois.find(x => x.id === id);
+                    if (p) selectedPois.push(p);
+                });
+                updateItinerary();
+            }
+
+            // Lắng nghe sự kiện đổi chế độ di chuyển
+            travelModeSelect.addEventListener('change', function() {
+                if (selectedPois.length > 1) {
+                    drawRoute();
+                }
+            });
+
+            // 3. Cập nhật danh sách chọn và vẽ đường
+            function updateItinerary() {
+                orderedInput.value = selectedPois.map(x => x.id).join(',');
+                poiCountEl.textContent = selectedPois.length;
+                
+                itineraryEl.innerHTML = '';
+                
+                if (selectedPois.length === 0) {
+                    itineraryEl.innerHTML = '<li style="color: var(--text-soft); font-size: 13px;">Chưa chọn điểm nào. Hãy click vào các POI trên bản đồ.</li>';
+                    statsEl.style.display = 'none';
+                    if (sortableInstance) {
+                        sortableInstance.destroy();
+                        sortableInstance = null;
+                    }
+                } else {
+                    selectedPois.forEach((poi, index) => {
+                        const li = document.createElement('li');
+                        li.className = 'itinerary-item';
+                        li.dataset.id = poi.id;
+                        li.innerHTML = `
+                            <div style="display:flex;align-items:center;gap:10px;flex:1;">
+                                <i class="fa-solid fa-grip-vertical drag-handle" style="color:var(--text-soft);cursor:grab;padding:4px;"></i>
+                                <span class="poi-name-clickable" onclick="window.focusPoiOnMap(${poi.id})" style="cursor:pointer;flex:1;" title="Nhấn để xem trên bản đồ"><span class="seq-num" style="color:var(--accent);margin-right:4px;">${index + 1}.</span> ${poi.name}</span>
+                            </div>
+                            <button type="button" onclick="window.removePoiFromTour(${poi.id})"><i class="fa-solid fa-xmark"></i></button>
+                        `;
+                        itineraryEl.appendChild(li);
+                    });
+
+                    if (!sortableInstance) {
+                        sortableInstance = Sortable.create(itineraryEl, {
+                            animation: 150,
+                            handle: '.drag-handle',
+                            ghostClass: 'sortable-ghost',
+                            onEnd: function () {
+                                const itemEls = itineraryEl.querySelectorAll('.itinerary-item');
+                                const newIds = Array.from(itemEls).map(item => parseInt(item.dataset.id));
+                                
+                                itemEls.forEach((item, idx) => { 
+                                    item.querySelector('.seq-num').textContent = (idx + 1) + '.'; 
+                                });
+
+                                selectedPois.sort((a, b) => newIds.indexOf(a.id) - newIds.indexOf(b.id));
+                                orderedInput.value = selectedPois.map(x => x.id).join(',');
+                                drawRoute();
+                            }
+                        });
+                    }
+                }
+
+                drawRoute();
+            }
+
+            // Tự động focus trên bản đồ khi nhấn vào tên POI ở Lộ trình
+            window.focusPoiOnMap = function(id) {
+                const poi = allPois.find(x => x.id === id);
+                if (poi) {
+                    map.setView([poi.latitude, poi.longitude], 17);
+                    const marker = mapMarkers.find(m => m.poiId === id);
+                    if (marker) marker.openTooltip();
+                }
+            };
+
+            // Xóa điểm khỏi lộ trình
+            window.removePoiFromTour = function(id) {
+                selectedPois = selectedPois.filter(x => x.id !== id);
+                updateItinerary();
+            };
+
+            document.getElementById('btnClearRoute').addEventListener('click', function() {
+                selectedPois = [];
+                updateItinerary();
+            });
+
+            // 4. Vẽ đường đi tự động qua các điểm đã chọn
+            function drawRoute() {
+                if (routingControl) {
+                    map.removeControl(routingControl);
+                }
+
+                if (selectedPois.length < 2) {
+                    statsEl.style.display = 'none';
+                    return;
+                }
+
+                const waypoints = selectedPois.map(p => L.latLng(p.latitude, p.longitude));
+
+                routingControl = L.Routing.control({
+                    waypoints: waypoints,
+                    router: L.Routing.osrmv1({
+                        profile: travelModeSelect.value || 'driving'
+                    }),
+                    routeWhileDragging: false,
+                    addWaypoints: false,
+                    show: false, // Ẩn bảng hướng dẫn chi tiết
+                    lineOptions: {
+                        styles: [{ color: '#3b82f6', opacity: 0.8, weight: 6 }]
+                    },
+                    createMarker: function() { return null; } // Không tạo thêm marker của routing
+                }).addTo(map);
+
+                routingControl.on('routesfound', function(e) {
+                    const summary = e.routes[0].summary;
+                    
+                    const distStr = summary.totalDistance > 1000 
+                        ? (summary.totalDistance / 1000).toFixed(2) + ' km' 
+                        : Math.round(summary.totalDistance) + ' m';
+                    
+                    const timeMinutes = Math.round(summary.totalTime / 60);
+                    const timeStr = timeMinutes + ' phút';
+                    
+                    document.getElementById('totalDist').textContent = distStr;
+                    document.getElementById('totalTime').textContent = timeStr;
+                    document.getElementById('estimatedTimeInput').value = timeMinutes;
+                    statsEl.style.display = 'block';
+                });
+            }
+
+            // Nút Xem tất cả
+            document.getElementById('btnFitMap')?.addEventListener('click', function() {
+                if (mapMarkers.length > 0) {
+                    const group = L.featureGroup(mapMarkers);
+                    map.fitBounds(group.getBounds().pad(0.1));
+                }
+            });
+
+            // Nút Vị trí của tôi
+            document.getElementById('btnLocateAdmin')?.addEventListener('click', function () {
+                const btn = this;
+                if (!navigator.geolocation) {
+                    alert('Trình duyệt không hỗ trợ định vị.');
+                    return;
+                }
+                
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang tìm...';
+                btn.disabled = true;
+
+                navigator.geolocation.getCurrentPosition(position => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    const acc = position.coords.accuracy;
+
+                    if (adminMarker) {
+                        adminMarker.setLatLng([lat, lng]);
+                        adminCircle.setLatLng([lat, lng]);
+                        adminCircle.setRadius(acc);
+                    } else {
+                        const adminIcon = L.divIcon({
+                            className: 'custom-map-icon',
+                            html: `<div class="custom-marker" style="background:#3b82f6; border-color:#ffffff;"><i class="fa-solid fa-user-tie"></i></div>`,
+                            iconSize: [32, 32],
+                            iconAnchor: [16, 32],
+                            popupAnchor: [0, -32]
+                        });
+                        adminMarker = L.marker([lat, lng], { icon: adminIcon }).addTo(map).bindPopup('Vị trí của bạn');
+                        adminCircle = L.circle([lat, lng], { radius: acc, color: '#3b82f6', weight: 1, fillOpacity: 0.1 }).addTo(map);
+                    }
+                    
+                    map.setView([lat, lng], 16);
+                    adminMarker.openPopup();
+                    
+                    btn.innerHTML = '<i class="fa-solid fa-location-crosshairs"></i> Vị trí của tôi';
+                    btn.disabled = false;
+                }, error => {
+                    alert('Lỗi định vị: ' + error.message);
+                    btn.innerHTML = '<i class="fa-solid fa-location-crosshairs"></i> Vị trí của tôi';
+                    btn.disabled = false;
+                });
+            });
+        })();
+    </script>
+}

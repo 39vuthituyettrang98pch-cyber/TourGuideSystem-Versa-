@@ -1,0 +1,68 @@
+@model AdminWeb.Models.Poi
+
+@{
+    ViewData["Title"] = "Gán danh mục cho POI";
+    var allCategories = ViewBag.AvailableCategories as IEnumerable<AdminWeb.Models.Category>;
+}
+
+<div class="page-title">Phân loại danh mục - POI #@Model.Id</div>
+<div class="page-subtitle">Gán điểm tham quan này vào các danh mục chủ đề phù hợp.</div>
+
+<div class="toolbar">
+    <a asp-action="Index" class="btn btn-secondary btn-sm"><i class="fa-solid fa-arrow-left"></i> Quay lại danh sách POI</a>
+</div>
+
+<div class="card-grid">
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">Danh mục đã gán</div>
+        </div>
+        <div class="card-body">
+            @if(Model.PoiCategories != null && Model.PoiCategories.Any()) {
+                <table class="data-table">
+                    <thead><tr><th>Tên danh mục</th><th>Thao tác</th></tr></thead>
+                    <tbody>
+                        @foreach(var pc in Model.PoiCategories) {
+                            var catName = pc.Category?.Translations?.FirstOrDefault(t => t.LanguageCode == "vi")?.Name ?? $"Danh mục #{pc.CategoryId}";
+                            <tr>
+                                <td><span class="badge amber">@catName</span></td>
+                                <td>
+                                    <form asp-action="RemoveCategory" method="post" style="display:inline;">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="poiId" value="@Model.Id" />
+                                        <input type="hidden" name="categoryId" value="@pc.CategoryId" />
+                                        <button type="submit" class="btn btn-sm btn-danger">Gỡ bỏ</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            } else {
+                <p style="color:var(--text2)">POI này chưa được thêm vào danh mục nào.</p>
+            }
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header"><div class="card-title">Thêm vào danh mục mới</div></div>
+        <div class="card-body">
+            <form asp-action="AddCategory" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="poiId" value="@Model.Id" />
+                <div class="form-group">
+                    <select class="form-control" name="categoryId" required>
+                        <option value="">-- Chọn danh mục --</option>
+                        @if(allCategories != null) {
+                            foreach(var cat in allCategories) {
+                                var catName = cat.Translations?.FirstOrDefault(t => t.LanguageCode == "vi")?.Name ?? $"Danh mục #{cat.Id}";
+                                <option value="@cat.Id">@catName</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary" style="margin-top:16px;">Thêm danh mục</button>
+            </form>
+        </div>
+    </div>
+</div>

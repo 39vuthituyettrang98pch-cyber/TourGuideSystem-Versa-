@@ -1,0 +1,17 @@
+@{
+    var code = (int)(ViewBag.StatusCode ?? 404);
+    ViewData["Title"] = $"Lỗi {code}";
+}
+
+<div class="card" style="max-width:760px;margin:8vh auto">
+    <div class="empty-state">
+        <span class="badge red">@code</span>
+        <i class="fa-solid fa-link-slash"></i>
+        <h2>Không tìm thấy nội dung yêu cầu</h2>
+        <p>Đường dẫn có thể đã thay đổi hoặc bạn không có quyền truy cập.</p>
+        <div class="page-actions" style="margin-top:8px">
+            <button type="button" class="btn btn-secondary" onclick="window.history.back()"><i class="fa-solid fa-arrow-left"></i> Quay lại</button>
+            <a asp-controller="Home" asp-action="Index" class="btn btn-primary"><i class="fa-solid fa-house"></i> Dashboard</a>
+        </div>
+    </div>
+</div>

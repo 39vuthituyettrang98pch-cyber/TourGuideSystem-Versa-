@@ -1,0 +1,67 @@
+1. GPS Tracking theo thời gian thực
+ • ﻿﻿Lấy vì tri người dùng liên tục (foreground + background)
+ • ﻿﻿Tối ưu pin, độ chính xác
+2. Phân tích dữ liệu (Ana
+ • ﻿﻿Lưu tuyền di chuyển (ẩn danh)
+ • ﻿﻿Top địa điểm được nghe nhiều nhất
+ • ﻿﻿Thời gian trung bình nghe 1 POI
+ • ﻿﻿Heatmap vị trí người dùng
+VERSA 
+1. Map View
+ • ﻿﻿Hiển thị vị trí người dùng trên bản đồ
+ • ﻿﻿Hiển thị tất cả POI
+ • ﻿﻿Highlight POI đang gần nhất
+ •   Xem chi tiết POI
+
+Luồng hoạt động mẫu
+ • ﻿﻿App tải danh sách POI (làt/ing, bán kinh, ưu tiên, nội dung thuyết minh).
+ • ﻿﻿Khi người dùng di chuyển, background service cập nhật vị tri.
+ • ﻿﻿Geofence Engine xác định POI gần nhất/ưu tiên cao nhất trong ban kính → gửi sự kiên.
+ • ﻿﻿Narration Engine kiếm tra trạng thái (đang phát? đã phát trong X phút?) → quyết định phát TTS/Audio.
+ • ﻿﻿Ghi log đã phát, tránh lặp.
+
+(stem
+Chứ quan
+3. Kiền trúc gọi ý
+ • ﻿﻿Location + Geofencing: Theo dỗi GPS và tạo "diễm quan tăm" (POI) với bán kinh (geofence).
+ • ﻿﻿Geofence Engine: Quyết định khi nào phát thuyết minh (vào vùng/đến gàn).
+ • ﻿﻿Narration Engine: Chon TTS hoặc phát file audio có sẵn, quản lý hàng: đợi, chống trùng lap.
+ • ﻿﻿Content Layer: Dữ liêu POl offline (SQLite) + đồng bộ từ server khi cỏ mang.
+ •   UI/UX: Bản đò (Map), danh sách POI, cài đặt độ nhạy GPS/bán kính, chọn giọng TTS, tái gói offlineالعما ركاو
+2. QR Code kích hoạt nội dung
+ • ﻿﻿Dùng tại điểm dừng xe buýt các phường Khánh Hội, Vĩnh Hội, Xóm Chiếu
+ • ﻿﻿Quét là nghe ngay, không cần GPS
+2. Hệ thống quản trị nội dung (CMS)
+ • ﻿﻿Tạo trang web quản lý:
+ • ﻿﻿POI
+ • ﻿﻿Audio
+ ⁃ ﻿﻿Bảm dịch
+ • ﻿﻿Lịch sử sử dụng
+ • ﻿﻿Quán lý tour
+
+1. Quản lý dữ liệu POI
+ • ﻿﻿Danh sách điểm thuyết minh
+ • ﻿﻿Mô tả văn bản
+ • ﻿﻿Ảnh minh họa
+ • ﻿﻿Link bản đồ
+ • ﻿﻿File audio hoặc script TTS
+
+1. Geofence / Kích hoạt điểm thuyết minh
+ • ﻿﻿Thiết lập điểm POI (Point of Interest) với:
+ • ﻿﻿Tọa độ (lat/Ing)
+ • ﻿﻿Bán kính kích hoạt
+ • ﻿﻿Mức ưu tiên
+ • ﻿﻿Tự động phát nội dung khi người dùng:
+ • ﻿﻿Đi vào vùng
+ • ﻿﻿Đến gần điểm
+ • ﻿﻿Có thể chống spam bằng debounce & cooldown 
+ • 
+3. Framework .NET MAU! (Android/iOS)
+ • ﻿GPS & Background:
+ • ﻿Android: FusedtecceProviderCent (thong qua depandency service hofe tsseceals Graucatoo) Foreground Service dê tracking nên
+ • ﻿﻿iOS: Cutocatensunager voi quyen a/wm region monitoring (geofeece).
+ • ﻿﻿Geofencing. Native APi hoặc tự tính khoảng cách bằng Haversine rõi trigger theo
+ • ﻿﻿TTS/Audio TTS bản đia (Android Testtofpreth, (OS Alspeerdynes) hok Anure Coenitive Services (el in gione tu nhien, liu y offline vs onlid
+ • ﻿﻿Map: Microsoft Maul. Controls Maps (MAUI Maps) hoặc Google Maps SDK/ Mapkit binding nêu cần tính năng nang cao
+ • Offline: SQlite (EF core /SQLite-Net)+ file âm thanh tải trước.Bản đồ offline có thể cần SDK bên thứ 3( ví dụ MacBook,Here) nếu muốn cache/offline mapping thật sư
+Ortian S0k ben ho su eape ereman cate one olme co

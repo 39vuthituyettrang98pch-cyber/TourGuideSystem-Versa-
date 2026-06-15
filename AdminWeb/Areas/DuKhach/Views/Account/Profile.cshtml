@@ -1,0 +1,54 @@
+@model DuKhachProfileViewModel
+@{
+    ViewData["Title"] = "Hồ sơ du khách";
+}
+
+<section class="hero" style="padding:28px;">
+    <div class="eyebrow">Hồ sơ du khách</div>
+    <h1 style="font-size:clamp(30px,5vw,48px);">@Model.FullName</h1>
+    <p>Email này dùng chung cho web du khách và app mobile.</p>
+    <div class="actions">
+        <a class="btnx primary" asp-area="DuKhach" asp-controller="Map" asp-action="Index"><i class="fa-solid fa-map-location-dot"></i> Mở bản đồ</a>
+        <a class="btnx" asp-area="DuKhach" asp-controller="Account" asp-action="ChangePassword"><i class="fa-solid fa-key"></i> Đổi mật khẩu</a>
+    </div>
+</section>
+
+<div class="grid cols-4" style="margin-top:18px;">
+    <div class="cardx"><span class="stat-value">@Model.TotalPoints</span><span class="stat-label">Tổng điểm</span></div>
+    <div class="cardx"><span class="stat-value">@Model.RankName</span><span class="stat-label">Hạng hiện tại</span></div>
+    <div class="cardx"><span class="stat-value">@Model.DiscoveredPoiCount/@Model.TotalPoiCount</span><span class="stat-label">POI đã khám phá</span></div>
+    <div class="cardx"><span class="stat-value">@Model.CompletionPercentage%</span><span class="stat-label">Tiến độ</span></div>
+</div>
+
+<section class="cardx form-card" style="max-width:720px;">
+    <h2 style="font-weight:900;letter-spacing:-.04em;margin-bottom:14px;">Cập nhật thông tin</h2>
+    <form asp-area="DuKhach" asp-controller="Account" asp-action="Profile" method="post" novalidate>
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="Id" />
+        <input type="hidden" asp-for="CreatedAt" />
+        <input type="hidden" asp-for="TotalPoints" />
+        <input type="hidden" asp-for="DiscoveredPoiCount" />
+        <input type="hidden" asp-for="TotalPoiCount" />
+        <input type="hidden" asp-for="CompletionPercentage" />
+        <input type="hidden" asp-for="RankName" />
+        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+        <div class="mb-3">
+            <label asp-for="FullName" class="form-label"></label>
+            <input asp-for="FullName" class="form-control" />
+            <span asp-validation-for="FullName" class="text-danger"></span>
+        </div>
+        <div class="mb-3">
+            <label asp-for="Email" class="form-label"></label>
+            <input asp-for="Email" class="form-control" />
+            <span asp-validation-for="Email" class="text-danger"></span>
+        </div>
+        <div class="mb-3" style="color:var(--muted);font-size:14px;">
+            Ngày tạo tài khoản: @Model.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+        </div>
+        <button class="btnx primary" type="submit"><i class="fa-solid fa-floppy-disk"></i> Lưu hồ sơ</button>
+    </form>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

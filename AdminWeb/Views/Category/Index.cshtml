@@ -1,0 +1,54 @@
+@model IEnumerable<AdminWeb.Models.Category>
+
+@{
+    ViewData["Title"] = "Danh mục";
+}
+
+<div class="page-title">Danh mục</div>
+<div class="page-subtitle">Quản lý nhóm chủ đề và phân loại nội dung</div>
+<div class="toolbar">
+    <div></div>
+    <div>
+        <a asp-action="Create" class="btn btn-primary btn-sm"><i class="fa-solid fa-plus"></i> Thêm danh mục</a>
+    </div>
+</div>
+
+<div class="data-table table-wrapper">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Tên danh mục</th>
+                <th>Ngôn ngữ</th>
+                <th>Trạng thái</th>
+                <th>POI liên kết</th>
+                <th>Hành động</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var category in Model.OrderBy(c => c.Id)) {
+                var vi = category.Translations.FirstOrDefault(t => t.LanguageCode == "vi");
+                var langCount = category.Translations.Count;
+                var poiCount = category.PoiCategories?.Count ?? 0;
+                <tr>
+                    <td>@category.Id</td>
+                    <td>@vi?.Name ?? $"Danh mục #{category.Id}"</td>
+                    <td>@langCount</td>
+                    <td><span class="badge @(category.Status == "active" ? "green" : "red")">@category.Status</span></td>
+                    <td>@poiCount</td>
+                    <td>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                            <a asp-action="Edit" asp-route-id="@category.Id" class="btn btn-sm btn-secondary">Sửa</a>
+                            <a asp-controller="CategoryTranslation" asp-action="Index" asp-route-categoryId="@category.Id" class="btn btn-sm btn-secondary"><i class="fa-solid fa-language"></i> Dịch</a>
+                            <form asp-action="Delete" method="post" style="display:inline;">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@category.Id" />
+                                <button type="submit" class="btn btn-sm btn-danger">Xóa</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

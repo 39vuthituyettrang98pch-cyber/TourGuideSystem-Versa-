@@ -1,0 +1,61 @@
+@model AdminWeb.Models.Beacon
+
+@{
+    ViewData["Title"] = "Chỉnh sửa Beacon";
+    var pois = ViewBag.Pois as IEnumerable<AdminWeb.Models.Poi>;
+}
+
+<div class="page-title">Chỉnh sửa Beacon #@Model.Id</div>
+<div class="page-subtitle">Cập nhật thông số thiết bị iBeacon.</div>
+
+<div class="card" style="padding:28px;">
+    <form asp-action="Edit" method="post">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="Id" />
+        
+        <div class="form-grid">
+            <div class="form-group full">
+                <label class="form-label">Điểm tham quan (POI)</label>
+                <select class="form-control" asp-for="PoiId" required>
+                    <option value="">-- Chọn điểm tham quan được gán --</option>
+                    @if (pois != null) {
+                        foreach (var poi in pois) {
+                            var poiName = poi.Translations?.FirstOrDefault(t => t.LanguageCode == "vi")?.Name ?? $"POI #{poi.Id}";
+                            <option value="@poi.Id">@poiName</option>
+                        }
+                    }
+                </select>
+            </div>
+            
+            <div class="form-group full">
+                <label class="form-label">UUID (Universally Unique Identifier)</label>
+                <input class="form-control" asp-for="Uuid" type="text" required placeholder="VD: B9407F30-F5F8-466E-AFF9-25556B57FE6D" />
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Major</label>
+                <input class="form-control" asp-for="Major" type="number" required />
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Minor</label>
+                <input class="form-control" asp-for="Minor" type="number" required />
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Địa chỉ MAC (Không bắt buộc)</label>
+                <input class="form-control" asp-for="MacAddress" type="text" placeholder="VD: 00:11:22:33:44:55" />
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Ghi chú vị trí đặt (Placement Note)</label>
+                <input class="form-control" asp-for="PlacementNote" type="text" placeholder="VD: Gắn trên tường phòng số 2" />
+            </div>
+        </div>
+
+        <div style="display:flex;gap:12px;margin-top:24px;">
+            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Cập nhật</button>
+            <a asp-action="Index" class="btn btn-secondary">Quay lại</a>
+        </div>
+    </form>
+</div>

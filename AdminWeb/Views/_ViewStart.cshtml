@@ -1,0 +1,7 @@
+﻿@{
+    Layout = User.IsInRole("Editor")
+        ? "~/Areas/Editor/Views/Shared/_EditorLayout.cshtml"
+        : User.IsInRole("Reviewer")
+            ? "~/Areas/Reviewer/Views/Shared/_ReviewerLayout.cshtml"
+            : "_Layout";
+}

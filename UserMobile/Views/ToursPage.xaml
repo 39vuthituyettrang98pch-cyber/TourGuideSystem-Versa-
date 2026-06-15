@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="UserMobile.Views.ToursPage"
+             Title="Tour"
+             BackgroundColor="#F5F7FB">
+    <Grid RowDefinitions="Auto,Auto,*" Padding="18,18,18,0">
+        <VerticalStackLayout Spacing="5">
+            <Label Text="Tour khám phá"
+                   FontSize="28"
+                   FontAttributes="Bold"
+                   TextColor="#172033" />
+            <Label Text="Dữ liệu tour và danh mục được tải trực tiếp từ hệ thống."
+                   TextColor="#68748A" />
+        </VerticalStackLayout>
+
+        <Grid Grid.Row="1" RowDefinitions="Auto,Auto" Margin="0,16,0,12">
+            <Grid ColumnDefinitions="*,Auto">
+                <Label Text="Danh mục" FontAttributes="Bold" TextColor="#172033" VerticalOptions="Center" />
+                <Button Grid.Column="1"
+                        Text="Xóa lọc"
+                        FontSize="12"
+                        Padding="12,6"
+                        Clicked="OnClearFilterClicked" />
+            </Grid>
+            <CollectionView Grid.Row="1"
+                            x:Name="CategoryList"
+                            Margin="0,8,0,0"
+                            ItemsSource="{Binding Categories}"
+                            ItemsLayout="HorizontalList"
+                            SelectionMode="Single"
+                            SelectionChanged="OnCategorySelectionChanged">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Border Margin="0,0,8,0"
+                                Padding="13,8"
+                                BackgroundColor="White"
+                                Stroke="#D9DDEA"
+                                StrokeShape="RoundRectangle 18">
+                            <HorizontalStackLayout Spacing="6">
+                                <Label Text="{Binding Name}" TextColor="#3D4660" />
+                                <Label Text="{Binding PoiCount, StringFormat='({0})'}" TextColor="#7A8498" />
+                            </HorizontalStackLayout>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </Grid>
+
+        <Grid Grid.Row="2">
+            <ActivityIndicator IsRunning="{Binding IsLoading}"
+                               IsVisible="{Binding IsLoading}"
+                               Color="#6C55DD"
+                               VerticalOptions="Start" />
+
+            <VerticalStackLayout IsVisible="{Binding IsEmpty}" VerticalOptions="Center" Spacing="10">
+                <Label Text="Chưa có hành trình"
+                       FontSize="20"
+                       FontAttributes="Bold"
+                       TextColor="#172033"
+                       HorizontalOptions="Center" />
+                <Label Text="{Binding Message}"
+                       TextColor="#68748A"
+                       HorizontalTextAlignment="Center" />
+            </VerticalStackLayout>
+
+            <CollectionView x:Name="TourList"
+                            ItemsSource="{Binding Tours}"
+                            SelectionMode="Single"
+                            SelectionChanged="OnTourSelectionChanged">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Border Margin="0,0,0,12"
+                                Padding="16"
+                                BackgroundColor="White"
+                                Stroke="#E5EAF2"
+                                StrokeShape="RoundRectangle 18">
+                            <VerticalStackLayout Spacing="8">
+                                <Label Text="{Binding Title}"
+                                       FontSize="18"
+                                       FontAttributes="Bold"
+                                       TextColor="#172033" />
+                                <Label Text="{Binding Description}"
+                                       FontSize="13"
+                                       TextColor="#68748A"
+                                       MaxLines="3"
+                                       LineBreakMode="TailTruncation" />
+                                <HorizontalStackLayout Spacing="16">
+                                    <Label Text="{Binding DurationText}" FontSize="12" TextColor="#6C55DD" />
+                                    <Label Text="{Binding PoiCountText}" FontSize="12" TextColor="#6C55DD" />
+                                </HorizontalStackLayout>
+                                <Label Text="Xem hành trình ›" FontSize="12" TextColor="#6C55DD" />
+                            </VerticalStackLayout>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </Grid>
+    </Grid>
+</ContentPage>

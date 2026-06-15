@@ -1,0 +1,41 @@
+@model DuKhachLoginViewModel
+@{
+    ViewData["Title"] = "Đăng nhập du khách";
+}
+
+<section class="cardx form-card">
+    <div class="eyebrow">Tài khoản du khách</div>
+    <h1 style="font-weight:900;letter-spacing:-.05em;margin:8px 0 8px;">Đăng nhập</h1>
+    <p style="color:var(--muted);line-height:1.7;">Dùng đúng email/mật khẩu đã đăng ký trên web hoặc app.</p>
+
+    <form asp-area="DuKhach" asp-controller="Account" asp-action="Login" method="post" novalidate>
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="ReturnUrl" />
+        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+        <div class="mb-3">
+            <label asp-for="Email" class="form-label"></label>
+            <input asp-for="Email" class="form-control" placeholder="email@example.com" />
+            <span asp-validation-for="Email" class="text-danger"></span>
+        </div>
+        <div class="mb-3">
+            <label asp-for="Password" class="form-label"></label>
+            <input asp-for="Password" class="form-control" placeholder="Mật khẩu" />
+            <span asp-validation-for="Password" class="text-danger"></span>
+        </div>
+        <div class="form-check mb-3">
+            <input asp-for="RememberMe" class="form-check-input" />
+            <label asp-for="RememberMe" class="form-check-label" style="color:var(--muted);"></label>
+        </div>
+        <button class="btnx primary w-100" type="submit"><i class="fa-solid fa-right-to-bracket"></i> Đăng nhập</button>
+    </form>
+
+    <div style="margin-top:16px;color:var(--muted);">
+        Chưa có tài khoản?
+        <a asp-area="DuKhach" asp-controller="Account" asp-action="Register" asp-route-returnUrl="@Model.ReturnUrl" style="color:var(--brand2);font-weight:800;">Đăng ký ngay</a>
+    </div>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

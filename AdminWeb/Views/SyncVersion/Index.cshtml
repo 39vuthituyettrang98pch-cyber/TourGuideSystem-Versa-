@@ -1,0 +1,57 @@
+@model IEnumerable<AdminWeb.Models.SyncVersion>
+@{
+    ViewData["Title"] = "Phiên bản đồng bộ";
+}
+
+<div class="page-title text-white">Phiên bản đồng bộ</div>
+<div class="page-subtitle text-white">Quản lý các phiên bản cập nhật dữ liệu offline dành cho thiết bị di động.</div>
+
+<div class="toolbar">
+    <div></div>
+    <div>
+        <a asp-action="Create" class="btn btn-primary btn-sm"><i class="fa-solid fa-plus"></i> Đóng gói phiên bản mới</a>
+        <a asp-action="Index" class="btn btn-secondary btn-sm" title="Tải lại"><i class="fa-solid fa-rotate-right"></i> Tải lại</a>
+    </div>
+</div>
+
+<div class="table-wrapper">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th class="text-white">Phiên bản</th>
+                <th class="text-white">Ngày tạo</th>
+                <th class="text-white">Mô tả</th>
+                <th class="text-white">Thao tác</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Model != null && Model.Any())
+            {
+                foreach (var item in Model)
+                {
+                    <tr>
+                        <td style="font-weight: bold; color: var(--accent);">@item.VersionNumber</td>
+                        <td class="text-white">@item.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                        <td class="text-white" style="font-weight: 500;">@item.Description</td>
+                        <td>
+                            <a asp-action="Download" asp-route-id="@item.Id" class="btn btn-sm btn-primary" title="Tải gói JSON"><i class="fa-solid fa-download"></i> Tải xuống</a>
+                            <form asp-action="Delete" asp-route-id="@item.Id" method="post" style="display:inline-block;" onsubmit="return confirm('Cảnh báo: Việc xóa phiên bản đồng bộ cũ có thể ảnh hưởng đến thiết bị đang sử dụng. Bạn có chắc chắn xóa?');">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-sm btn-danger" title="Xóa"><i class="fa-solid fa-trash"></i> Xóa</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            }
+            else
+            {
+                <tr>
+                    <td colspan="4" style="text-align: center; padding: 40px 20px; color: white;">
+                        <i class="fa-solid fa-code-branch" style="font-size: 32px; margin-bottom: 12px; opacity: 0.5; display: block; color: white;"></i>
+                        <em class="text-white">Chưa có phiên bản đồng bộ nào trong hệ thống.</em>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

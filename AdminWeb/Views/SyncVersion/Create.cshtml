@@ -1,0 +1,64 @@
+@model AdminWeb.Models.SyncVersion
+@{
+    ViewData["Title"] = "Đóng gói dữ liệu mới";
+    // Tự động tạo gợi ý mã phiên bản theo ngày hiện tại (VD: v20260607.1)
+    var dateString = DateTime.Now.ToString("yyyyMMdd");
+    var versionPlaceholder = $"v{dateString}.1";
+}
+
+<div class="page-title">Đóng gói dữ liệu mới</div>
+<div class="page-subtitle">Tạo một phiên bản dữ liệu offline mới nhất để các thiết bị di động có thể cập nhật.</div>
+
+<div class="row">
+    <div class="col-lg-10 col-xl-8">
+        <div class="card">
+            
+            <div class="card-header" style="display: block; border-bottom: 1px solid var(--border); padding-bottom: 16px; margin-bottom: 20px;">
+                <h5 class="card-title mb-1">
+                    <i class="fa-solid fa-box-archive me-2" style="color: var(--accent);"></i> Thông tin phiên bản
+                </h5>
+                <p class="card-subtitle mt-1" style="color: var(--text2); font-size: 13px; margin-bottom: 0;">
+                    Cấu hình mã định danh và ghi chú cho gói dữ liệu.
+                </p>
+            </div>
+
+            <form asp-action="Create" method="post">
+                <div class="form-grid">
+                    <div class="form-group full">
+                        <label asp-for="VersionNumber" class="form-label">Mã phiên bản <span class="text-danger">*</span></label>
+                        <div style="position: relative;">
+                            <i class="fa-solid fa-code-branch" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text3); font-size: 13px;"></i>
+                            <input asp-for="VersionNumber" class="form-control fw-bold" placeholder="VD: @versionPlaceholder" style="padding-left: 38px; color: var(--accent);" required />
+                        </div>
+                        <span asp-validation-for="VersionNumber" class="text-danger small mt-1 d-block"></span>
+                        <small style="color: var(--text3); font-size: 12px; margin-top: 6px; display: block;">Nên đặt theo định dạng ngày tháng để dễ quản lý.</small>
+                    </div>
+
+                    <div class="form-group full">
+                        <label asp-for="Description" class="form-label">Ghi chú cập nhật</label>
+                        <div style="position: relative;">
+                            <i class="fa-solid fa-file-lines" style="position: absolute; left: 14px; top: 15px; color: var(--text3); font-size: 13px;"></i>
+                            <textarea asp-for="Description" class="form-control" rows="4" placeholder="Nhập tóm tắt những thay đổi dữ liệu trong phiên bản này..." style="padding-left: 38px; resize: vertical;"></textarea>
+                        </div>
+                        <span asp-validation-for="Description" class="text-danger small mt-1 d-block"></span>
+                    </div>
+                </div>
+
+                <hr style="border-color: var(--border); margin: 24px 0 20px;" />
+
+                <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                    <a asp-action="Index" class="btn btn-secondary">
+                        Hủy bỏ
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fa-solid fa-cloud-arrow-up"></i> Đóng gói & Phát hành
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

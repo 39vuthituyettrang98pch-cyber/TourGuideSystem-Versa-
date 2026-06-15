@@ -1,0 +1,62 @@
+@model AdminWeb.Models.PoiTranslation
+@{
+    ViewData["Title"] = "Chi tiết bản dịch POI";
+}
+
+<div class="page-heading">
+    <div>
+        <div class="page-title">Chi tiết bản dịch @Model.LanguageCode.ToUpperInvariant()</div>
+        <div class="page-subtitle">@Model.Name</div>
+    </div>
+    <div class="page-actions">
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">
+            <i class="fa-solid fa-pen"></i> Chỉnh sửa
+        </a>
+        <a asp-action="Index" asp-route-poiId="@Model.PoiId" class="btn btn-secondary">
+            <i class="fa-solid fa-arrow-left"></i> Quay lại
+        </a>
+    </div>
+</div>
+
+<div class="detail-grid">
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <div class="card-title">Nội dung</div>
+                <div class="card-subtitle">Cập nhật @Model.UpdatedAt.ToString("dd/MM/yyyy HH:mm")</div>
+            </div>
+            <span class="badge blue">@Model.LanguageCode.ToUpperInvariant()</span>
+        </div>
+        <dl class="detail-list">
+            <dt>Tên hiển thị</dt>
+            <dd>@Model.Name</dd>
+            <dt>Mô tả ngắn</dt>
+            <dd>@(Model.ShortDescription ?? "Chưa có")</dd>
+            <dt>Mô tả đầy đủ</dt>
+            <dd class="pre-line">@(Model.FullDescription ?? "Chưa có")</dd>
+        </dl>
+    </section>
+
+    <section class="card">
+        <div class="card-header">
+            <div class="card-title">Media</div>
+        </div>
+        @if (!string.IsNullOrWhiteSpace(Model.AudioUrl))
+        {
+            <label class="form-label">Audio thuyết minh</label>
+            <audio controls src="@Model.AudioUrl" class="media-player"></audio>
+        }
+        @if (!string.IsNullOrWhiteSpace(Model.VideoUrl))
+        {
+            <label class="form-label">Video lồng tiếng</label>
+            <video controls src="@Model.VideoUrl" class="media-player"></video>
+        }
+        @if (string.IsNullOrWhiteSpace(Model.AudioUrl) && string.IsNullOrWhiteSpace(Model.VideoUrl))
+        {
+            <div class="empty-state compact">
+                <i class="fa-solid fa-photo-film"></i>
+                <p>Chưa có media cho bản dịch này.</p>
+            </div>
+        }
+    </section>
+</div>

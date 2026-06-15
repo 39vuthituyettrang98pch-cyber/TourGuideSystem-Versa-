@@ -1,0 +1,77 @@
+@model List<AdminWeb.Models.Poi>
+
+@{
+    ViewData["Title"] = "Duyệt POI";
+}
+
+<div class="page-title">POI chờ kiểm duyệt</div>
+<div class="page-subtitle">Kiểm tra nội dung điểm tham quan trước khi phê duyệt xuất bản.</div>
+
+<div class="card" style="padding:28px;">
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Tên địa điểm</th>
+                    <th>Tọa độ</th>
+                    <th>Bán kính</th>
+                    <th>Ghi chú trước đó</th>
+                    <th>Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+            @if (Model != null && Model.Any())
+            {
+                foreach (var poi in Model)
+                {
+                    var vi = poi.Translations?.FirstOrDefault(t => t.LanguageCode == "vi");
+                    <tr>
+                        <td style="font-weight: bold; color: var(--accent);">#@poi.Id</td>
+                        <td style="font-weight:600;">@(vi?.Name ?? $"POI #{poi.Id}")</td>
+                        <td style="font-family: monospace; font-size: 13px; color: var(--text2);">@poi.Latitude, @poi.Longitude</td>
+                        <td>@poi.Radius m</td>
+                        <td>
+                            @if (!string.IsNullOrWhiteSpace(poi.AdminNote))
+                            {
+                                <span style="color:var(--text2);">@poi.AdminNote</span>
+                            }
+                            else
+                            {
+                                <span style="color:var(--text2);">-</span>
+                            }
+                        </td>
+                        <td>
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                                <form asp-action="PoiApprove" asp-controller="Approval" asp-route-id="@poi.Id" method="post" style="display:inline;">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-sm btn-primary" title="Approve">
+                                        <i class="fa-solid fa-check"></i>
+                                    </button>
+                                </form>
+
+                                <form asp-action="PoiReject" asp-controller="Approval" asp-route-id="@poi.Id" method="post" style="display:inline; min-width:260px;">
+                                    @Html.AntiForgeryToken()
+                                    <input type="text" name="adminNote" class="form-control" placeholder="Lý do từ chối" required style="padding:6px 10px; width:220px;" />
+                                    <button type="submit" class="btn btn-sm btn-danger" title="Reject" style="margin-left:8px;">
+                                        <i class="fa-solid fa-xmark"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            }
+            else
+            {
+                <tr>
+                    <td colspan="6" style="text-align:center; padding:24px; color:var(--text2);">
+                        Không có POI đang chờ kiểm duyệt.
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+

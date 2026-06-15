@@ -1,0 +1,116 @@
+@{
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
+    var pageTitle = ViewData["Title"]?.ToString() ?? currentController;
+}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@pageTitle - VERSA Reviewer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="~/css/admin-theme.css" asp-append-version="true" />
+</head>
+<body class="reviewer-shell">
+    <div class="app-layout">
+        <div class="sidebar-overlay" data-sidebar-close></div>
+        <aside class="sidebar" id="reviewerSidebar">
+            <a class="sidebar-logo" asp-area="Reviewer" asp-controller="Dashboard" asp-action="Index">
+                <span class="logo-icon"><i class="fa-solid fa-shield-halved"></i></span>
+                <span class="logo-text">VERSA <strong>REVIEW</strong></span>
+            </a>
+
+            <nav class="sidebar-nav">
+                <div class="sidebar-section">
+                    <div class="sidebar-section-label">Không gian kiểm duyệt</div>
+                    <a class="nav-item @(currentController == "Dashboard" ? "active" : "")" asp-area="Reviewer" asp-controller="Dashboard" asp-action="Index">
+                        <i class="fa-solid fa-house"></i><span>Tổng quan</span>
+                    </a>
+                    <a class="nav-item @(currentController == "Approval" ? "active" : "")" asp-area="Reviewer" asp-controller="Approval" asp-action="PoiPending">
+                        <i class="fa-solid fa-list-check"></i><span>POI chờ duyệt</span>
+                    </a>
+                </div>
+            </nav>
+
+            <div class="sidebar-footer dropdown">
+                <button class="user-card" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <span class="user-avatar"><i class="fa-solid fa-user-check"></i></span>
+                    <span class="user-info">
+                        <span class="user-name">@User.Identity?.Name</span>
+                        <span class="user-role">Kiểm duyệt viên</span>
+                    </span>
+                    <i class="fa-solid fa-chevron-up user-chevron"></i>
+                </button>
+                <ul class="dropdown-menu app-dropdown">
+                    <li><a class="dropdown-item" asp-area="" asp-controller="Account" asp-action="Profile"><i class="fa-solid fa-id-badge"></i> Hồ sơ</a></li>
+                    <li><a class="dropdown-item" asp-area="" asp-controller="Account" asp-action="ChangePassword"><i class="fa-solid fa-key"></i> Đổi mật khẩu</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <form asp-area="" asp-controller="Account" asp-action="Logout" method="post">
+                            @Html.AntiForgeryToken()
+                            <button class="dropdown-item text-danger" type="submit"><i class="fa-solid fa-right-from-bracket"></i> Đăng xuất</button>
+                        </form>
+                    </li>
+                </ul>
+            </div>
+        </aside>
+
+        <main class="main">
+            <header class="header">
+                <button class="icon-btn sidebar-toggle" type="button" data-sidebar-toggle aria-label="Mở menu"><i class="fa-solid fa-bars"></i></button>
+                <div class="header-title">
+                    <span class="header-kicker">Không gian kiểm duyệt</span>
+                    <strong>@pageTitle</strong>
+                </div>
+                <div class="header-actions">
+                    <button type="button" class="icon-btn" id="theme-toggle" title="Đổi giao diện sáng/tối" aria-label="Đổi giao diện"><i class="fa-solid fa-moon"></i></button>
+                    <a class="icon-btn" title="POI chờ duyệt" asp-area="Reviewer" asp-controller="Approval" asp-action="PoiPending"><i class="fa-solid fa-list-check"></i></a>
+                </div>
+            </header>
+
+            <div class="content">
+                <div class="content-inner">
+                    @if (TempData["SuccessMessage"] is string successMessage)
+                    {
+                        <div class="alert app-alert success" role="alert"><i class="fa-solid fa-circle-check"></i><span>@successMessage</span><button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Đóng"></button></div>
+                    }
+                    @if (TempData["ErrorMessage"] is string errorMessage)
+                    {
+                        <div class="alert app-alert error" role="alert"><i class="fa-solid fa-circle-exclamation"></i><span>@errorMessage</span><button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Đóng"></button></div>
+                    }
+                    @RenderBody()
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        (() => {
+            const root = document.documentElement;
+            const sidebar = document.getElementById('reviewerSidebar');
+            const themeToggle = document.getElementById('theme-toggle');
+            const applyTheme = theme => {
+                root.dataset.theme = theme;
+                const icon = themeToggle?.querySelector('i');
+                icon?.classList.toggle('fa-sun', theme === 'light');
+                icon?.classList.toggle('fa-moon', theme !== 'light');
+            };
+            applyTheme(localStorage.getItem('versa-theme') || 'dark');
+            themeToggle?.addEventListener('click', () => {
+                const next = root.dataset.theme === 'light' ? 'dark' : 'light';
+                localStorage.setItem('versa-theme', next);
+                applyTheme(next);
+            });
+            document.querySelector('[data-sidebar-toggle]')?.addEventListener('click', () => document.body.classList.toggle('sidebar-open'));
+            document.querySelectorAll('[data-sidebar-close]').forEach(target => target.addEventListener('click', () => document.body.classList.remove('sidebar-open')));
+            sidebar?.querySelectorAll('a').forEach(link => link.addEventListener('click', () => document.body.classList.remove('sidebar-open')));
+        })();
+    </script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

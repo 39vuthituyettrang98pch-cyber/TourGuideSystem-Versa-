@@ -1,0 +1,59 @@
+@model AdminWeb.Models.Category
+
+@{
+    ViewData["Title"] = "Bản dịch Danh mục";
+}
+
+<div class="page-title">Quản lý bản dịch — Danh mục #@Model.Id</div>
+<div class="page-subtitle">Quản lý nội dung đa ngôn ngữ cho danh mục.</div>
+
+<div class="toolbar">
+    <div>
+        <a asp-controller="Category" asp-action="Index" class="btn btn-secondary btn-sm"><i class="fa-solid fa-arrow-left"></i> Quay lại</a>
+    </div>
+    <div>
+        <a asp-action="Create" asp-route-categoryId="@Model.Id" class="btn btn-primary btn-sm"><i class="fa-solid fa-plus"></i> Thêm ngôn ngữ mới</a>
+    </div>
+</div>
+
+<div class="table-wrapper">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Ngôn ngữ</th>
+                <th>Tên Danh mục</th>
+                <th>Thao tác</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Model.Translations != null && Model.Translations.Any())
+            {
+                foreach (var t in Model.Translations)
+                {
+                    <tr>
+                        <td><span class="badge blue">@t.LanguageCode.ToUpper()</span></td>
+                        <td style="font-weight:600;">@t.Name</td>
+                        <td>
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                                <a asp-action="Edit" asp-route-id="@t.Id" class="btn btn-sm btn-secondary" title="Sửa"><i class="fa-solid fa-pen"></i></a>
+                                <form asp-action="Delete" method="post" style="display:inline;" onsubmit="return confirm('Xóa bản dịch này?');">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@t.Id" />
+                                    <button type="submit" class="btn btn-sm btn-danger" title="Xóa"><i class="fa-solid fa-trash"></i></button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            }
+            else
+            {
+                <tr>
+                    <td colspan="3" style="text-align:center; padding:32px; color:var(--text2);">
+                        Chưa có bản dịch nào.
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

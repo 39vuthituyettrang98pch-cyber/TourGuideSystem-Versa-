@@ -1,0 +1,62 @@
+@model IEnumerable<AdminWeb.Models.User>
+
+@{
+    ViewData["Title"] = "Tài khoản hệ thống";
+}
+
+<div class="page-title">Quản lý tài khoản hệ thống</div>
+<div class="page-subtitle">Tạo và phân quyền tài khoản Admin, Biên tập viên hoặc Kiểm duyệt viên.</div>
+
+<div class="toolbar">
+    <div></div>
+    <div>
+        <a asp-action="Create" class="btn btn-primary btn-sm"><i class="fa-solid fa-plus"></i> Thêm tài khoản</a>
+    </div>
+</div>
+
+<div class="table-wrapper">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Tên đăng nhập</th>
+                <th>Email</th>
+                <th>Phân quyền (Role)</th>
+                <th>Trạng thái</th>
+                <th>Ngày tạo</th>
+                <th>Thao tác</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if(Model != null && Model.Any()) {
+                foreach (var user in Model) {
+                    var roleBadge = user.Role?.RoleName switch { "Admin" => "red", "Reviewer" => "green", _ => "blue" };
+                    <tr>
+                        <td style="font-weight: bold;">@user.Username</td>
+                        <td>@user.Email</td>
+                        <td>
+                            <span class="badge @roleBadge">@(user.Role?.Description ?? user.Role?.RoleName ?? "Chưa cấp quyền")</span>
+                            @if (user.Role != null)
+                            {
+                                <br /><small style="color:var(--text-soft)">@user.Role.RoleName</small>
+                            }
+                        </td>
+                        <td><span class="badge @(user.Status == "active" ? "green" : "amber")">@user.Status</span></td>
+                        <td style="font-size: 13px; color: var(--text2);">@user.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                        <td>
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                                <a asp-action="Edit" asp-route-id="@user.Id" class="btn btn-sm btn-secondary"><i class="fa-solid fa-pen"></i></a>
+                                <form asp-action="Delete" method="post" style="display:inline;" onsubmit="return confirm('Xóa tài khoản này?');">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@user.Id" />
+                                    <button type="submit" class="btn btn-sm btn-danger"><i class="fa-solid fa-trash"></i></button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            } else {
+                <tr><td colspan="6" style="text-align: center; padding: 24px; color: var(--text2);">Chưa có tài khoản nào.</td></tr>
+            }
+        </tbody>
+    </table>
+</div>

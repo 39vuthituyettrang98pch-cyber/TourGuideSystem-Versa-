@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="UserMobile.Views.LanguageSelectionPage"
+             Title="Chọn ngôn ngữ"
+             BackgroundColor="{StaticResource PageBackground}">
+    <Grid RowDefinitions="Auto,*,Auto" Padding="22,20,22,24">
+        <VerticalStackLayout Spacing="8">
+            <Border WidthRequest="54"
+                    HeightRequest="54"
+                    HorizontalOptions="Start"
+                    BackgroundColor="{StaticResource Primary}"
+                    Stroke="Transparent"
+                    StrokeShape="RoundRectangle 18">
+                <Label Text="文"
+                       FontSize="22"
+                       FontAttributes="Bold"
+                       TextColor="White"
+                       HorizontalOptions="Center"
+                       VerticalOptions="Center" />
+            </Border>
+            <Label Text="THIẾT LẬP CÁ NHÂN" Style="{StaticResource Eyebrow}" Margin="0,8,0,0" />
+            <Label Text="Bạn muốn nghe nội dung bằng ngôn ngữ nào?"
+                   Style="{StaticResource PageTitle}" />
+            <Label Text="Bạn có thể thay đổi lựa chọn này bất cứ lúc nào trong trang Cá nhân."
+                   Style="{StaticResource PageSubtitle}" />
+        </VerticalStackLayout>
+
+        <CollectionView Grid.Row="1"
+                        Margin="0,20"
+                        ItemsSource="{Binding Languages}"
+                        SelectionMode="Single"
+                        SelectedItem="{Binding SelectedLanguage}">
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Border Padding="17"
+                            Margin="0,0,0,11"
+                            BackgroundColor="White"
+                            Stroke="{StaticResource Outline}"
+                            StrokeShape="RoundRectangle 18">
+                        <VisualStateManager.VisualStateGroups>
+                            <VisualStateGroup Name="CommonStates">
+                                <VisualState Name="Normal" />
+                                <VisualState Name="Selected">
+                                    <VisualState.Setters>
+                                        <Setter Property="BackgroundColor" Value="{StaticResource Secondary}" />
+                                        <Setter Property="Stroke" Value="{StaticResource Primary}" />
+                                        <Setter Property="StrokeThickness" Value="2" />
+                                    </VisualState.Setters>
+                                </VisualState>
+                            </VisualStateGroup>
+                        </VisualStateManager.VisualStateGroups>
+                        <Grid ColumnDefinitions="46,*,Auto" ColumnSpacing="12">
+                            <Border WidthRequest="44"
+                                    HeightRequest="44"
+                                    BackgroundColor="#F4F1FF"
+                                    Stroke="Transparent"
+                                    StrokeShape="RoundRectangle 14">
+                                <Label Text="{Binding Code}"
+                                       TextTransform="Uppercase"
+                                       FontAttributes="Bold"
+                                       TextColor="{StaticResource Primary}"
+                                       HorizontalOptions="Center"
+                                       VerticalOptions="Center" />
+                            </Border>
+                            <VerticalStackLayout Grid.Column="1" Spacing="3" VerticalOptions="Center">
+                                <Label Text="{Binding NativeName}" FontSize="16" FontAttributes="Bold" TextColor="#172033" />
+                                <Label Text="{Binding Name}" FontSize="12" TextColor="#68748A" />
+                            </VerticalStackLayout>
+                            <Label Grid.Column="2" Text="›" FontSize="26" TextColor="{StaticResource Primary}" VerticalOptions="Center" />
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <Grid Grid.Row="2">
+            <Button Text="Tiếp tục"
+                    Clicked="OnContinueClicked" />
+            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+        </Grid>
+    </Grid>
+</ContentPage>

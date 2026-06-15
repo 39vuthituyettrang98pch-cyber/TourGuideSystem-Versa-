@@ -1,0 +1,198 @@
+@{
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
+    var pageTitle = ViewData["Title"]?.ToString() ?? currentController;
+    var isPoiSection = currentController is "Poi" or "PoiTranslation" or "Approval";
+    var isTourSection = currentController is "Tour" or "TourTranslation";
+    var isCategorySection = currentController is "Category" or "CategoryTranslation";
+}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@pageTitle - VERSA Admin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="~/css/admin-theme.css" asp-append-version="true" />
+</head>
+<body>
+    <div class="app-layout">
+        <div class="sidebar-overlay" data-sidebar-close></div>
+        <aside class="sidebar" id="adminSidebar">
+            <a class="sidebar-logo" asp-controller="Home" asp-action="Index">
+                <span class="logo-icon"><i class="fa-solid fa-compass"></i></span>
+                <span class="logo-text">VERSA <strong>ADMIN</strong></span>
+            </a>
+
+            <nav class="sidebar-nav">
+                <div class="sidebar-section">
+                    <div class="sidebar-section-label">Tổng quan</div>
+                    <a class="nav-item @(currentController == "Home" ? "active" : "")" asp-controller="Home" asp-action="Index">
+                        <i class="fa-solid fa-chart-pie"></i><span>Dashboard</span>
+                    </a>
+                    <a class="nav-item" asp-area="DuKhach" asp-controller="Home" asp-action="Index" target="_blank" rel="noopener">
+                        <i class="fa-solid fa-globe"></i><span>Web du khách</span>
+                    </a>
+                </div>
+
+                <div class="sidebar-section">
+                    <div class="sidebar-section-label">Nội dung</div>
+                    <a class="nav-item @(isPoiSection ? "active" : "")" asp-controller="Poi" asp-action="Index">
+                        <i class="fa-solid fa-map-pin"></i><span>Điểm tham quan</span>
+                    </a>
+                    <a class="nav-item @(isTourSection ? "active" : "")" asp-controller="Tour" asp-action="Index">
+                        <i class="fa-solid fa-route"></i><span>Tour du lịch</span>
+                    </a>
+                    <a class="nav-item @(isCategorySection ? "active" : "")" asp-controller="Category" asp-action="Index">
+                        <i class="fa-solid fa-tags"></i><span>Danh mục</span>
+                    </a>
+                    <a class="nav-item @(currentController == "Media" ? "active" : "")" asp-controller="Media" asp-action="Library">
+                        <i class="fa-solid fa-photo-film"></i><span>Thư viện media</span>
+                    </a>
+                </div>
+
+                <div class="sidebar-section">
+                    <div class="sidebar-section-label">Vận hành</div>
+                    <a class="nav-item @(currentController == "Approval" ? "active" : "")" asp-controller="Approval" asp-action="PoiPending">
+                        <i class="fa-solid fa-circle-check"></i><span>Duyệt POI</span>
+                    </a>
+                    <a class="nav-item @(currentController == "AudioTasks" ? "active" : "")" asp-controller="AudioTasks" asp-action="Index">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i><span>Tác vụ AI Media</span>
+                    </a>
+                    <a class="nav-item @(currentController == "Analytics" ? "active" : "")" asp-controller="Analytics" asp-action="Index">
+                        <i class="fa-solid fa-chart-line"></i><span>Phân tích</span>
+                    </a>
+                    <a class="nav-item @(currentController == "ActivityLog" ? "active" : "")" asp-controller="ActivityLog" asp-action="Index">
+                        <i class="fa-solid fa-clock-rotate-left"></i><span>Lịch sử phát</span>
+                    </a>
+                    <a class="nav-item @(currentController == "Visitor" ? "active" : "")" asp-controller="Visitor" asp-action="Index">
+                        <i class="fa-solid fa-users"></i><span>Du khách</span>
+                    </a>
+                    <a class="nav-item @(currentController == "Beacon" ? "active" : "")" asp-controller="Beacon" asp-action="Index">
+                        <i class="fa-solid fa-tower-broadcast"></i><span>Beacon BLE</span>
+                    </a>
+                </div>
+
+                @if (User.IsInRole("Admin"))
+                {
+                    <div class="sidebar-section">
+                        <div class="sidebar-section-label">Hệ thống</div>
+                        <a class="nav-item @(currentController == "SyncVersion" ? "active" : "")" asp-controller="SyncVersion" asp-action="Index">
+                            <i class="fa-solid fa-box-archive"></i><span>Gói đồng bộ</span>
+                        </a>
+                        <a class="nav-item @(currentController == "User" ? "active" : "")" asp-controller="User" asp-action="Index">
+                            <i class="fa-solid fa-user-shield"></i><span>Tài khoản & phân quyền</span>
+                        </a>
+                        <a class="nav-item @(currentController == "Setting" ? "active" : "")" asp-controller="Setting" asp-action="Index">
+                            <i class="fa-solid fa-gear"></i><span>Cài đặt hệ thống</span>
+                        </a>
+                        <a class="nav-item @(currentController == "Language" ? "active" : "")" asp-controller="Language" asp-action="Index">
+                            <i class="fa-solid fa-language"></i><span>Ngôn ngữ & giọng đọc</span>
+                        </a>
+                    </div>
+                }
+            </nav>
+
+            <div class="sidebar-footer dropdown">
+                <button class="user-card" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <span class="user-avatar"><i class="fa-solid fa-user"></i></span>
+                    <span class="user-info">
+                        <span class="user-name">@User.Identity?.Name</span>
+                        <span class="user-role">@(User.IsInRole("Admin") ? "Quản trị viên" : "Biên tập viên")</span>
+                    </span>
+                    <i class="fa-solid fa-chevron-up user-chevron"></i>
+                </button>
+                <ul class="dropdown-menu app-dropdown">
+                    <li><a class="dropdown-item" asp-controller="Account" asp-action="Profile"><i class="fa-solid fa-id-badge"></i> Hồ sơ</a></li>
+                    <li><a class="dropdown-item" asp-controller="Account" asp-action="ChangePassword"><i class="fa-solid fa-key"></i> Đổi mật khẩu</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <form asp-controller="Account" asp-action="Logout" method="post">
+                            @Html.AntiForgeryToken()
+                            <button class="dropdown-item text-danger" type="submit"><i class="fa-solid fa-right-from-bracket"></i> Đăng xuất</button>
+                        </form>
+                    </li>
+                </ul>
+            </div>
+        </aside>
+
+        <main class="main">
+            <header class="header">
+                <button class="icon-btn sidebar-toggle" type="button" data-sidebar-toggle aria-label="Mở menu">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                <div class="header-title">
+                    <span class="header-kicker">VERSA Admin</span>
+                    <strong>@pageTitle</strong>
+                </div>
+                <form class="global-search" asp-controller="Poi" asp-action="Index" method="get">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="search" name="searchString" placeholder="Tìm nhanh điểm tham quan..." aria-label="Tìm POI" />
+                    <kbd>Enter</kbd>
+                </form>
+                <div class="header-actions">
+                    <button type="button" class="icon-btn" id="theme-toggle" title="Đổi giao diện sáng/tối" aria-label="Đổi giao diện">
+                        <i class="fa-solid fa-moon"></i>
+                    </button>
+                    <a class="icon-btn" title="Tác vụ AI Media" asp-controller="AudioTasks" asp-action="Index">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    </a>
+                </div>
+            </header>
+
+            <div class="content">
+                <div class="content-inner">
+                    @if (TempData["SuccessMessage"] is string successMessage)
+                    {
+                        <div class="alert app-alert success" role="alert">
+                            <i class="fa-solid fa-circle-check"></i><span>@successMessage</span>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Đóng"></button>
+                        </div>
+                    }
+                    @if (TempData["ErrorMessage"] is string errorMessage)
+                    {
+                        <div class="alert app-alert error" role="alert">
+                            <i class="fa-solid fa-circle-exclamation"></i><span>@errorMessage</span>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Đóng"></button>
+                        </div>
+                    }
+                    @RenderBody()
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        (() => {
+            const root = document.documentElement;
+            const sidebar = document.getElementById('adminSidebar');
+            const toggle = document.querySelector('[data-sidebar-toggle]');
+            const closeTargets = document.querySelectorAll('[data-sidebar-close]');
+            const themeToggle = document.getElementById('theme-toggle');
+
+            const applyTheme = theme => {
+                root.dataset.theme = theme;
+                const icon = themeToggle?.querySelector('i');
+                icon?.classList.toggle('fa-sun', theme === 'light');
+                icon?.classList.toggle('fa-moon', theme !== 'light');
+            };
+
+            applyTheme(localStorage.getItem('versa-theme') || 'dark');
+            themeToggle?.addEventListener('click', () => {
+                const next = root.dataset.theme === 'light' ? 'dark' : 'light';
+                localStorage.setItem('versa-theme', next);
+                applyTheme(next);
+            });
+
+            toggle?.addEventListener('click', () => document.body.classList.toggle('sidebar-open'));
+            closeTargets.forEach(target => target.addEventListener('click', () => document.body.classList.remove('sidebar-open')));
+            sidebar?.querySelectorAll('a').forEach(link => link.addEventListener('click', () => document.body.classList.remove('sidebar-open')));
+        })();
+    </script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

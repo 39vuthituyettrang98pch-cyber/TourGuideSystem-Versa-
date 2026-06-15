@@ -1,0 +1,93 @@
+@model AdminWeb.Models.Tourist
+@{
+    ViewData["Title"] = "Cập nhật du khách";
+}
+
+<div class="page-title">Cập nhật du khách</div>
+<div class="page-subtitle">Chỉnh sửa thông tin tài khoản người dùng.</div>
+
+<div class="row">
+    <div class="col-lg-10 col-xl-8">
+        <div class="card">
+            
+            <div class="card-header" style="display: block; border-bottom: 1px solid var(--border); padding-bottom: 16px; margin-bottom: 20px;">
+                <h5 class="card-title mb-1">
+                    <i class="fa-solid fa-user-pen me-2" style="color: var(--accent);"></i> Thông tin hồ sơ
+                </h5>
+                <p class="card-subtitle mt-1" style="color: var(--text2); font-size: 13px; margin-bottom: 0;">
+                    Cập nhật dữ liệu cá nhân và bảo mật của du khách.
+                </p>
+            </div>
+
+            <form asp-action="Edit" method="post">
+                <input type="hidden" asp-for="Id" />
+                <input type="hidden" asp-for="CreatedAt" />
+                
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label asp-for="FullName" class="form-label">Họ và Tên <span class="text-danger">*</span></label>
+                        <div style="position: relative;">
+                            <i class="fa-solid fa-user" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text3); font-size: 13px;"></i>
+                            <input asp-for="FullName" class="form-control" style="padding-left: 38px;" required />
+                        </div>
+                        <span asp-validation-for="FullName" class="text-danger small mt-1 d-block"></span>
+                    </div>
+
+                    <div class="form-group">
+                        <label asp-for="Email" class="form-label">Email <span class="text-danger">*</span></label>
+                        <div style="position: relative;">
+                            <i class="fa-solid fa-envelope" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text3); font-size: 13px;"></i>
+                            <input asp-for="Email" type="email" class="form-control" style="padding-left: 38px;" required />
+                        </div>
+                        <span asp-validation-for="Email" class="text-danger small mt-1 d-block"></span>
+                    </div>
+
+                    <div class="form-group full" style="margin-top: 8px;">
+                        <label for="newPassword" class="form-label">Mật khẩu mới</label>
+                        <div style="position: relative;">
+                            <i class="fa-solid fa-lock" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text3); font-size: 13px;"></i>
+                            <input type="password" id="newPassword" name="newPassword" class="form-control" placeholder="Bỏ trống nếu không muốn đổi mật khẩu" style="padding-left: 38px; padding-right: 40px;" />
+                            
+                            <button type="button" id="togglePassword" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: transparent; border: none; color: var(--text3); cursor: pointer; padding: 4px;">
+                                <i class="fa-solid fa-eye"></i>
+                            </button>
+                        </div>
+                        <small style="color: var(--text3); font-size: 12px; margin-top: 6px; display: block;">
+                            Chỉ nhập khi bạn muốn thay đổi mật khẩu của du khách này.
+                        </small>
+                    </div>
+                </div>
+
+                <hr style="border-color: var(--border); margin: 24px 0 20px;" />
+
+                <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                    <a asp-action="Index" class="btn btn-secondary">
+                        Hủy bỏ
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fa-solid fa-check"></i> Lưu cập nhật
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        document.getElementById('togglePassword').addEventListener('click', function () {
+            const passwordInput = document.getElementById('newPassword');
+            const icon = this.querySelector('i');
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                icon.classList.replace('fa-eye', 'fa-eye-slash');
+                icon.style.color = 'var(--accent)';
+            } else {
+                passwordInput.type = 'password';
+                icon.classList.replace('fa-eye-slash', 'fa-eye');
+                icon.style.color = 'var(--text3)';
+            }
+        });
+    </script>
+}

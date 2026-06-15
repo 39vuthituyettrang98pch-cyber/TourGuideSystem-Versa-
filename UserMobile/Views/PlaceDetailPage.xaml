@@ -1,0 +1,464 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:UserMobile.ViewModels"
+             x:Class="UserMobile.Views.PlaceDetailPage"
+             Title="{Binding Place.Title}"
+             BackgroundColor="#F2F2F7">
+
+    <Grid>
+        <!-- Main Content -->
+        <ScrollView>
+            <VerticalStackLayout Spacing="0">
+                <!-- ========== HERO IMAGE HEADER ========== -->
+                <Grid HeightRequest="300">
+                    <Image Source="{Binding Place.ImageUrl}"
+                           Aspect="AspectFill"
+                           HeightRequest="300" />
+                    <BoxView Color="#CC000000"
+                             VerticalOptions="End"
+                             HeightRequest="180" />
+                    <BoxView Color="#22000000"
+                             VerticalOptions="Start"
+                             HeightRequest="100" />
+
+                    <!-- Place info on image -->
+                    <VerticalStackLayout VerticalOptions="End" Padding="24,0,24,24">
+                        <Label Text="{Binding Place.Title}"
+                               FontSize="30"
+                               FontAttributes="Bold"
+                               TextColor="White"
+                               LineBreakMode="TailTruncation"
+                               MaxLines="2" />
+                        <Label Text="{Binding Place.Description}"
+                               FontSize="15"
+                               TextColor="#DDD"
+                               Margin="0,4,0,0"
+                               MaxLines="2"
+                               LineBreakMode="TailTruncation" />
+                        <FlexLayout Wrap="Wrap" Direction="Row" Margin="0,10,0,0">
+                            <Border BackgroundColor="#33FFFFFF"
+                                    StrokeShape="RoundRectangle 20"
+                                    Stroke="Transparent"
+                                    StrokeThickness="0"
+                                    Padding="14,6"
+                                    Margin="0,0,8,6">
+                                <HorizontalStackLayout Spacing="6">
+                                    <Label Text="📍" FontSize="14" VerticalOptions="Center" />
+                                    <Label Text="{Binding Place.Distance, StringFormat='{0:F1} km'}"
+                                           FontSize="13"
+                                           TextColor="White"
+                                           VerticalOptions="Center" />
+                                </HorizontalStackLayout>
+                            </Border>
+                            <Border BackgroundColor="#33FFFFFF"
+                                    StrokeShape="RoundRectangle 20"
+                                    Stroke="Transparent"
+                                    StrokeThickness="0"
+                                    Padding="14,6"
+                                    Margin="0,0,8,6"
+                                    IsVisible="{Binding Place.HasNarration}">
+                                <HorizontalStackLayout Spacing="6">
+                                    <Label Text="🎧" FontSize="14" VerticalOptions="Center" />
+                                    <Label Text="Có thuyết minh"
+                                           FontSize="13"
+                                           TextColor="White"
+                                           VerticalOptions="Center" />
+                                </HorizontalStackLayout>
+                            </Border>
+                        </FlexLayout>
+                    </VerticalStackLayout>
+
+                    <!-- Favorite Button -->
+                    <Border WidthRequest="48"
+                            HeightRequest="48"
+                            BackgroundColor="#CCFFFFFF"
+                            Stroke="Transparent"
+                            StrokeShape="RoundRectangle 24"
+                            Margin="0,40,16,0"
+                            HorizontalOptions="End"
+                            VerticalOptions="Start">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding ToggleFavoriteCommand}" />
+                        </Border.GestureRecognizers>
+                        <Label Text="{Binding FavoriteIcon}"
+                               FontSize="28"
+                               TextColor="#D94A64"
+                               HorizontalOptions="Center"
+                               VerticalOptions="Center" />
+                    </Border>
+                </Grid>
+
+                <!-- ========== CONTENT SECTIONS ========== -->
+                <VerticalStackLayout Padding="20,20,20,100" Spacing="16">
+                    <Border IsVisible="{Binding HasMessage}"
+                            BackgroundColor="#F0EDFF"
+                            Stroke="#DCD5FF"
+                            StrokeShape="RoundRectangle 12"
+                            Padding="14,10">
+                        <Label Text="{Binding Message}" TextColor="#5D49C7" FontSize="13" />
+                    </Border>
+
+                    <!-- === INTRODUCTION CARD === -->
+                    <Border BackgroundColor="White"
+                            StrokeShape="RoundRectangle 16"
+                            Stroke="#E8E8ED"
+                            StrokeThickness="1"
+                            Padding="20">
+                        <VerticalStackLayout Spacing="12">
+                            <HorizontalStackLayout Spacing="10">
+                                <Border BackgroundColor="#E8F0FE"
+                                        StrokeShape="RoundRectangle 12"
+                                        Stroke="Transparent"
+                                        StrokeThickness="0"
+                                        WidthRequest="40"
+                                        HeightRequest="40">
+                                    <Label Text="📖"
+                                           FontSize="20"
+                                           HorizontalOptions="Center"
+                                           VerticalOptions="Center" />
+                                </Border>
+                                <Label Text="Giới thiệu"
+                                       FontSize="19"
+                                       FontAttributes="Bold"
+                                       TextColor="#1C1C1E"
+                                       VerticalOptions="Center" />
+                            </HorizontalStackLayout>
+                            <BoxView Color="#E8E8ED" HeightRequest="1" Margin="0,4" />
+                            <Label Text="{Binding Place.Introduction}"
+                                   FontSize="14"
+                                   TextColor="#636366"
+                                   LineBreakMode="WordWrap"
+                                   LineHeight="1.5" />
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <!-- === LANGUAGE SELECTION CARD === -->
+                    <Border BackgroundColor="White"
+                            StrokeShape="RoundRectangle 16"
+                            Stroke="#E8E8ED"
+                            StrokeThickness="1"
+                            Padding="20">
+                        <VerticalStackLayout Spacing="12">
+                            <HorizontalStackLayout Spacing="10">
+                                <Border BackgroundColor="#FFF3E0"
+                                        StrokeShape="RoundRectangle 12"
+                                        Stroke="Transparent"
+                                        StrokeThickness="0"
+                                        WidthRequest="40"
+                                        HeightRequest="40">
+                                    <Label Text="🌐"
+                                           FontSize="20"
+                                           HorizontalOptions="Center"
+                                           VerticalOptions="Center" />
+                                </Border>
+                                <Label Text="Ngôn ngữ thuyết minh"
+                                       FontSize="19"
+                                       FontAttributes="Bold"
+                                       TextColor="#1C1C1E"
+                                       VerticalOptions="Center" />
+                            </HorizontalStackLayout>
+                            <BoxView Color="#E8E8ED" HeightRequest="1" Margin="0,4" />
+                            <CollectionView ItemsSource="{Binding NarrationLanguages}"
+                                            IsVisible="{Binding HasNarrationLanguages}"
+                                            SelectionMode="Single"
+                                            SelectedItem="{Binding SelectedLanguage, Mode=TwoWay}">
+                                <CollectionView.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Padding="14,12"
+                                                Margin="0,5"
+                                                StrokeShape="RoundRectangle 12"
+                                                Stroke="#E0E0E0"
+                                                StrokeThickness="1"
+                                                BackgroundColor="#FAFAFA">
+                                            <VisualStateManager.VisualStateGroups>
+                                                <VisualStateGroup Name="CommonStates">
+                                                    <VisualState Name="Normal" />
+                                                    <VisualState Name="Selected">
+                                                        <VisualState.Setters>
+                                                            <Setter Property="BackgroundColor" Value="#F0EDFF" />
+                                                            <Setter Property="Stroke" Value="#5B3FE4" />
+                                                            <Setter Property="StrokeThickness" Value="2" />
+                                                        </VisualState.Setters>
+                                                    </VisualState>
+                                                </VisualStateGroup>
+                                            </VisualStateManager.VisualStateGroups>
+                                            <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="14">
+                                                <Border WidthRequest="42"
+                                                        HeightRequest="42"
+                                                        StrokeShape="RoundRectangle 21"
+                                                        Stroke="Transparent"
+                                                        StrokeThickness="0"
+                                                        BackgroundColor="#E8F0FE">
+                                                    <Label Text="🗣️"
+                                                           FontSize="18"
+                                                           HorizontalOptions="Center"
+                                                           VerticalOptions="Center" />
+                                                </Border>
+                                                <VerticalStackLayout Grid.Column="1"
+                                                                     VerticalOptions="Center"
+                                                                     Spacing="2">
+                                                    <Label Text="{Binding NativeName}"
+                                                           FontAttributes="Bold"
+                                                           FontSize="15"
+                                                           TextColor="#1C1C1E" />
+                                                    <Label Text="{Binding Name}"
+                                                           FontSize="12"
+                                                           TextColor="#8E8E93" />
+                                                </VerticalStackLayout>
+                                                <Label Grid.Column="2"
+                                                       Text="›"
+                                                       FontSize="25"
+                                                       TextColor="#5B3FE4"
+                                                       VerticalOptions="Center" />
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </CollectionView.ItemTemplate>
+                            </CollectionView>
+                            <Label Text="POI này chưa có file audio hoặc video thuyết minh."
+                                   IsVisible="{Binding HasNoNarrationLanguages}"
+                                   FontSize="13"
+                                   TextColor="#8E8E93"
+                                   HorizontalTextAlignment="Center"
+                                   Margin="0,8" />
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <Button Text="{Binding CheckInText}"
+                            Command="{Binding CheckInCommand}"
+                            BackgroundColor="#5B3FE4"
+                            TextColor="White" />
+
+                    <!-- === PLAY NARRATION BUTTON === -->
+                    <Border IsVisible="{Binding CanPlay}"
+                            BackgroundColor="#4A90D9"
+                            StrokeShape="RoundRectangle 16"
+                            Stroke="Transparent"
+                            StrokeThickness="0"
+                            HeightRequest="56"
+                            Margin="0,4">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding TogglePlaybackCommand}" />
+                        </Border.GestureRecognizers>
+                        <Grid ColumnDefinitions="Auto, *, Auto" Padding="20,0" ColumnSpacing="12">
+                            <Border BackgroundColor="#33FFFFFF"
+                                    StrokeShape="RoundRectangle 20"
+                                    Stroke="Transparent"
+                                    StrokeThickness="0"
+                                    WidthRequest="36"
+                                    HeightRequest="36"
+                                    VerticalOptions="Center">
+                                <Label Text="▶"
+                                       FontSize="18"
+                                       TextColor="White"
+                                       HorizontalOptions="Center"
+                                       VerticalOptions="Center" />
+                            </Border>
+                            <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="2">
+                                <Label Text="Phát thuyết minh"
+                                       FontSize="16"
+                                       FontAttributes="Bold"
+                                       TextColor="White" />
+                                <Label Text="{Binding SelectedLanguage.NativeName, StringFormat='Ngôn ngữ: {0}'}"
+                                       FontSize="12"
+                                       TextColor="#D0E4FF" />
+                            </VerticalStackLayout>
+                            <Label Grid.Column="2"
+                                   Text="▶"
+                                   FontSize="16"
+                                   TextColor="#D0E4FF"
+                                   VerticalOptions="Center" />
+                        </Grid>
+                    </Border>
+
+                    <Button Text="Xem video thuyết minh"
+                            Command="{Binding WatchVideoCommand}"
+                            IsVisible="{Binding CanWatchVideo}"
+                            BackgroundColor="#EEEAFE"
+                            TextColor="#5B3FE4" />
+                </VerticalStackLayout>
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <!-- ========== AUDIO PLAYER OVERLAY ========== -->
+        <Border x:Name="AudioPlayerOverlay"
+                IsVisible="{Binding IsPlayerVisible}"
+                BackgroundColor="White"
+                StrokeShape="RoundRectangle 24"
+                Stroke="#E0E0E0"
+                StrokeThickness="1"
+                Padding="20"
+                Margin="12"
+                VerticalOptions="End"
+                HorizontalOptions="Fill">
+            <VerticalStackLayout Spacing="14">
+                <!-- Draggable handle -->
+                <BoxView Color="#D1D1D6"
+                         WidthRequest="40"
+                         HeightRequest="4"
+                         CornerRadius="2"
+                         HorizontalOptions="Center" />
+
+                <!-- Track Info -->
+                <Grid ColumnDefinitions="56, *" ColumnSpacing="14">
+                    <Border StrokeShape="RoundRectangle 12"
+                            Padding="0"
+                            Stroke="Transparent"
+                            StrokeThickness="0"
+                            BackgroundColor="#F2F2F7"
+                            WidthRequest="56"
+                            HeightRequest="56">
+                        <Image Source="{Binding Place.ImageUrl}"
+                               Aspect="AspectFill"
+                               WidthRequest="56"
+                               HeightRequest="56" />
+                    </Border>
+                    <VerticalStackLayout Grid.Column="1"
+                                         VerticalOptions="Center"
+                                         Spacing="3">
+                        <Label Text="{Binding Place.Title}"
+                               FontSize="15"
+                               FontAttributes="Bold"
+                               TextColor="#1C1C1E"
+                               LineBreakMode="TailTruncation"
+                               MaxLines="1" />
+                        <HorizontalStackLayout Spacing="6">
+                            <Border BackgroundColor="#E8F0FE"
+                                    StrokeShape="RoundRectangle 8"
+                                    Stroke="Transparent"
+                                    StrokeThickness="0"
+                                    Padding="8,3">
+                                <Label Text="{Binding SelectedLanguage.NativeName}"
+                                       FontSize="11"
+                                       TextColor="#4A90D9" />
+                            </Border>
+                            <Label Text="{Binding PlaybackSpeed, StringFormat='{0:F1}x'}"
+                                   FontSize="11"
+                                   TextColor="#8E8E93"
+                                   VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                    </VerticalStackLayout>
+                </Grid>
+
+                <!-- Progress Bar -->
+                <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="10">
+                    <Label Text="{Binding CurrentTime}"
+                           FontSize="11"
+                           TextColor="#8E8E93"
+                           VerticalOptions="Center" />
+                    <Slider Grid.Column="1"
+                            Value="{Binding AudioProgress}"
+                            Minimum="0"
+                            Maximum="1"
+                            MinimumTrackColor="#4A90D9"
+                            MaximumTrackColor="#E5E5EA"
+                            ThumbColor="#4A90D9" />
+                    <Label Grid.Column="2"
+                           Text="{Binding TotalTime}"
+                           FontSize="11"
+                           TextColor="#8E8E93"
+                           VerticalOptions="Center" />
+                </Grid>
+
+                <!-- Playback Controls -->
+                <Grid ColumnDefinitions="*, *, Auto, *, *"
+                      HorizontalOptions="Center"
+                      ColumnSpacing="8">
+                    <!-- Speed Selector -->
+                    <Border Grid.Column="0"
+                            BackgroundColor="#F2F2F7"
+                            StrokeShape="RoundRectangle 12"
+                            Stroke="Transparent"
+                            StrokeThickness="0"
+                            Padding="8,6"
+                            VerticalOptions="Center">
+                        <Picker ItemsSource="{Binding SpeedOptions}"
+                                SelectedItem="{Binding PlaybackSpeed}"
+                                FontSize="12"
+                                TextColor="#4A90D9"
+                                WidthRequest="52"
+                                HeightRequest="30" />
+                    </Border>
+
+                    <!-- Skip Backward 10s -->
+                    <Border Grid.Column="1"
+                            WidthRequest="44"
+                            HeightRequest="44"
+                            StrokeShape="RoundRectangle 22"
+                            Padding="0"
+                            Stroke="Transparent"
+                            StrokeThickness="0"
+                            BackgroundColor="#F2F2F7"
+                            VerticalOptions="Center">
+                        <Label Text="⏪" FontSize="18"
+                               HorizontalOptions="Center"
+                               VerticalOptions="Center" />
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding SkipBackwardCommand}" />
+                        </Border.GestureRecognizers>
+                    </Border>
+
+                    <!-- Play/Pause Button -->
+                    <Border Grid.Column="2"
+                            WidthRequest="56"
+                            HeightRequest="56"
+                            StrokeShape="RoundRectangle 28"
+                            Padding="0"
+                            Stroke="Transparent"
+                            StrokeThickness="0"
+                            BackgroundColor="#4A90D9"
+                            VerticalOptions="Center">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding TogglePlaybackCommand}" />
+                        </Border.GestureRecognizers>
+                        <Grid>
+                            <Label Text="▶" FontSize="22" TextColor="White"
+                                   HorizontalOptions="Center" VerticalOptions="Center"
+                                   Margin="3,0,0,0"
+                                   IsVisible="{Binding IsPaused}" />
+                            <Label Text="⏸" FontSize="22" TextColor="White"
+                                   HorizontalOptions="Center" VerticalOptions="Center"
+                                   IsVisible="{Binding IsPlaying}" />
+                        </Grid>
+                    </Border>
+
+                    <!-- Skip Forward 10s -->
+                    <Border Grid.Column="3"
+                            WidthRequest="44"
+                            HeightRequest="44"
+                            StrokeShape="RoundRectangle 22"
+                            Padding="0"
+                            Stroke="Transparent"
+                            StrokeThickness="0"
+                            BackgroundColor="#F2F2F7"
+                            VerticalOptions="Center">
+                        <Label Text="⏩" FontSize="18"
+                               HorizontalOptions="Center"
+                               VerticalOptions="Center" />
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding SkipForwardCommand}" />
+                        </Border.GestureRecognizers>
+                    </Border>
+
+                    <!-- Close -->
+                    <Border Grid.Column="4"
+                            WidthRequest="44"
+                            HeightRequest="44"
+                            StrokeShape="RoundRectangle 22"
+                            Padding="0"
+                            Stroke="Transparent"
+                            StrokeThickness="0"
+                            BackgroundColor="#F2F2F7"
+                            VerticalOptions="Center">
+                        <Label Text="✕" FontSize="18" TextColor="#8E8E93"
+                               HorizontalOptions="Center" VerticalOptions="Center" />
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding StopNarrationCommand}" />
+                        </Border.GestureRecognizers>
+                    </Border>
+                </Grid>
+            </VerticalStackLayout>
+        </Border>
+    </Grid>
+</ContentPage>

@@ -1,0 +1,1042 @@
+@model IEnumerable<AdminWeb.Models.Poi>
+@{
+    ViewData["Title"] = "Điểm tham quan";
+}
+
+<div class="page-heading">
+    <div>
+        <div class="page-title">Điểm tham quan</div>
+        <div class="page-subtitle">Quản lý nội dung gốc, bản dịch, media, danh mục và trạng thái phê duyệt.</div>
+    </div>
+    <div class="page-actions">
+        <a asp-action="ExportExcel" class="btn btn-secondary">
+            <i class="fa-solid fa-file-export"></i> Xuất CSV
+        </a>
+        <a asp-action="Create" class="btn btn-primary">
+            <i class="fa-solid fa-plus"></i> Tạo POI
+        </a>
+    </div>
+</div>
+
+<div class="toolbar">
+    <form asp-action="Index" method="get">
+        <input type="search"
+               name="searchString"
+               value="@ViewBag.SearchString"
+               class="form-control"
+               placeholder="Tìm theo tên POI..." />
+
+        <button type="submit" class="btn btn-secondary">
+            <i class="fa-solid fa-magnifying-glass"></i> Tìm
+        </button>
+
+        @if (!string.IsNullOrWhiteSpace(ViewBag.SearchString as string))
+        {
+            <a asp-action="Index" class="btn btn-secondary">
+                <i class="fa-solid fa-xmark"></i>
+            </a>
+        }
+    </form>
+
+    @if (User.IsInRole("Admin"))
+    {
+        <a asp-controller="Approval" asp-action="PoiPending" class="btn btn-secondary">
+            <i class="fa-solid fa-circle-check"></i> POI chờ duyệt
+        </a>
+    }
+</div>
+
+<div class="card admin-map-card">
+    <div class="admin-map-header">
+        <div>
+            <div class="card-title">
+                <i class="fa-solid fa-map-location-dot" style="color:var(--accent);margin-right:8px;"></i>
+                Bản đồ tổng quan POI
+            </div>
+            <div class="card-subtitle">
+                Xem nhanh vị trí, trạng thái và bán kính geofence của toàn bộ điểm tham quan.
+            </div>
+        </div>
+
+        <div class="admin-map-actions">
+            <button type="button" class="btn btn-secondary btn-sm" id="btnFitAllPois">
+                <i class="fa-solid fa-maximize"></i> Xem tất cả
+            </button>
+
+            <button type="button" class="btn btn-secondary btn-sm" id="btnLocateAdmin">
+                <i class="fa-solid fa-location-crosshairs"></i> Vị trí của tôi
+            </button>
+
+            <a asp-action="Create" class="btn btn-primary btn-sm">
+                <i class="fa-solid fa-plus"></i> Tạo POI mới
+            </a>
+        </div>
+    </div>
+
+    <div class="admin-map-layout">
+        <div class="admin-map-left">
+            <div class="admin-map-search">
+                <input type="search"
+                       id="adminPoiMapSearch"
+                       class="form-control"
+                       placeholder="Tìm POI trên bản đồ..." />
+            </div>
+
+            <div class="admin-map-filter">
+                <button type="button" class="map-filter active" data-status="all">
+                    Tất cả
+                </button>
+                <button type="button" class="map-filter" data-status="Approved">
+                    Approved
+                </button>
+                <button type="button" class="map-filter" data-status="Pending">
+                    Pending
+                </button>
+                <button type="button" class="map-filter" data-status="Rejected">
+                    Rejected
+                </button>
+            </div>
+
+            <div id="adminPoiMapList" class="admin-map-list">
+                <div class="admin-map-loading">
+                    <i class="fa-solid fa-spinner fa-spin"></i>
+                    Đang tải POI...
+                </div>
+            </div>
+        </div>
+
+        <div class="admin-map-right">
+            <div id="adminPoiOverviewMap"></div>
+
+            <div class="admin-map-legend">
+                <span><i class="legend-dot approved"></i> Approved</span>
+                <span><i class="legend-dot pending"></i> Pending</span>
+                <span><i class="legend-dot rejected"></i> Rejected</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="table-wrapper">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>POI</th>
+                <th>Tọa độ</th>
+                <th>Bán kính</th>
+                <th>Trạng thái</th>
+                <th>Ngày tạo</th>
+                <th>Thao tác</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @if (Model.Any())
+            {
+                foreach (var poi in Model)
+                {
+                    var vi = poi.Translations.FirstOrDefault(item => item.LanguageCode == "vi");
+                    var badge = poi.Status switch
+                    {
+                        "Approved" => "green",
+                        "Rejected" => "red",
+                        _ => "amber"
+                    };
+
+                    <tr>
+                        <td>
+                            <div style="display:flex;align-items:center;gap:11px">
+                                @if (!string.IsNullOrWhiteSpace(poi.CoverImageUrl))
+                                {
+                                    <img src="@poi.CoverImageUrl"
+                                         alt=""
+                                         style="width:44px;height:44px;border-radius:11px;object-fit:cover" />
+                                }
+                                else
+                                {
+                                    <span class="stat-icon">
+                                        <i class="fa-solid fa-map-pin"></i>
+                                    </span>
+                                }
+
+                                <span>
+                                    <strong>@(vi?.Name ?? $"POI #{poi.Id}")</strong>
+                                    <br />
+                                    <small style="color:var(--text-soft)">
+                                        #@poi.Id · @poi.Translations.Count ngôn ngữ
+                                    </small>
+                                </span>
+                            </div>
+                        </td>
+
+                        <td>
+                            <code>@poi.Latitude, @poi.Longitude</code>
+                        </td>
+
+                        <td>@poi.Radius m</td>
+
+                        <td>
+                            <span class="badge @badge">@poi.Status</span>
+                        </td>
+
+                        <td>@poi.CreatedAt.ToString("dd/MM/yyyy")</td>
+
+                        <td>
+                            <div class="actions">
+                                <a asp-action="Edit"
+                                   asp-route-id="@poi.Id"
+                                   class="btn btn-secondary btn-sm"
+                                   title="Thông số">
+                                    <i class="fa-solid fa-pen"></i>
+                                </a>
+
+                                <a asp-controller="PoiTranslation"
+                                   asp-action="Index"
+                                   asp-route-poiId="@poi.Id"
+                                   class="btn btn-secondary btn-sm"
+                                   title="Bản dịch">
+                                    <i class="fa-solid fa-language"></i>
+                                </a>
+
+                                <a asp-action="ManageCategories"
+                                   asp-route-id="@poi.Id"
+                                   class="btn btn-secondary btn-sm"
+                                   title="Danh mục">
+                                    <i class="fa-solid fa-tags"></i>
+                                </a>
+
+                                <a asp-controller="Media"
+                                   asp-action="Index"
+                                   asp-route-poiId="@poi.Id"
+                                   class="btn btn-secondary btn-sm"
+                                   title="Media">
+                                    <i class="fa-solid fa-photo-film"></i>
+                                </a>
+
+                                <a asp-action="QrCode"
+                                   asp-route-id="@poi.Id"
+                                   class="btn btn-secondary btn-sm"
+                                   title="Mã QR">
+                                    <i class="fa-solid fa-qrcode"></i>
+                                </a>
+
+                                <form asp-action="Delete"
+                                      method="post"
+                                      onsubmit="return confirm('Xóa POI này và toàn bộ dữ liệu liên quan?');">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@poi.Id" />
+                                    <button type="submit" class="btn btn-danger btn-sm" title="Xóa">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            }
+            else
+            {
+                <tr>
+                    <td colspan="6">
+                        <div class="empty-state">
+                            <i class="fa-solid fa-map-location-dot"></i>
+                            <h2>Chưa có POI phù hợp</h2>
+                            <p>Tạo POI đầu tiên hoặc thay đổi từ khóa tìm kiếm.</p>
+                            <a asp-action="Create" class="btn btn-primary">Tạo POI</a>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@if (ViewBag.TotalPages is int totalPages && totalPages > 1)
+{
+    <nav style="margin-top:16px">
+        <ul class="pagination justify-content-center">
+            <li class="page-item @(ViewBag.CurrentPage == 1 ? "disabled" : "")">
+                <a class="page-link"
+                   asp-action="Index"
+                   asp-route-page="@(ViewBag.CurrentPage - 1)"
+                   asp-route-searchString="@ViewBag.SearchString">
+                    Trước
+                </a>
+            </li>
+
+            <li class="page-item disabled">
+                <span class="page-link">Trang @ViewBag.CurrentPage / @totalPages</span>
+            </li>
+
+            <li class="page-item @(ViewBag.CurrentPage == totalPages ? "disabled" : "")">
+                <a class="page-link"
+                   asp-action="Index"
+                   asp-route-page="@(ViewBag.CurrentPage + 1)"
+                   asp-route-searchString="@ViewBag.SearchString">
+                    Sau
+                </a>
+            </li>
+        </ul>
+    </nav>
+}
+
+@section Scripts {
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+
+    <style>
+        .admin-map-card {
+            margin-bottom: 20px;
+            overflow: hidden;
+            border-radius: 20px;
+        }
+
+        .admin-map-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            flex-wrap: wrap;
+            padding: 18px;
+            border-bottom: 1px solid var(--border);
+            background: linear-gradient(135deg, var(--surface-2), var(--surface));
+        }
+
+        .admin-map-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .admin-map-layout {
+            display: grid;
+            grid-template-columns: 340px 1fr;
+            min-height: 520px;
+        }
+
+        .admin-map-left {
+            border-right: 1px solid var(--border);
+            background: var(--surface);
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        .admin-map-search {
+            padding: 14px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .admin-map-filter {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            padding: 0 14px 14px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .map-filter {
+            border: 1px solid var(--border);
+            background: var(--surface-2);
+            color: var(--text-soft);
+            padding: 7px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.2s ease;
+        }
+
+        .map-filter:hover,
+        .map-filter.active {
+            color: var(--accent);
+            border-color: var(--accent);
+            background: var(--accent-soft);
+        }
+
+        .admin-map-list {
+            overflow: auto;
+            max-height: 430px;
+        }
+
+        .admin-map-loading {
+            padding: 18px;
+            color: var(--text-soft);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .admin-map-item {
+            width: 100%;
+            border: 0;
+            border-bottom: 1px solid var(--border);
+            background: transparent;
+            color: var(--text);
+            padding: 13px 14px;
+            text-align: left;
+            cursor: pointer;
+            display: grid;
+            grid-template-columns: 46px 1fr;
+            gap: 11px;
+            transition: 0.2s ease;
+        }
+
+        .admin-map-item:hover,
+        .admin-map-item.active {
+            background: var(--accent-soft);
+        }
+
+        .admin-map-thumb {
+            width: 46px;
+            height: 46px;
+            border-radius: 14px;
+            object-fit: cover;
+            background: var(--surface-2);
+            display: grid;
+            place-items: center;
+            color: var(--accent);
+        }
+
+        .admin-map-info strong {
+            display: block;
+            font-size: 13px;
+            line-height: 1.35;
+        }
+
+        .admin-map-info small {
+            display: block;
+            margin-top: 4px;
+            color: var(--text-soft);
+            line-height: 1.4;
+        }
+
+        .admin-map-meta {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+
+        .mini-badge {
+            display: inline-flex;
+            align-items: center;
+            border-radius: 999px;
+            padding: 3px 8px;
+            font-size: 11px;
+            font-weight: 800;
+            background: var(--surface-2);
+            color: var(--text-soft);
+            border: 1px solid var(--border);
+        }
+
+        .mini-badge.approved {
+            color: #16a34a;
+            background: rgba(34, 197, 94, 0.12);
+            border-color: rgba(34, 197, 94, 0.25);
+        }
+
+        .mini-badge.pending {
+            color: #d97706;
+            background: rgba(245, 158, 11, 0.12);
+            border-color: rgba(245, 158, 11, 0.25);
+        }
+
+        .mini-badge.rejected {
+            color: #dc2626;
+            background: rgba(239, 68, 68, 0.12);
+            border-color: rgba(239, 68, 68, 0.25);
+        }
+
+        .admin-map-right {
+            position: relative;
+            min-width: 0;
+        }
+
+        #adminPoiOverviewMap {
+            height: 100%;
+            min-height: 520px;
+            width: 100%;
+            z-index: 1;
+        }
+
+        .admin-map-legend {
+            position: absolute;
+            left: 14px;
+            bottom: 14px;
+            z-index: 500;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            padding: 8px 10px;
+            box-shadow: var(--shadow);
+            font-size: 12px;
+            color: var(--text-soft);
+        }
+
+        .admin-map-legend span {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 700;
+        }
+
+        .legend-dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 999px;
+            display: inline-block;
+        }
+
+        .legend-dot.approved {
+            background: #22c55e;
+        }
+
+        .legend-dot.pending {
+            background: #f59e0b;
+        }
+
+        .legend-dot.rejected {
+            background: #ef4444;
+        }
+
+        .leaflet-container {
+            font-family: inherit;
+            background: var(--surface-2);
+        }
+
+        .leaflet-popup-content-wrapper,
+        .leaflet-popup-tip {
+            background: var(--surface);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .leaflet-popup-content {
+            margin: 12px 14px;
+        }
+
+        .admin-popup {
+            min-width: 230px;
+        }
+
+        .admin-popup-cover {
+            width: 100%;
+            height: 110px;
+            object-fit: cover;
+            border-radius: 12px;
+            margin-bottom: 10px;
+        }
+
+        .admin-popup-title {
+            font-weight: 800;
+            margin-bottom: 5px;
+        }
+
+        .admin-popup-meta {
+            color: var(--text-soft);
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .admin-popup-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        .admin-popup-actions a {
+            color: var(--accent);
+            font-weight: 700;
+            text-decoration: none;
+            font-size: 12px;
+        }
+
+        /* Style cho Custom Marker Pins */
+        .custom-map-icon {
+            background: transparent;
+            border: none;
+        }
+        .custom-marker {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg);
+            border: 2px solid #ffffff;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            color: #ffffff;
+            font-size: 14px;
+        }
+        .custom-marker i { transform: rotate(45deg); }
+        .custom-marker.approved { background: #22c55e; }
+        .custom-marker.pending { background: #f59e0b; }
+        .custom-marker.rejected { background: #ef4444; }
+
+        @@media (max-width: 1100px) {
+            .admin-map-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .admin-map-left {
+                border-right: 0;
+                border-bottom: 1px solid var(--border);
+            }
+
+            .admin-map-list {
+                max-height: 300px;
+            }
+
+            #adminPoiOverviewMap {
+                height: 460px;
+                min-height: 460px;
+            }
+        }
+    </style>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+
+    <script>
+        (function () {
+            const mapEl = document.getElementById('adminPoiOverviewMap');
+            const listEl = document.getElementById('adminPoiMapList');
+            const searchInput = document.getElementById('adminPoiMapSearch');
+            const fitButton = document.getElementById('btnFitAllPois');
+            const locateButton = document.getElementById('btnLocateAdmin');
+            const filterButtons = document.querySelectorAll('.map-filter');
+
+            if (!mapEl || !window.L) return;
+
+            const statusColors = {
+                Approved: '#22c55e',
+                Pending: '#f59e0b',
+                Rejected: '#ef4444'
+            };
+
+            let allPois = [];
+            let currentStatus = 'all';
+            let bounds = [];
+            let markerItems = [];
+            let markerClusterGroup = null;
+            let adminMarker = null;
+            let adminCircle = null;
+
+            const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; OpenStreetMap'
+            });
+
+            const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                maxZoom: 19,
+                attribution: '&copy; Esri'
+            });
+
+            const topo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+                maxZoom: 17,
+                attribution: '&copy; OpenTopoMap'
+            });
+
+            const map = L.map(mapEl, {
+                zoomControl: true,
+                scrollWheelZoom: true,
+                layers: [osm]
+            }).setView([10.762622, 106.660172], 12);
+
+            const baseMaps = {
+                "Bản đồ tiêu chuẩn": osm,
+                "Vệ tinh": satellite,
+                "Địa hình": topo
+            };
+
+            L.control.layers(baseMaps).addTo(map);
+
+            function escapeHtml(value) {
+                return String(value ?? '')
+                    .replaceAll('&', '&amp;')
+                    .replaceAll('<', '&lt;')
+                    .replaceAll('>', '&gt;')
+                    .replaceAll('"', '&quot;')
+                    .replaceAll("'", '&#039;');
+            }
+
+            function isValidLatLng(lat, lng) {
+                return Number.isFinite(lat)
+                    && Number.isFinite(lng)
+                    && lat >= -90
+                    && lat <= 90
+                    && lng >= -180
+                    && lng <= 180;
+            }
+
+            function getStatusClass(status) {
+                if (status === 'Approved') return 'approved';
+                if (status === 'Rejected') return 'rejected';
+                return 'pending';
+            }
+
+            function clearMap() {
+                if (markerClusterGroup) {
+                    map.removeLayer(markerClusterGroup);
+                    markerClusterGroup.clearLayers();
+                }
+                
+                markerItems.forEach(function (item) {
+                    map.removeLayer(item.circle);
+                });
+
+                markerItems = [];
+                bounds = [];
+            }
+
+            function getFilteredPois() {
+                const keyword = (searchInput?.value || '').trim().toLowerCase();
+
+                return allPois.filter(function (poi) {
+                    const matchStatus = currentStatus === 'all' || poi.status === currentStatus;
+                    const matchKeyword =
+                        !keyword ||
+                        String(poi.name || '').toLowerCase().includes(keyword) ||
+                        String(poi.shortDescription || '').toLowerCase().includes(keyword) ||
+                        String(poi.id || '').includes(keyword);
+
+                    return matchStatus && matchKeyword;
+                });
+            }
+
+            function renderList(pois) {
+                if (!listEl) return;
+
+                if (!pois.length) {
+                    listEl.innerHTML = `
+                        <div class="admin-map-loading">
+                            <i class="fa-solid fa-circle-info"></i>
+                            Không có POI phù hợp.
+                        </div>
+                    `;
+                    return;
+                }
+
+                listEl.innerHTML = '';
+
+                pois.forEach(function (poi) {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = 'admin-map-item';
+                    button.dataset.id = poi.id;
+
+                    const thumb = document.createElement('div');
+                    thumb.className = 'admin-map-thumb';
+
+                    if (poi.coverImageUrl) {
+                        const img = document.createElement('img');
+                        img.src = poi.coverImageUrl;
+                        img.alt = '';
+                        img.className = 'admin-map-thumb';
+                        thumb.replaceWith(img);
+                        button.appendChild(img);
+                    } else {
+                        thumb.innerHTML = '<i class="fa-solid fa-map-pin"></i>';
+                        button.appendChild(thumb);
+                    }
+
+                    const info = document.createElement('div');
+                    info.className = 'admin-map-info';
+                    info.innerHTML = `
+                        <strong>${escapeHtml(poi.name)}</strong>
+                        <small>#${poi.id} · ${escapeHtml(poi.createdAt || '')}</small>
+                        <div class="admin-map-meta">
+                            <span class="mini-badge ${getStatusClass(poi.status)}">${escapeHtml(poi.status)}</span>
+                            <span class="mini-badge">${escapeHtml(poi.radius)}m</span>
+                        </div>
+                    `;
+
+                    button.appendChild(info);
+
+                    button.addEventListener('click', function () {
+                        const item = markerItems.find(x => Number(x.poi.id) === Number(poi.id));
+                        if (!item) return;
+
+                        document.querySelectorAll('.admin-map-item').forEach(x => x.classList.remove('active'));
+                        button.classList.add('active');
+
+                        if (markerClusterGroup) {
+                            markerClusterGroup.zoomToShowLayer(item.marker, function() {
+                                item.marker.openPopup();
+                            });
+                        }
+                    });
+
+                    listEl.appendChild(button);
+                });
+            }
+
+            function renderMap() {
+                clearMap();
+
+                const pois = getFilteredPois();
+
+                // Tìm các điểm POI có vùng bán kính bị trùng lấp (Overlap)
+                const overlappingIds = new Set();
+                for (let i = 0; i < pois.length; i++) {
+                    for (let j = i + 1; j < pois.length; j++) {
+                        const p1 = pois[i], p2 = pois[j];
+                        const l1 = Number(p1.latitude), lg1 = Number(p1.longitude);
+                        const l2 = Number(p2.latitude), lg2 = Number(p2.longitude);
+
+                        if (!isValidLatLng(l1, lg1) || !isValidLatLng(l2, lg2)) continue;
+
+                        const r1 = Number(p1.radius) || 50;
+                        const r2 = Number(p2.radius) || 50;
+
+                        const dist = map.distance([l1, lg1], [l2, lg2]);
+                        if (dist < (r1 + r2)) {
+                            overlappingIds.add(p1.id);
+                            overlappingIds.add(p2.id);
+                        }
+                    }
+                }
+
+                markerClusterGroup = L.markerClusterGroup({
+                    showCoverageOnHover: false,
+                    maxClusterRadius: 40,
+                    spiderfyOnMaxZoom: true
+                });
+
+                pois.forEach(function (poi) {
+                    const lat = Number(poi.latitude);
+                    const lng = Number(poi.longitude);
+
+                    if (!isValidLatLng(lat, lng)) return;
+
+                    const isOverlapping = overlappingIds.has(poi.id);
+                    const color = isOverlapping ? '#dc2626' : (statusColors[poi.status] || '#5b8cff');
+                    const point = [lat, lng];
+
+                    bounds.push(point);
+
+                    const circle = L.circle(point, {
+                        radius: Number(poi.radius) || 50,
+                        color: color,
+                        weight: isOverlapping ? 2 : 1,
+                        opacity: isOverlapping ? 0.9 : 0.7,
+                        fillColor: color,
+                        fillOpacity: isOverlapping ? 0.2 : 0.1,
+                        dashArray: isOverlapping ? '5, 5' : null
+                    }).addTo(map);
+
+                    const statusClass = getStatusClass(poi.status);
+                    
+                    const customIcon = L.divIcon({
+                        className: 'custom-map-icon',
+                        html: `<div class="custom-marker ${statusClass}"><i class="fa-solid fa-map-pin"></i></div>`,
+                        iconSize: [32, 32],
+                        iconAnchor: [16, 32],
+                        popupAnchor: [0, -32]
+                    });
+
+                    const marker = L.marker(point, { icon: customIcon });
+                    
+                    const cover = poi.coverImageUrl
+                        ? `<img src="${escapeHtml(poi.coverImageUrl)}" class="admin-popup-cover" alt="">`
+                        : '';
+
+                    function getPopupContent() {
+                        let distanceHtml = '';
+                        let directionOrigin = '';
+                        if (adminMarker) {
+                            const adminLatLng = adminMarker.getLatLng();
+                            const distance = map.distance(adminLatLng, [lat, lng]);
+                            const distanceText = distance > 1000 ? (distance / 1000).toFixed(2) + ' km' : Math.round(distance) + ' m';
+                            distanceHtml = `<br>Khoảng cách tới bạn: <strong style="color:var(--accent);">${distanceText}</strong>`;
+                            directionOrigin = `&origin=${adminLatLng.lat},${adminLatLng.lng}`;
+                        }
+
+                        let overlapWarning = isOverlapping 
+                            ? `<br><span style="color:#dc2626;font-weight:700;display:block;margin-top:4px;"><i class="fa-solid fa-triangle-exclamation"></i> Cảnh báo: Vùng Geofence đang bị trùng lấp!</span>` 
+                            : '';
+                            
+                        let directionUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}${directionOrigin}`;
+
+                        return `
+                            <div class="admin-popup">
+                                ${cover}
+                                <div class="admin-popup-title">${escapeHtml(poi.name)}</div>
+                                <div class="admin-popup-meta">
+                                    POI #${poi.id}<br>
+                                    Trạng thái: ${escapeHtml(poi.status)}<br>
+                                    Bán kính: ${escapeHtml(poi.radius)}m<br>
+                                    Tọa độ: ${lat.toFixed(6)}, ${lng.toFixed(6)}
+                                    ${distanceHtml}
+                                    ${overlapWarning}
+                                </div>
+                                <div class="admin-popup-actions">
+                                    <a href="/Poi/Edit/${poi.id}">Sửa POI</a>
+                                    <a href="/Poi/QrCode/${poi.id}">Mã QR</a>
+                                    <a href="${directionUrl}" target="_blank">Chỉ đường</a>
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    marker.bindPopup(getPopupContent());
+
+                    marker.on('click', function () {
+                        marker.setPopupContent(getPopupContent());
+                        document.querySelectorAll('.admin-map-item').forEach(x => x.classList.remove('active'));
+
+                        const listItem = document.querySelector(`.admin-map-item[data-id="${poi.id}"]`);
+                        if (listItem) {
+                            listItem.classList.add('active');
+                            listItem.scrollIntoView({
+                                behavior: 'smooth',
+                                block: 'nearest'
+                            });
+                        }
+                    });
+                    
+                    markerClusterGroup.addLayer(marker);
+
+                    markerItems.push({
+                        poi,
+                        marker,
+                        circle
+                    });
+                });
+                
+                map.addLayer(markerClusterGroup);
+
+                renderList(pois);
+                fitMap();
+            }
+
+            function fitMap() {
+                if (bounds.length === 1) {
+                    map.setView(bounds[0], 16);
+                } else if (bounds.length > 1) {
+                    map.fitBounds(bounds, {
+                        padding: [35, 35],
+                        maxZoom: 16
+                    });
+                } else {
+                    map.setView([10.762622, 106.660172], 12);
+                }
+            }
+
+            async function loadPois() {
+                try {
+                    const response = await fetch('@Url.Action("MapData", "Poi")');
+
+                    if (!response.ok) {
+                        throw new Error('Không tải được dữ liệu bản đồ.');
+                    }
+
+                    allPois = await response.json();
+
+                    renderMap();
+                } catch (error) {
+                    console.error(error);
+
+                    if (listEl) {
+                        listEl.innerHTML = `
+                            <div class="admin-map-loading">
+                                <i class="fa-solid fa-triangle-exclamation"></i>
+                                Không tải được dữ liệu map. Kiểm tra action /Poi/MapData trong PoiController.
+                            </div>
+                        `;
+                    }
+                }
+            }
+
+            fitButton?.addEventListener('click', fitMap);
+
+            locateButton?.addEventListener('click', function () {
+                if (!navigator.geolocation) {
+                    alert('Trình duyệt không hỗ trợ lấy vị trí hiện tại.');
+                    return;
+                }
+
+                locateButton.disabled = true;
+                locateButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang lấy...';
+
+                navigator.geolocation.getCurrentPosition(
+                    function (position) {
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
+                        const acc = position.coords.accuracy;
+
+                        if (adminMarker) {
+                            adminMarker.setLatLng([lat, lng]);
+                            adminCircle.setLatLng([lat, lng]);
+                            adminCircle.setRadius(acc);
+                        } else {
+                            const adminIcon = L.divIcon({
+                                className: 'custom-map-icon',
+                                html: `<div class="custom-marker" style="background:#3b82f6; border-color:#ffffff;"><i class="fa-solid fa-user-tie"></i></div>`,
+                                iconSize: [32, 32],
+                                iconAnchor: [16, 32],
+                                popupAnchor: [0, -32]
+                            });
+
+                            adminMarker = L.marker([lat, lng], { icon: adminIcon })
+                                .addTo(map)
+                                .bindPopup('Vị trí hiện tại của bạn');
+
+                            adminCircle = L.circle([lat, lng], {
+                                radius: acc,
+                                color: '#3b82f6',
+                                weight: 1,
+                                fillOpacity: 0.1
+                            }).addTo(map);
+                        }
+
+                        map.setView([lat, lng], 16);
+                        adminMarker.openPopup();
+
+                        locateButton.disabled = false;
+                        locateButton.innerHTML = '<i class="fa-solid fa-location-crosshairs"></i> Vị trí của tôi';
+                    },
+                    function () {
+                        alert('Không lấy được vị trí. Hãy kiểm tra quyền Location của trình duyệt.');
+
+                        locateButton.disabled = false;
+                        locateButton.innerHTML = '<i class="fa-solid fa-location-crosshairs"></i> Vị trí của tôi';
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 12000,
+                        maximumAge: 0
+                    }
+                );
+            });
+
+            searchInput?.addEventListener('input', function () {
+                renderMap();
+            });
+
+            filterButtons.forEach(function (button) {
+                button.addEventListener('click', function () {
+                    filterButtons.forEach(x => x.classList.remove('active'));
+                    button.classList.add('active');
+
+                    currentStatus = button.dataset.status || 'all';
+
+                    renderMap();
+                });
+            });
+
+            loadPois();
+
+            setTimeout(function () {
+                map.invalidateSize();
+            }, 300);
+        })();
+    </script>
+}

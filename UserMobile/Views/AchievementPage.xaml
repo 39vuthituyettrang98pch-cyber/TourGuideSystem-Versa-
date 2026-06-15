@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="UserMobile.Views.AchievementPage"
+             Title="Thành tựu"
+             BackgroundColor="{StaticResource PageBackground}">
+    <ScrollView>
+        <VerticalStackLayout Padding="18,18,18,36" Spacing="16">
+            <VerticalStackLayout Spacing="4">
+                <Label Text="Hành trình khám phá" Style="{StaticResource PageTitle}" />
+                <Label Text="Check-in POI, tích điểm và mở khóa những cột mốc mới."
+                       Style="{StaticResource PageSubtitle}" />
+            </VerticalStackLayout>
+
+            <ActivityIndicator IsRunning="{Binding IsLoading}"
+                               IsVisible="{Binding IsLoading}" />
+            <Border IsVisible="{Binding HasMessage}"
+                    BackgroundColor="#FDECEF"
+                    Stroke="Transparent"
+                    StrokeShape="RoundRectangle 14"
+                    Padding="14">
+                <Label Text="{Binding Message}" TextColor="#C83B55" />
+            </Border>
+
+            <Border Padding="20"
+                    BackgroundColor="#182033"
+                    Stroke="Transparent"
+                    StrokeShape="RoundRectangle 24">
+                <VerticalStackLayout Spacing="12">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <VerticalStackLayout Spacing="2">
+                            <Label Text="{Binding Summary.RankName}"
+                                   FontSize="22"
+                                   FontAttributes="Bold"
+                                   TextColor="White" />
+                            <Label Text="{Binding Summary.NextRankText}"
+                                   FontSize="12"
+                                   TextColor="#C8D1E2" />
+                        </VerticalStackLayout>
+                        <Border Grid.Column="1"
+                                Padding="14,8"
+                                BackgroundColor="#5B3FE4"
+                                Stroke="Transparent"
+                                StrokeShape="RoundRectangle 16">
+                            <Label Text="{Binding Summary.TotalPoints, StringFormat='{0} điểm'}"
+                                   FontAttributes="Bold"
+                                   TextColor="White" />
+                        </Border>
+                    </Grid>
+                    <ProgressBar Progress="{Binding Summary.RankProgress}"
+                                 ProgressColor="#8B78FF"
+                                 BackgroundColor="#374057"
+                                 HeightRequest="8" />
+                    <Grid ColumnDefinitions="*,*">
+                        <VerticalStackLayout>
+                            <Label Text="{Binding Summary.DiscoveredPoiCount}"
+                                   FontSize="24"
+                                   FontAttributes="Bold"
+                                   TextColor="White" />
+                            <Label Text="POI đã khám phá" FontSize="11" TextColor="#C8D1E2" />
+                        </VerticalStackLayout>
+                        <VerticalStackLayout Grid.Column="1">
+                            <Label Text="{Binding Summary.CompletionPercentage, StringFormat='{0:0.#}%'}"
+                                   FontSize="24"
+                                   FontAttributes="Bold"
+                                   TextColor="White" />
+                            <Label Text="Hoàn thành bản đồ" FontSize="11" TextColor="#C8D1E2" />
+                        </VerticalStackLayout>
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+
+            <Label Text="HUY HIỆU" Style="{StaticResource Eyebrow}" Margin="2,4,0,0" />
+            <CollectionView ItemsSource="{Binding Summary.Achievements}"
+                            SelectionMode="None">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Border Margin="0,0,0,10"
+                                Padding="14"
+                                BackgroundColor="{Binding CardColor}"
+                                Opacity="{Binding CardOpacity}"
+                                Stroke="#E3E6ED"
+                                StrokeShape="RoundRectangle 18">
+                            <Grid ColumnDefinitions="54,*,Auto" ColumnSpacing="12">
+                                <Border WidthRequest="54"
+                                        HeightRequest="54"
+                                        BackgroundColor="White"
+                                        Stroke="Transparent"
+                                        StrokeShape="RoundRectangle 18">
+                                    <Label Text="{Binding Icon}"
+                                           FontSize="24"
+                                           TextColor="{Binding StateColor}"
+                                           HorizontalOptions="Center"
+                                           VerticalOptions="Center" />
+                                </Border>
+                                <VerticalStackLayout Grid.Column="1" Spacing="4" VerticalOptions="Center">
+                                    <Label Text="{Binding Title}"
+                                           FontAttributes="Bold"
+                                           TextColor="{StaticResource Ink}" />
+                                    <Label Text="{Binding Description}"
+                                           FontSize="11"
+                                           TextColor="{StaticResource Muted}" />
+                                    <ProgressBar Progress="{Binding Progress}"
+                                                 ProgressColor="{Binding StateColor}"
+                                                 HeightRequest="5" />
+                                </VerticalStackLayout>
+                                <Label Grid.Column="2"
+                                       Text="{Binding ProgressText}"
+                                       FontSize="11"
+                                       FontAttributes="Bold"
+                                       TextColor="{Binding StateColor}"
+                                       VerticalOptions="Center" />
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <Label Text="KHÁM PHÁ GẦN ĐÂY" Style="{StaticResource Eyebrow}" Margin="2,4,0,0" />
+            <Label Text="Chưa có lần check-in nào. Hãy đến một POI hoặc quét mã QR để bắt đầu."
+                   IsVisible="{Binding Summary.HasNoRecentDiscoveries}"
+                   Style="{StaticResource PageSubtitle}"
+                   HorizontalTextAlignment="Center"
+                   Margin="12,24" />
+            <CollectionView ItemsSource="{Binding Summary.RecentDiscoveries}"
+                            SelectionMode="None">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Border Margin="0,0,0,10" Style="{StaticResource Card}">
+                            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="10">
+                                <Label Text="{Binding PoiName}"
+                                       FontAttributes="Bold"
+                                       TextColor="{StaticResource Ink}"
+                                       MaxLines="1"
+                                       LineBreakMode="TailTruncation" />
+                                <Label Grid.Column="1"
+                                       Text="{Binding PointsText}"
+                                       FontAttributes="Bold"
+                                       TextColor="{StaticResource Primary}" />
+                                <Label Grid.Row="1"
+                                       Text="{Binding MethodText}"
+                                       FontSize="11"
+                                       TextColor="{StaticResource Muted}" />
+                                <Label Grid.Row="1"
+                                       Grid.Column="1"
+                                       Text="{Binding DiscoveredAtText}"
+                                       FontSize="11"
+                                       TextColor="{StaticResource Muted}" />
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

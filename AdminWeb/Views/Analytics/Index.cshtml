@@ -1,0 +1,207 @@
+@using System.Text.Json
+@{
+    ViewData["Title"] = "Báo cáo & Thống kê";
+}
+
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px;">
+    <div>
+        <div class="page-title">Báo cáo Phân tích (Analytics)</div>
+        <div class="page-subtitle">Phân tích chuyên sâu về hành vi và tương tác của du khách</div>
+    </div>
+    <a asp-action="ExportExcel" class="btn btn-primary" style="height: fit-content;">
+        <i class="fa-solid fa-file-excel"></i> Xuất báo cáo (Excel)
+    </a>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px; margin-bottom: 24px;">
+    
+    <div class="card">
+        <div class="card-header"><div class="card-title"><i class="fa-solid fa-chart-line" style="color:var(--accent); margin-right:8px;"></i> Biểu đồ Lượt nghe 7 ngày qua</div></div>
+        <div class="card-body" style="height: 320px; padding: 20px;">
+            <canvas id="lineChart" style="width: 100%; height: 100%;"></canvas>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header"><div class="card-title"><i class="fa-solid fa-chart-pie" style="color:#10b981; margin-right:8px;"></i> Tỷ lệ Ngôn ngữ được chọn</div></div>
+        <div class="card-body" style="height: 320px; padding: 20px;">
+            <canvas id="pieChart" style="width: 100%; height: 100%;"></canvas>
+        </div>
+    </div>
+
+</div>
+
+<div class="card" style="margin-bottom: 24px; position: relative;">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <div class="card-title"><i class="fa-solid fa-fire" style="color:#ef4444; margin-right:8px;"></i> Bản đồ POI & Heatmap</div>
+            <div class="card-subtitle">@ViewBag.TotalPois POI và @ViewBag.TotalLogs lượt tương tác.</div>
+        </div>
+    </div>
+    <div class="card-body" style="padding: 0;">
+        <div id="heatmap-container" style="height: 500px; width: 100%; border-bottom-left-radius: 18px; border-bottom-right-radius: 18px; z-index: 1;"></div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header"><div class="card-title">Top Điểm Tham Quan Nổi Bật</div></div>
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th style="width: 100px; text-align: center;">Xếp hạng</th>
+                    <th>Tên địa điểm</th>
+                    <th style="text-align: right;">Tổng lượt nghe</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (ViewBag.TopPois != null && ((Dictionary<string, int>)ViewBag.TopPois).Any())
+                {
+                    int rank = 1;
+                    foreach (var poi in (Dictionary<string, int>)ViewBag.TopPois)
+                    {
+                        <tr>
+                            <td style="text-align: center; font-weight: bold;">
+                                @if (rank == 1) { <span style="font-size: 20px;">🥇</span> }
+                                else if (rank == 2) { <span style="font-size: 20px;">🥈</span> }
+                                else if (rank == 3) { <span style="font-size: 20px;">🥉</span> }
+                                else { <span style="color: var(--text2);">#@rank</span> }
+                            </td>
+                            <td style="font-weight: 600;">@poi.Key</td>
+                            <td style="text-align: right; color: var(--accent); font-weight: bold;">@poi.Value lượt</td>
+                        </tr>
+                        rank++;
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="3" style="text-align: center; padding: 24px; color: var(--text2);">
+                            Chưa có dữ liệu lượt nghe.
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <script>
+        // KHỞI TẠO BIỂU ĐỒ LINE (CHART.JS)
+        var ctxLine = document.getElementById('lineChart').getContext('2d');
+        var lineChart = new Chart(ctxLine, {
+            type: 'line',
+            data: {
+                labels: @Html.Raw(JsonSerializer.Serialize(ViewBag.ChartLabels)),
+                datasets: [{
+                    label: 'Lượt tương tác',
+                    data: @Html.Raw(JsonSerializer.Serialize(ViewBag.ChartData)),
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.15)',
+                    borderWidth: 2,
+                    tension: 0.4,
+                    fill: true,
+                    pointBackgroundColor: '#2563eb',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { 
+                    y: { beginAtZero: true, ticks: { precision: 0, color: '#8f96b0' }, grid: { color: 'rgba(255,255,255,0.1)' } }, 
+                    x: { grid: { display: false }, ticks: { color: '#8f96b0' } } 
+                }
+            }
+        });
+
+        // KHỞI TẠO BIỂU ĐỒ PIE (CHART.JS)
+        var ctxPie = document.getElementById('pieChart').getContext('2d');
+        var pieChart = new Chart(ctxPie, {
+            type: 'doughnut',
+            data: {
+                labels: @Html.Raw(JsonSerializer.Serialize(ViewBag.PieLabels)),
+                datasets: [{
+                    data: @Html.Raw(JsonSerializer.Serialize(ViewBag.PieData)),
+                    backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#6366f1'],
+                    borderWidth: 2,
+                    borderColor: '#13161e'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { 
+                    legend: { 
+                        position: 'right',
+                        labels: { color: '#e8eaf2' }
+                    } 
+                },
+                cutout: '65%'
+            }
+        });
+
+        // KHỞI TẠO BẢN ĐỒ HEATMAP (LEAFLET)
+        var map = L.map('heatmap-container').setView([10.762622, 106.660172], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors',
+            maxZoom: 19
+        }).addTo(map);
+
+        var rawData = @Html.Raw(JsonSerializer.Serialize(ViewBag.HeatmapData));
+        var poiData = @Html.Raw(JsonSerializer.Serialize(ViewBag.PoiMapData));
+        var mapBounds = [];
+        var statusColors = {
+            Approved: '#10b981',
+            Pending: '#f59e0b',
+            Rejected: '#ef4444'
+        };
+
+        poiData.forEach(function(poi) {
+            var position = [poi.latitude, poi.longitude];
+            var color = statusColors[poi.status] || '#3b82f6';
+            var marker = L.circleMarker(position, {
+                radius: 9,
+                color: '#ffffff',
+                weight: 2,
+                fillColor: color,
+                fillOpacity: 0.95
+            }).addTo(map);
+
+            var popup = document.createElement('div');
+            var title = document.createElement('strong');
+            title.textContent = poi.name;
+            var details = document.createElement('div');
+            details.textContent = 'POI #' + poi.id + ' · ' + poi.status + ' · bán kính ' + poi.radius + ' m';
+            details.style.margin = '5px 0 8px';
+            var editLink = document.createElement('a');
+            editLink.href = '/Poi/Edit/' + poi.id;
+            editLink.textContent = 'Mở POI';
+            popup.append(title, details, editLink);
+            marker.bindPopup(popup);
+            mapBounds.push(position);
+        });
+
+        if (rawData && rawData.length > 0) {
+            var heatData = rawData.map(function(p) { return [p.lat, p.lng, p.intensity]; });
+            L.heatLayer(heatData, { radius: 25, blur: 15, maxZoom: 17 }).addTo(map);
+            mapBounds.push(...heatData.map(function(p) { return [p[0], p[1]]; }));
+        }
+
+        if (mapBounds.length === 1) {
+            map.setView(mapBounds[0], 16);
+        } else if (mapBounds.length > 1) {
+            map.fitBounds(new L.LatLngBounds(mapBounds), { padding: [35, 35], maxZoom: 16 });
+        }
+    </script>
+}

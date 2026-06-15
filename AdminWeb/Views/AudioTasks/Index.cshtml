@@ -1,0 +1,110 @@
+@model IReadOnlyList<AdminWeb.Models.MediaTask>
+@using AdminWeb.Models
+
+@{
+    ViewData["Title"] = "Tác vụ AI Media";
+    var hasActiveTasks = Model.Any(task =>
+        task.Status is MediaTaskStatus.Pending or MediaTaskStatus.Processing);
+}
+
+<div class="page-title">Tác vụ AI Media</div>
+<div class="page-subtitle">
+    Theo dõi tiến độ dịch thuật, tạo audio và lồng tiếng video đa ngôn ngữ.
+</div>
+
+<div class="toolbar">
+    <div style="color: var(--text2);">Hiển thị tối đa 100 tác vụ gần nhất.</div>
+    <a asp-action="Index" class="btn btn-secondary btn-sm">
+        <i class="fa-solid fa-rotate"></i> Làm mới
+    </a>
+</div>
+
+<div class="table-wrapper">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>POI</th>
+                <th>Loại</th>
+                <th>Trạng thái</th>
+                <th>Tiến độ</th>
+                <th>Kết quả</th>
+                <th>Lần chạy</th>
+                <th>Lỗi gần nhất</th>
+                <th>Thao tác</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Model.Count == 0)
+            {
+                <tr>
+                    <td colspan="8" style="text-align:center;padding:24px;color:var(--text2);">
+                        Chưa có tác vụ AI Media.
+                    </td>
+                </tr>
+            }
+            else
+            {
+                @foreach (var task in Model)
+                {
+                    var poiName = task.Poi?.Translations
+                        .FirstOrDefault(item => item.LanguageCode == "vi")?.Name
+                        ?? $"POI #{task.PoiId}";
+                    var badgeClass = task.Status switch
+                    {
+                        MediaTaskStatus.Completed => "green",
+                        MediaTaskStatus.CompletedWithErrors => "amber",
+                        MediaTaskStatus.Failed => "red",
+                        MediaTaskStatus.Processing => "blue",
+                        _ => "gray"
+                    };
+
+                    <tr>
+                        <td>
+                            <div style="font-weight:600;">@poiName</div>
+                            <div style="font-size:12px;color:var(--text2);">#@task.PoiId</div>
+                        </td>
+                        <td>@task.TaskType</td>
+                        <td><span class="badge @badgeClass">@task.Status</span></td>
+                        <td style="min-width:150px;">
+                            <div style="display:flex;justify-content:space-between;font-size:12px;">
+                                <span>@task.ProgressPercentage%</span>
+                                <span style="color:var(--text2);">@task.UpdatedAt.ToLocalTime().ToString("dd/MM HH:mm")</span>
+                            </div>
+                            <div style="height:8px;background:rgba(255,255,255,.08);border-radius:999px;overflow:hidden;margin-top:6px;">
+                                <div style="height:100%;width:@task.ProgressPercentage%;background:var(--accent);"></div>
+                            </div>
+                        </td>
+                        <td>
+                            <span style="color:#10b981;">@task.SucceededLanguages thành công</span><br />
+                            <span style="color:#f59e0b;">@task.FailedLanguages lỗi</span>
+                            <span style="color:var(--text2);">/ @task.TotalLanguages</span>
+                        </td>
+                        <td>@task.AttemptCount</td>
+                        <td style="max-width:320px;white-space:pre-wrap;color:var(--text2);">
+                            @(string.IsNullOrWhiteSpace(task.LastError) ? "-" : task.LastError)
+                        </td>
+                        <td>
+                            @if (task.Status is MediaTaskStatus.Failed or MediaTaskStatus.CompletedWithErrors)
+                            {
+                                <form asp-action="Retry" method="post">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="taskId" value="@task.Id" />
+                                    <button class="btn btn-primary btn-sm" type="submit">
+                                        <i class="fa-solid fa-rotate-right"></i> Chạy lại
+                                    </button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+</div>
+
+@if (hasActiveTasks)
+{
+    <script>
+        window.setTimeout(() => window.location.reload(), 5000);
+    </script>
+}

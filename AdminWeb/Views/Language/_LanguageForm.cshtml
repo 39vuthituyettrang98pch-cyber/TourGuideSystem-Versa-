@@ -1,0 +1,32 @@
+@model AdminWeb.Models.SupportedLanguage
+
+<div class="form-grid">
+    <div class="form-group">
+        <label asp-for="LanguageCode" class="form-label">Mã ngôn ngữ</label>
+        @if (string.IsNullOrWhiteSpace(Model.LanguageCode))
+        {
+            <input asp-for="LanguageCode" class="form-control" placeholder="Ví dụ: en, ja, ko" required />
+        }
+        else
+        {
+            <input asp-for="LanguageCode" class="form-control" readonly />
+        }
+        <span asp-validation-for="LanguageCode" class="field-validation-error"></span>
+    </div>
+    <div class="form-group">
+        <label asp-for="LanguageName" class="form-label">Tên ngôn ngữ</label>
+        <input asp-for="LanguageName" class="form-control" placeholder="Ví dụ: English" required />
+        <span asp-validation-for="LanguageName" class="field-validation-error"></span>
+    </div>
+    <div class="form-group full">
+        <label asp-for="EdgeTtsVoice" class="form-label">Edge-TTS voice</label>
+        <input asp-for="EdgeTtsVoice" class="form-control" placeholder="Ví dụ: en-US-AriaNeural" required />
+        <span asp-validation-for="EdgeTtsVoice" class="field-validation-error"></span>
+    </div>
+    <div class="form-group full">
+        <label style="display:flex;align-items:center;gap:8px">
+            <input asp-for="IsActive" type="checkbox" />
+            Bật dịch và tạo media cho ngôn ngữ này
+        </label>
+    </div>
+</div>

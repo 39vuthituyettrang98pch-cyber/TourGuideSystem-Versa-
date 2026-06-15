@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:zxing="clr-namespace:ZXing.Net.Maui.Controls;assembly=ZXing.Net.Maui.Controls"
+             x:Class="UserMobile.Views.QrScannerPage"
+             Title="Quét QR"
+             BackgroundColor="#111827">
+    <Grid RowDefinitions="Auto,*,Auto" Padding="18,18,18,24">
+        <VerticalStackLayout Spacing="5">
+            <Label Text="Quét mã tại điểm tham quan" FontSize="24" FontAttributes="Bold" TextColor="White" />
+            <Label Text="Đưa mã QR vào giữa khung để mở nội dung." FontSize="13" TextColor="#B9C2D2" />
+        </VerticalStackLayout>
+
+        <Border Grid.Row="1" Margin="0,22" Stroke="#7D69E8" StrokeThickness="3" StrokeShape="RoundRectangle 24" BackgroundColor="Black">
+            <Grid>
+                <zxing:CameraBarcodeReaderView x:Name="BarcodeReader"
+                                               VerticalOptions="Fill"
+                                               HorizontalOptions="Fill"
+                                               IsDetecting="False" />
+                <Border WidthRequest="220" HeightRequest="220" BackgroundColor="Transparent" Stroke="White" StrokeThickness="2" StrokeShape="RoundRectangle 18" />
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="2" BackgroundColor="#243044" Stroke="Transparent" StrokeShape="RoundRectangle 14" Padding="15,12">
+            <Label Text="{Binding ScanResult}" TextColor="White" FontSize="14" HorizontalTextAlignment="Center" />
+        </Border>
+    </Grid>
+</ContentPage>

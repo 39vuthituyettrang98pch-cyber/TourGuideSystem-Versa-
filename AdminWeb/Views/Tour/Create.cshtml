@@ -1,0 +1,39 @@
+@model AdminWeb.Models.Tour
+
+@{
+    ViewData["Title"] = "Tạo Tour mới";
+}
+
+<div class="page-title">Tạo Tour mới</div>
+<div class="page-subtitle">Thiết lập thông tin cơ bản cho tour du lịch</div>
+<div class="card" style="padding:28px;">
+    <form asp-action="Create" method="post">
+        @Html.AntiForgeryToken()
+        <div class="form-grid">
+            <div class="form-group">
+                <label class="form-label">Tên tour (Tiếng Việt)</label>
+                <input class="form-control" type="text" name="Title" placeholder="Ví dụ: Hành trình Di sản Hà Nội" required />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Thời gian ước tính (phút)</label>
+                <input class="form-control" type="number" name="EstimatedTime" value="60" min="5" />
+            </div>
+            <div class="form-group full">
+                <label class="form-label">Mô tả ngắn</label>
+                <textarea class="form-control" name="Description" rows="4" placeholder="Tóm tắt nội dung tour"></textarea>
+            </div>
+            <div class="form-group full">
+                <label class="form-label">Trạng thái</label>
+                <select class="form-control" name="Status">
+                    <option value="active">Hoạt động</option>
+                    <option value="draft">Bản nháp</option>
+                    <option value="disabled">Đã ẩn</option>
+                </select>
+            </div>
+        </div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;">
+            <button type="submit" class="btn btn-primary">Lưu tour</button>
+            <a asp-action="Index" class="btn btn-secondary">Huỷ</a>
+        </div>
+    </form>
+</div>

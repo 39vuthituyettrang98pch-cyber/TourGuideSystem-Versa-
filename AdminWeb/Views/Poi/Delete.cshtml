@@ -1,0 +1,22 @@
+@model AdminWeb.Models.Poi
+
+@{
+    ViewData["Title"] = "Xóa POI";
+}
+
+<div class="page-title">Xóa POI #@Model.Id</div>
+<div class="page-subtitle">Xác nhận xóa điểm tham quan này khỏi hệ thống.</div>
+
+<div class="card" style="padding:28px;">
+    <div style="margin-bottom:20px; color:#f87171; background: rgba(248,113,113,0.1); padding: 16px; border-radius: 12px; border: 1px dashed #f87171;">
+        <i class="fa-solid fa-triangle-exclamation"></i> <strong>Cảnh báo:</strong> Bạn có chắc chắn muốn xóa POI có ID <strong>@Model.Id</strong> không? Hành động này sẽ xóa luôn tất cả các bản dịch liên kết và không thể hoàn tác!
+    </div>
+    
+    <form asp-action="Delete" method="post">
+        @Html.AntiForgeryToken()
+        <div style="display:flex;gap:12px;flex-wrap:wrap;">
+            <button type="submit" class="btn btn-danger"><i class="fa-solid fa-trash"></i> Xác nhận xóa</button>
+            <a asp-action="Index" class="btn btn-secondary">Hủy bỏ</a>
+        </div>
+    </form>
+</div>

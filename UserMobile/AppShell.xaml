@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Shell
+    x:Class="UserMobile.AppShell"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:views="clr-namespace:UserMobile.Views"
+    Title="VERSA Guide"
+    Shell.FlyoutBehavior="Disabled"
+    Shell.NavBarHasShadow="False">
+
+    <TabBar>
+        <ShellContent Title="Khám phá"
+                      Icon="map.svg"
+                      ContentTemplate="{DataTemplate views:MapPage}"
+                      Route="MapPage" />
+        <ShellContent Title="Tour"
+                      Icon="map.svg"
+                      ContentTemplate="{DataTemplate views:ToursPage}"
+                      Route="ToursPage" />
+        <ShellContent Title="Quét QR"
+                      Icon="qr.svg"
+                      ContentTemplate="{DataTemplate views:QrScannerPage}"
+                      Route="QrScannerPage" />
+        <ShellContent Title="Yêu thích"
+                      Icon="heart.svg"
+                      ContentTemplate="{DataTemplate views:FavoritesPage}"
+                      Route="FavoritesPage" />
+        <ShellContent Title="Cá nhân"
+                      Icon="profile.svg"
+                      ContentTemplate="{DataTemplate views:ProfilePage}"
+                      Route="ProfilePage" />
+    </TabBar>
+</Shell>

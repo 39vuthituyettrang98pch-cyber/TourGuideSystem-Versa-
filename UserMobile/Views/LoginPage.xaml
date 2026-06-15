@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="UserMobile.Views.LoginPage"
+             Title=""
+             BackgroundColor="{StaticResource PageBackground}">
+    <ScrollView>
+        <VerticalStackLayout Padding="24,28,24,36" Spacing="17">
+            <Border WidthRequest="76"
+                    HeightRequest="76"
+                    BackgroundColor="{StaticResource Primary}"
+                    Stroke="Transparent"
+                    StrokeShape="RoundRectangle 25"
+                    HorizontalOptions="Center">
+                <Label Text="V"
+                       FontSize="32"
+                       FontAttributes="Bold"
+                       TextColor="White"
+                       HorizontalOptions="Center"
+                       VerticalOptions="Center" />
+            </Border>
+            <VerticalStackLayout Spacing="5" Margin="0,4,0,8">
+                <Label Text="Chào mừng trở lại"
+                       Style="{StaticResource PageTitle}"
+                       HorizontalTextAlignment="Center" />
+                <Label Text="Đăng nhập để khám phá, lưu yêu thích và đồng bộ hành trình của bạn."
+                       Style="{StaticResource PageSubtitle}"
+                       HorizontalTextAlignment="Center" />
+            </VerticalStackLayout>
+
+            <Label Text="EMAIL" Style="{StaticResource Eyebrow}" />
+            <Border Style="{StaticResource InputCard}">
+                <Entry Placeholder="tenban@example.com"
+                       Text="{Binding Email}"
+                       Keyboard="Email"
+                       ReturnType="Next" />
+            </Border>
+            <Label Text="MẬT KHẨU" Style="{StaticResource Eyebrow}" Margin="0,2,0,0" />
+            <Border Style="{StaticResource InputCard}">
+                <Entry Placeholder="Nhập mật khẩu"
+                       Text="{Binding Password}"
+                       IsPassword="True"
+                       ReturnType="Go"
+                       ReturnCommand="{Binding LoginCommand}" />
+            </Border>
+
+            <Label Text="{Binding Message}" TextColor="#D94A64" IsVisible="{Binding HasMessage}" HorizontalTextAlignment="Center" />
+            <Button Text="Đăng nhập" Command="{Binding LoginCommand}" />
+            <Button Text="Tạo tài khoản mới"
+                    Clicked="OnRegisterClicked"
+                    Style="{StaticResource SecondaryButton}" />
+
+            <Border Style="{StaticResource Card}" Margin="0,10,0,0">
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                    <Label Text="✓"
+                           FontSize="20"
+                           TextColor="{StaticResource Tertiary}"
+                           VerticalOptions="Start" />
+                    <Label Grid.Column="1"
+                           Text="Tài khoản giúp giữ lại địa điểm yêu thích và lịch sử tham quan trên nhiều thiết bị."
+                           Style="{StaticResource PageSubtitle}" />
+                </Grid>
+            </Border>
+            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

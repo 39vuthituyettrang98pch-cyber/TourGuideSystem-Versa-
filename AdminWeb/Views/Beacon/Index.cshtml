@@ -1,0 +1,71 @@
+@model IEnumerable<AdminWeb.Models.Beacon>
+
+@{
+    ViewData["Title"] = "Quản lý thiết bị Beacon";
+}
+
+<div class="page-title">Thiết bị định vị (Beacons)</div>
+<div class="page-subtitle">Quản lý các trạm phát sóng Bluetooth tại điểm tham quan.</div>
+
+<div class="toolbar">
+    <div></div>
+    <div>
+        <a asp-action="Create" class="btn btn-primary btn-sm"><i class="fa-solid fa-plus"></i> Thêm Beacon mới</a>
+    </div>
+</div>
+
+<div class="table-wrapper">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>UUID / MAC Address</th>
+                <th>Major / Minor</th>
+                <th>Điểm tham quan (POI)</th>
+                <th>Ghi chú</th>
+                <th>Thao tác</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Model != null && Model.Any())
+            {
+                foreach (var item in Model)
+                {
+                    <tr>
+                        <td style="font-weight: bold; color: var(--accent);">#@item.Id</td>
+                        <td>
+                            <div style="font-family: monospace; font-size: 13px;">@item.Uuid</div>
+                            <div style="font-size: 12px; color: var(--text2);">MAC: @item.MacAddress</div>
+                        </td>
+                        <td>
+                            <span class="badge blue">M: @item.Major</span>
+                            <span class="badge green">m: @item.Minor</span>
+                        </td>
+                        <td>
+                            @(item.Poi?.Translations?.FirstOrDefault(t => t.LanguageCode == "vi")?.Name ?? (item.PoiId > 0 ? $"POI #{item.PoiId}" : "Chưa gán"))
+                        </td>
+                        <td style="font-size: 13px; color: var(--text2);">@item.PlacementNote</td>
+                        <td>
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                                <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-secondary"><i class="fa-solid fa-pen"></i></a>
+                                <form asp-action="Delete" method="post" style="display:inline;" onsubmit="return confirm('Bạn có chắc chắn muốn xóa thiết bị này?');">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@item.Id" />
+                                    <button type="submit" class="btn btn-sm btn-danger"><i class="fa-solid fa-trash"></i></button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            }
+            else
+            {
+                <tr>
+                    <td colspan="6" style="text-align: center; padding: 24px; color: var(--text2);">
+                        Chưa có thiết bị Beacon nào trong hệ thống.
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

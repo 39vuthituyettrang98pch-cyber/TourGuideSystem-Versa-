@@ -1,0 +1,20 @@
+@model ErrorViewModel
+@{
+    ViewData["Title"] = "Đã xảy ra lỗi";
+}
+
+<div class="card" style="max-width:760px;margin:8vh auto">
+    <div class="empty-state">
+        <i class="fa-solid fa-triangle-exclamation" style="color:var(--red)"></i>
+        <h2>Không thể hoàn tất yêu cầu</h2>
+        <p>Hệ thống đã ghi nhận lỗi. Hãy thử tải lại trang hoặc quay về Dashboard.</p>
+        @if (Model.ShowRequestId)
+        {
+            <code>Request ID: @Model.RequestId</code>
+        }
+        <div class="page-actions" style="margin-top:8px">
+            <button type="button" class="btn btn-secondary" onclick="window.history.back()"><i class="fa-solid fa-arrow-left"></i> Quay lại</button>
+            <a asp-controller="Home" asp-action="Index" class="btn btn-primary"><i class="fa-solid fa-house"></i> Dashboard</a>
+        </div>
+    </div>
+</div>

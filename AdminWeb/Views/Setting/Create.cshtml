@@ -1,0 +1,70 @@
+@model AdminWeb.Models.SystemSetting
+@{
+    ViewData["Title"] = "Thêm cấu hình mới";
+}
+
+<div class="page-title text-white">Thêm cấu hình mới</div>
+<div class="page-subtitle text-white">Thêm mới một thông số cài đặt chung cho hệ thống.</div>
+
+<div class="row">
+    <div class="col-lg-10 col-xl-8">
+        <div class="card">
+            
+            <div class="card-header" style="display: block; border-bottom: 1px solid var(--border); padding-bottom: 16px; margin-bottom: 20px;">
+                <h5 class="card-title mb-1 text-white">
+                    <i class="fa-solid fa-sliders me-2" style="color: var(--accent);"></i> Thông số hệ thống
+                </h5>
+                <p class="card-subtitle mt-1 text-white" style="font-size: 13px; margin-bottom: 0;">
+                    Định nghĩa cặp khóa - giá trị để cấu hình hoạt động của ứng dụng.
+                </p>
+            </div>
+
+            <form asp-action="Create" method="post">
+                <div class="form-grid">
+                    
+                    <div class="form-group">
+                        <label asp-for="SettingKey" class="form-label text-white">Khóa (Key) <span class="text-danger">*</span></label>
+                        <div style="position: relative;">
+                            <i class="fa-solid fa-key" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: white; font-size: 13px;"></i>
+                            <input asp-for="SettingKey" class="form-control fw-bold" style="padding-left: 38px; color: var(--accent);" required placeholder="VD: offline_package_enabled" />
+                        </div>
+                        <span asp-validation-for="SettingKey" class="text-danger small mt-1 d-block"></span>
+                    </div>
+
+                    <div class="form-group">
+                        <label asp-for="SettingValue" class="form-label text-white">Giá trị (Value) <span class="text-danger">*</span></label>
+                        <div style="position: relative;">
+                            <i class="fa-solid fa-code" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: white; font-size: 13px;"></i>
+                            <input asp-for="SettingValue" class="form-control text-white" style="padding-left: 38px;" required placeholder="VD: true" />
+                        </div>
+                        <span asp-validation-for="SettingValue" class="text-danger small mt-1 d-block"></span>
+                    </div>
+                    
+                    <div class="form-group full" style="margin-top: 8px;">
+                        <label asp-for="Description" class="form-label text-white">Mô tả</label>
+                        <div style="position: relative;">
+                            <i class="fa-solid fa-circle-info" style="position: absolute; left: 14px; top: 15px; color: white; font-size: 13px;"></i>
+                            <textarea asp-for="Description" class="form-control text-white" rows="3" style="padding-left: 38px; resize: vertical;" placeholder="Mô tả công dụng của cấu hình này..."></textarea>
+                        </div>
+                        <span asp-validation-for="Description" class="text-danger small mt-1 d-block"></span>
+                    </div>
+                </div>
+
+                <hr style="border-color: var(--border); margin: 24px 0 20px;" />
+
+                <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                    <a asp-action="Index" class="btn btn-secondary">
+                        Hủy bỏ
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fa-solid fa-plus"></i> Thêm cấu hình
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

@@ -1,0 +1,140 @@
+@model AdminWeb.ViewModels.PoiCreateViewModel
+
+@{
+    ViewData["Title"] = "Thêm POI mới";
+}
+
+<div class="page-title">Thêm POI mới</div>
+<div class="page-subtitle">Tạo điểm tham quan mới trên hệ thống để du khách khám phá.</div>
+<div class="card" style="padding:28px;">
+    <form asp-action="Create" method="post" enctype="multipart/form-data">
+        @Html.AntiForgeryToken()
+        <div class="form-grid">
+            <div class="form-group full">
+                <label class="form-label">Tên điểm tham quan (Tiếng Việt)</label>
+                <input class="form-control" asp-for="Name" type="text" placeholder="Ví dụ: Dinh Độc Lập" required />
+            </div>
+          <div class="form-group">
+    <label class="form-label">Vĩ độ (Latitude)</label>
+    <input class="form-control" asp-for="Latitude" type="number" step="any" placeholder="Ví dụ: 10.7769" required />
+</div>
+
+<div class="form-group">
+    <label class="form-label">Kinh độ (Longitude)</label>
+    <input class="form-control" asp-for="Longitude" type="number" step="any" placeholder="Ví dụ: 106.6951" required />
+</div>
+
+<div class="form-group">
+    <label class="form-label">Bán kính kích hoạt Geofence (mét)</label>
+    <input class="form-control" asp-for="Radius" type="number" value="50" min="10" required />
+</div>
+
+@await Html.PartialAsync("PoiLocationPicker")
+
+            <div class="form-group">
+                <label class="form-label">Trạng thái</label>
+                @if (User.IsInRole("Admin"))
+                {
+                    <input class="form-control" value="Approved" readonly />
+                    <small style="color:var(--text2);font-size:12px;margin-top:6px;display:block;">Là Admin, POI của bạn sẽ tự động được phê duyệt.</small>
+                }
+                else
+                {
+                    <input class="form-control" value="Pending" readonly />
+                    <small style="color:var(--text2);font-size:12px;margin-top:6px;display:block;">POI sau khi lưu sẽ được gửi Admin duyệt.</small>
+                }
+            </div>
+
+            <div class="form-group full">
+                <label class="form-label">Ảnh bìa (Thumbnail)</label>
+                <input class="form-control" type="file" asp-for="CoverImage" accept="image/*" />
+            </div>
+
+            <div class="form-group full">
+                <label class="form-label">Audio gốc tiếng Việt (không bắt buộc)</label>
+                <input class="form-control" type="file" asp-for="SourceAudio" accept="audio/*" />
+                <span asp-validation-for="SourceAudio" class="text-danger"></span>
+            </div>
+
+            <div class="form-group full">
+                <label class="form-label">Video gốc tiếng Việt (không bắt buộc)</label>
+                <input class="form-control" type="file" asp-for="SourceVideo" accept="video/*" />
+                <span asp-validation-for="SourceVideo" class="text-danger"></span>
+            </div>
+
+            <div class="form-group full" style="margin-top:8px;">
+                <label class="form-label">Mô tả ngắn (ShortDescription - Tiếng Việt)</label>
+                <textarea class="form-control" asp-for="ShortDescription" id="ShortDescription" rows="4" placeholder="Mô tả tóm tắt nội dung điểm tham quan" ></textarea>
+            </div>
+
+            <div class="form-group full" style="margin-top:8px;">
+                <label class="form-label">Mô tả chi tiết (FullDescription - Tiếng Việt)</label>
+                <textarea class="form-control" asp-for="FullDescription" id="FullDescription" rows="6" placeholder="Mô tả chi tiết điểm tham quan"></textarea>
+            </div>
+
+            <div class="form-group full">
+                <button type="button" id="btnOptimize" class="btn btn-secondary" style="width:100%;">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> AI Tối ưu nội dung
+                </button>
+                <small style="color:var(--text2);font-size:12px;margin-top:8px;display:block;">
+                    Bấm nút để AI tối ưu lại nội dung ngắn + chi tiết và tự điền vào textarea.
+                </small>
+            </div>
+        </div>
+
+        <div style="display:flex;gap:12px;flex-wrap:wrap; margin-top:24px;">
+            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Lưu POI</button>
+            <a asp-action="Index" class="btn btn-secondary">Quay lại</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            const btn = document.getElementById('btnOptimize');
+            const shortEl = document.getElementById('ShortDescription');
+            const fullEl = document.getElementById('FullDescription');
+
+            if (!btn || !shortEl || !fullEl) return;
+
+            btn.addEventListener('click', async () => {
+                try {
+                    const rawText = [shortEl.value, fullEl.value].filter(Boolean).join('\n\n').trim();
+                    if (!rawText) {
+                        alert('Vui lòng nhập mô tả thô trước khi tối ưu.');
+                        return;
+                    }
+
+                    btn.disabled = true;
+                    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang tối ưu...';
+
+                    const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+
+                    const res = await fetch('/PoiAi/OptimizeContent', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'RequestVerificationToken': token
+                        },
+                        body: JSON.stringify({ rawText })
+                    });
+
+                    const data = await res.json();
+                    if (!res.ok || !data.success) {
+                        throw new Error(data.message || 'Gemini API lỗi');
+                    }
+
+                    if (typeof data.shortDescription === 'string') shortEl.value = data.shortDescription;
+                    if (typeof data.fullDescription === 'string') fullEl.value = data.fullDescription;
+                } catch (e) {
+                    console.error(e);
+                    alert('Không tối ưu được nội dung: ' + (e?.message || e));
+                } finally {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> AI Tối ưu nội dung';
+                }
+            });
+        })();
+    </script>
+}

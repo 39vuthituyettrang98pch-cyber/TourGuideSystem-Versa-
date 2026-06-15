@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="UserMobile.Views.ProfilePage"
+             Title="Cá nhân"
+             BackgroundColor="{StaticResource PageBackground}">
+    <ScrollView>
+        <VerticalStackLayout Padding="18,18,18,32" Spacing="16">
+            <VerticalStackLayout Spacing="4">
+                <Label Text="Cá nhân" Style="{StaticResource PageTitle}" />
+                <Label Text="Quản lý hành trình và thiết lập trải nghiệm của bạn."
+                       Style="{StaticResource PageSubtitle}" />
+            </VerticalStackLayout>
+
+            <Border Padding="20"
+                    BackgroundColor="#182033"
+                    Stroke="Transparent"
+                    StrokeShape="RoundRectangle 24">
+                <Grid ColumnDefinitions="64,*" ColumnSpacing="15">
+                    <Border WidthRequest="64"
+                            HeightRequest="64"
+                            BackgroundColor="{StaticResource Primary}"
+                            Stroke="Transparent"
+                            StrokeShape="RoundRectangle 22">
+                        <Label Text="V"
+                               FontSize="27"
+                               FontAttributes="Bold"
+                               TextColor="White"
+                               HorizontalOptions="Center"
+                               VerticalOptions="Center" />
+                    </Border>
+                    <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="4">
+                        <Label Text="{Binding WelcomeText}"
+                               FontSize="18"
+                               FontAttributes="Bold"
+                               TextColor="White"
+                               MaxLines="2"
+                               LineBreakMode="TailTruncation" />
+                        <Label Text="{Binding Profile.Email}"
+                               FontSize="12"
+                               TextColor="#C8D1E2"
+                               IsVisible="{Binding IsLoggedIn}"
+                               MaxLines="1"
+                               LineBreakMode="TailTruncation" />
+                    </VerticalStackLayout>
+                </Grid>
+            </Border>
+
+            <Border Padding="18"
+                    IsVisible="{Binding IsLoggedIn}"
+                    BackgroundColor="#F0EDFF"
+                    Stroke="#D9D1FF"
+                    StrokeShape="RoundRectangle 22">
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnAchievementsClicked" />
+                </Border.GestureRecognizers>
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="14">
+                    <Border WidthRequest="52"
+                            HeightRequest="52"
+                            BackgroundColor="{StaticResource Primary}"
+                            Stroke="Transparent"
+                            StrokeShape="RoundRectangle 18">
+                        <Label Text="★"
+                               FontSize="23"
+                               TextColor="White"
+                               HorizontalOptions="Center"
+                               VerticalOptions="Center" />
+                    </Border>
+                    <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
+                        <Label Text="{Binding AchievementSummary.RankName, FallbackValue='Tân binh'}"
+                               FontAttributes="Bold"
+                               TextColor="{StaticResource Ink}" />
+                        <Label Text="{Binding AchievementSummary.DiscoveryProgressText, FallbackValue='Bắt đầu hành trình khám phá'}"
+                               FontSize="11"
+                               TextColor="{StaticResource Muted}" />
+                    </VerticalStackLayout>
+                    <VerticalStackLayout Grid.Column="2" Spacing="1" VerticalOptions="Center">
+                        <Label Text="{Binding AchievementSummary.TotalPoints, StringFormat='{0} điểm', FallbackValue='0 điểm'}"
+                               FontAttributes="Bold"
+                               TextColor="{StaticResource Primary}"
+                               HorizontalTextAlignment="End" />
+                        <Label Text="Xem thành tựu ›"
+                               FontSize="10"
+                               TextColor="{StaticResource Primary}" />
+                    </VerticalStackLayout>
+                </Grid>
+            </Border>
+
+            <Label Text="TRUY CẬP NHANH" Style="{StaticResource Eyebrow}" Margin="2,4,0,0" />
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                <Border Style="{StaticResource Card}">
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnRecentClicked" />
+                    </Border.GestureRecognizers>
+                    <VerticalStackLayout Spacing="8">
+                        <Label Text="↶" FontSize="25" TextColor="{StaticResource Primary}" />
+                        <Label Text="Đã xem gần đây" FontAttributes="Bold" TextColor="{StaticResource Ink}" />
+                        <Label Text="Mở lại điểm tham quan" Style="{StaticResource PageSubtitle}" />
+                    </VerticalStackLayout>
+                </Border>
+                <Border Grid.Column="1" Style="{StaticResource Card}">
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnFavoritesClicked" />
+                    </Border.GestureRecognizers>
+                    <VerticalStackLayout Spacing="8">
+                        <Label Text="♡" FontSize="25" TextColor="{StaticResource Primary}" />
+                        <Label Text="Yêu thích" FontAttributes="Bold" TextColor="{StaticResource Ink}" />
+                        <Label Text="Xem bộ sưu tập đã lưu" Style="{StaticResource PageSubtitle}" />
+                    </VerticalStackLayout>
+                </Border>
+            </Grid>
+
+            <Label Text="THIẾT LẬP" Style="{StaticResource Eyebrow}" Margin="2,4,0,0" />
+            <Border Style="{StaticResource Card}">
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                    <Border WidthRequest="42"
+                            HeightRequest="42"
+                            BackgroundColor="{StaticResource Secondary}"
+                            Stroke="Transparent"
+                            StrokeShape="RoundRectangle 14">
+                        <Label Text="文"
+                               FontSize="18"
+                               TextColor="{StaticResource Primary}"
+                               HorizontalOptions="Center"
+                               VerticalOptions="Center" />
+                    </Border>
+                    <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
+                        <Label Text="Ngôn ngữ nội dung" FontAttributes="Bold" TextColor="{StaticResource Ink}" />
+                        <Label Text="{Binding CurrentLanguage}" Style="{StaticResource PageSubtitle}" />
+                    </VerticalStackLayout>
+                    <Button Grid.Column="2"
+                            Text="Thay đổi"
+                            Clicked="OnLanguageClicked"
+                            Style="{StaticResource SecondaryButton}"
+                            Padding="12,6"
+                            MinimumHeightRequest="40" />
+                </Grid>
+            </Border>
+
+            <Border Style="{StaticResource Card}">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="VERSA Guide" FontSize="17" FontAttributes="Bold" TextColor="{StaticResource Ink}" />
+                    <Label Text="Bản đồ OpenStreetMap, quét QR và thuyết minh đa ngôn ngữ trong một ứng dụng."
+                           Style="{StaticResource PageSubtitle}" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Button Text="Đăng nhập hoặc đăng ký"
+                    Clicked="OnLoginClicked"
+                    IsVisible="{Binding IsLoggedOut}" />
+            <Button Text="Đăng xuất"
+                    Clicked="OnLogoutClicked"
+                    IsVisible="{Binding IsLoggedIn}"
+                    BackgroundColor="#FDECEF"
+                    TextColor="#C83B55" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

@@ -1,0 +1,55 @@
+## .NET & .NET MAUI Build Artifacts
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Re]leases/
+x64/
+x86/
+bin/
+obj/
+AppPackages/
+BundleArtifacts/
+publish/
+
+## User-specific files & configurations
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.csproj.user
+*.userprefs
+
+## Visual Studio / VS Code
+.vs/
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.history/
+*.code-workspace
+
+## Mobile Specific Packages (Android & iOS)
+*.apk
+*.aab
+*.ipa
+*.app
+*.appx
+*.appxbundle
+*.msix
+*.msixbundle
+*.appinstaller
+
+## Local Databases (SQLite & EF Migrations/Caches)
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+_schema_history
+
+## OS-specific files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini

@@ -1,0 +1,298 @@
+@model AdminWeb.ViewModels.PoiQrViewModel
+
+@{
+    ViewData["Title"] = $"Mã QR POI #{Model.PoiId}";
+}
+
+<div class="qr-page">
+
+    <div class="page-heading qr-page-heading">
+        <div>
+            <div class="page-title">Mã QR điểm tham quan</div>
+            <div class="page-subtitle">
+                In hoặc tải mã QR để du khách mở POI và ghi nhận lần khám phá.
+            </div>
+        </div>
+
+        <div class="page-actions qr-actions">
+            <a asp-action="QrImage"
+               asp-route-id="@Model.PoiId"
+               asp-route-download="true"
+               class="btn btn-primary">
+                <i class="fa-solid fa-download"></i>
+                Tải PNG
+            </a>
+
+            <button type="button"
+                    class="btn btn-secondary"
+                    onclick="window.print()">
+                <i class="fa-solid fa-print"></i>
+                In mã QR
+            </button>
+        </div>
+    </div>
+
+    <div class="card qr-print-card">
+        <div class="qr-brand">VERSA GUIDE</div>
+
+        <h2 class="qr-title">@Model.PoiName</h2>
+
+        <p class="qr-desc">
+            Quét mã để mở nội dung POI và nhận 10 điểm ở lần khám phá đầu tiên.
+        </p>
+
+        <div class="qr-image-frame">
+            <img src="@Url.Action("QrImage", "Poi", new { id = Model.PoiId })"
+                 alt="Mã QR @Model.PoiName" />
+        </div>
+
+        <div class="qr-info">
+            <div>POI #@Model.PoiId</div>
+
+            <code class="qr-code-text">
+                @Model.QrPayload
+            </code>
+        </div>
+    </div>
+
+    <div class="qr-page-footer">
+        <a asp-action="Index" class="btn btn-secondary">
+            <i class="fa-solid fa-arrow-left"></i>
+            Quay lại POI
+        </a>
+
+        @if (User.IsInRole("Admin"))
+        {
+            <form asp-action="RegenerateQr"
+                  asp-route-id="@Model.PoiId"
+                  method="post"
+                  onsubmit="return confirm('Tạo lại QR sẽ làm mã đã in trước đó hết hiệu lực. Tiếp tục?');">
+                @Html.AntiForgeryToken()
+
+                <button type="submit" class="btn btn-danger">
+                    <i class="fa-solid fa-rotate"></i>
+                    Tạo lại mã QR
+                </button>
+            </form>
+        }
+    </div>
+
+</div>
+
+<style>
+    .qr-page {
+        display: grid;
+        width: 100%;
+        justify-items: center;
+        gap: 18px;
+        padding: 32px 16px 28px;
+    }
+
+    .qr-page-heading,
+    .qr-print-card,
+    .qr-page-footer {
+        width: min(100%, 720px);
+    }
+
+    .qr-page-heading {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        text-align: center;
+        margin-bottom: 4px;
+    }
+
+    .qr-page-heading .page-title {
+        font-size: 22px;
+        font-weight: 800;
+        color: var(--text);
+    }
+
+    .qr-page-heading .page-subtitle {
+        margin-top: 6px;
+        color: var(--text2);
+        font-size: 14px;
+    }
+
+    .qr-actions {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .qr-print-card {
+        padding: 32px;
+        text-align: center;
+        border-radius: 20px;
+    }
+
+    .qr-brand {
+        color: var(--accent);
+        font-size: 13px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: .08em;
+    }
+
+    .qr-title {
+        margin: 10px 0 6px;
+        color: var(--text);
+        font-size: 28px;
+        font-weight: 800;
+        line-height: 1.25;
+    }
+
+    .qr-desc {
+        color: var(--text2);
+        margin: 0 0 22px;
+        font-size: 15px;
+    }
+
+    .qr-image-frame {
+        display: flex;
+        width: fit-content !important;
+        max-width: 100%;
+        margin: 0 auto;
+        padding: 18px;
+        border-radius: 20px;
+        background: #ffffff;
+        justify-content: center;
+        align-items: center;
+        overflow: hidden;
+    }
+
+    .qr-image-frame img {
+        display: block;
+        width: 300px;
+        max-width: 100%;
+        height: auto;
+        aspect-ratio: 1 / 1;
+        object-fit: contain;
+        image-rendering: pixelated;
+    }
+
+    .qr-info {
+        margin-top: 20px;
+        color: var(--text2);
+        font-size: 12px;
+    }
+
+    .qr-code-text {
+        display: block;
+        width: 100%;
+        margin-top: 8px;
+        color: #ff4d8d;
+        background: transparent;
+        word-break: break-all;
+        white-space: normal;
+        font-size: 11px;
+    }
+
+    .qr-page-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        margin-top: 0;
+        flex-wrap: wrap;
+    }
+
+    .qr-page-footer form {
+        margin: 0;
+    }
+
+    @@media print {
+        body {
+            background: #ffffff !important;
+        }
+
+        .sidebar,
+        .header,
+        .topbar,
+        .navbar,
+        .qr-page-heading,
+        .qr-page-footer {
+            display: none !important;
+        }
+
+        .main,
+        .main-content,
+        .content,
+        .container,
+        .container-fluid {
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+        }
+
+        .qr-page {
+            display: block !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+
+        .qr-print-card {
+            width: 100% !important;
+            max-width: 100% !important;
+            box-shadow: none !important;
+            border: 0 !important;
+            color: #111111 !important;
+            background: #ffffff !important;
+            padding: 24px !important;
+        }
+
+        .qr-title,
+        .qr-desc,
+        .qr-info {
+            color: #111111 !important;
+        }
+
+        .qr-image-frame {
+            background: #ffffff !important;
+            border: 1px solid #dddddd !important;
+        }
+
+        .qr-code-text {
+            color: #111111 !important;
+        }
+    }
+
+    @@media (max-width: 640px) {
+        .qr-page {
+            padding: 22px 12px;
+        }
+
+        .qr-print-card {
+            padding: 22px 14px;
+        }
+
+        .qr-title {
+            font-size: 22px;
+        }
+
+        .qr-image-frame {
+            padding: 12px;
+            border-radius: 16px;
+        }
+
+        .qr-image-frame img {
+            width: 260px;
+        }
+
+        .qr-page-footer {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .qr-page-footer .btn,
+        .qr-page-footer form,
+        .qr-page-footer form .btn {
+            width: 100%;
+        }
+    }
+</style>

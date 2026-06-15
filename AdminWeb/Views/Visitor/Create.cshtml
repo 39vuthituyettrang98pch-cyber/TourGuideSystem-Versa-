@@ -1,0 +1,95 @@
+@model AdminWeb.Models.Tourist
+@{
+    ViewData["Title"] = "Thêm du khách mới";
+}
+
+<!-- Sử dụng chuẩn class page-title từ file CSS -->
+<div class="page-title">Thêm du khách mới</div>
+<div class="page-subtitle">Tạo tài khoản người dùng / du khách vào hệ thống.</div>
+
+<div class="row">
+    <!-- Đưa vào Grid để tự động co giãn đẹp mắt trên các màn hình lớn -->
+    <div class="col-lg-10 col-xl-8">
+        <div class="card">
+            
+            <!-- Header của Card -->
+            <div class="card-header" style="display: block; border-bottom: 1px solid var(--border); padding-bottom: 16px; margin-bottom: 20px;">
+                <h5 class="card-title mb-1">
+                    <i class="fa-solid fa-user-plus me-2" style="color: var(--accent);"></i> Thông tin khởi tạo
+                </h5>
+                <p class="card-subtitle mt-1" style="font-size: 13px; margin-bottom: 0;">
+                    Nhập các thông tin cơ bản để đăng ký tài khoản mới.
+                </p>
+            </div>
+
+            <form asp-action="Create" method="post" autocomplete="off">
+                <div class="form-grid">
+                    
+                    <!-- Bỏ class 'full' để Họ tên và Email chia làm 2 cột -->
+                    <div class="form-group">
+                        <label asp-for="FullName" class="form-label">Họ và Tên <span class="text-danger">*</span></label>
+                        <div style="position: relative;">
+                            <i class="fa-solid fa-user" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text3); font-size: 13px;"></i>
+                            <input asp-for="FullName" class="form-control" placeholder="Nhập họ và tên..." style="padding-left: 38px;" required />
+                        </div>
+                        <span asp-validation-for="FullName" class="text-danger small mt-1 d-block"></span>
+                    </div>
+
+                    <div class="form-group">
+                        <label asp-for="Email" class="form-label">Email <span class="text-danger">*</span></label>
+                        <div style="position: relative;">
+                            <i class="fa-solid fa-envelope" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text3); font-size: 13px;"></i>
+                            <input asp-for="Email" type="email" class="form-control" placeholder="VD: user@example.com" style="padding-left: 38px;" required />
+                        </div>
+                        <span asp-validation-for="Email" class="text-danger small mt-1 d-block"></span>
+                    </div>
+
+                    <!-- Mật khẩu chiếm full bề ngang -->
+                    <div class="form-group full" style="margin-top: 8px;">
+                        <label for="Password" class="form-label">Mật khẩu <span class="text-danger">*</span></label>
+                        <div style="position: relative;">
+                            <i class="fa-solid fa-lock" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text3); font-size: 13px;"></i>
+                            <input type="password" id="Password" name="Password" class="form-control" autocomplete="new-password" placeholder="Nhập mật khẩu cho tài khoản..." style="padding-left: 38px; padding-right: 40px;" required />
+                            
+                            <!-- Nút con mắt nhúng gọn gàng vào trong ô input -->
+                            <button type="button" id="togglePassword" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: transparent; border: none; color: var(--text3); cursor: pointer; padding: 4px;">
+                                <i class="fa-solid fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <hr style="border-color: var(--border); margin: 24px 0 20px;" />
+
+                <!-- Cụm nút căn phải -->
+                <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                    <a asp-action="Index" class="btn btn-secondary">
+                        Hủy bỏ
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fa-solid fa-plus"></i> Tạo tài khoản
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        document.getElementById('togglePassword').addEventListener('click', function () {
+            const passwordInput = document.getElementById('Password');
+            const icon = this.querySelector('i');
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                icon.classList.replace('fa-eye', 'fa-eye-slash');
+                icon.style.color = 'var(--accent)';
+            } else {
+                passwordInput.type = 'password';
+                icon.classList.replace('fa-eye-slash', 'fa-eye');
+                icon.style.color = 'var(--text3)';
+            }
+        });
+    </script>
+}

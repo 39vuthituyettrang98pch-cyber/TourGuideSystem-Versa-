@@ -1,0 +1,556 @@
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+<style>
+    .poi-map-picker {
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        overflow: hidden;
+        background: linear-gradient(180deg, var(--surface-2), var(--surface));
+        box-shadow: var(--shadow);
+    }
+
+    .poi-map-toolbar {
+        display: grid;
+        grid-template-columns: 1fr auto auto;
+        gap: 10px;
+        padding: 14px;
+        border-bottom: 1px solid var(--border);
+        background: var(--surface-2);
+    }
+
+    .poi-map-search-wrap {
+        position: relative;
+    }
+
+    .poi-map-search-results {
+        position: absolute;
+        top: calc(100% + 8px);
+        left: 0;
+        right: 0;
+        z-index: 1200;
+        display: none;
+        overflow: hidden;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        background: var(--surface);
+        box-shadow: var(--shadow);
+    }
+
+    .poi-map-search-results.active {
+        display: block;
+    }
+
+    .poi-map-result {
+        width: 100%;
+        border: 0;
+        padding: 12px 14px;
+        text-align: left;
+        color: var(--text);
+        background: transparent;
+        border-bottom: 1px solid var(--border);
+        cursor: pointer;
+    }
+
+    .poi-map-result:hover {
+        background: var(--accent-soft);
+    }
+
+    .poi-map-result:last-child {
+        border-bottom: 0;
+    }
+
+    .poi-map-result strong {
+        display: block;
+        font-size: 13px;
+    }
+
+    .poi-map-result span {
+        display: block;
+        margin-top: 3px;
+        color: var(--text-soft);
+        font-size: 12px;
+    }
+
+    #poiAdminMapPicker {
+        height: 430px;
+        width: 100%;
+        z-index: 1;
+    }
+
+    .poi-map-footer {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 12px;
+        align-items: center;
+        padding: 14px;
+        border-top: 1px solid var(--border);
+        background: var(--surface);
+    }
+
+    .poi-map-current {
+        color: var(--text-muted);
+        font-size: 13px;
+        line-height: 1.5;
+    }
+
+    .poi-map-current code {
+        color: var(--accent);
+        background: var(--accent-soft);
+        border-radius: 999px;
+        padding: 4px 8px;
+    }
+
+    .poi-map-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: flex-end;
+    }
+
+    .leaflet-container {
+        font-family: var(--font);
+        background: var(--surface-2);
+    }
+
+    .leaflet-popup-content-wrapper,
+    .leaflet-popup-tip {
+        color: var(--text);
+        background: var(--surface);
+        border: 1px solid var(--border);
+    }
+
+    .leaflet-control-attribution {
+        font-size: 10px;
+    }
+
+    /* Style cho Custom Marker Pins */
+    .custom-map-icon {
+        background: transparent;
+        border: none;
+    }
+    .custom-marker {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 50% 50% 50% 0;
+        transform: rotate(-45deg);
+        border: 2px solid #ffffff;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        color: #ffffff;
+        font-size: 14px;
+    }
+    .custom-marker i { transform: rotate(45deg); }
+
+    @@media (max-width: 900px) {
+        .poi-map-toolbar {
+            grid-template-columns: 1fr;
+        }
+
+        .poi-map-footer {
+            grid-template-columns: 1fr;
+        }
+
+        .poi-map-actions {
+            justify-content: flex-start;
+        }
+
+        #poiAdminMapPicker {
+            height: 360px;
+        }
+    }
+</style>
+
+<div class="form-group full" data-poi-map-picker>
+    <label class="form-label">
+        Chọn vị trí trên bản đồ
+    </label>
+
+    <div class="poi-map-picker">
+        <div class="poi-map-toolbar">
+            <div class="poi-map-search-wrap">
+                <input id="poiMapSearch"
+                       type="search"
+                       class="form-control"
+                       placeholder="Tìm địa điểm, ví dụ: Dinh Độc Lập, Chợ Bến Thành..." />
+                <div id="poiMapSearchResults" class="poi-map-search-results"></div>
+            </div>
+
+            <button type="button" id="btnSearchPoiMap" class="btn btn-secondary">
+                <i class="fa-solid fa-magnifying-glass"></i> Tìm
+            </button>
+
+            <button type="button" id="btnUseMyLocation" class="btn btn-primary">
+                <i class="fa-solid fa-location-crosshairs"></i> Vị trí hiện tại
+            </button>
+        </div>
+
+        <div id="poiAdminMapPicker"></div>
+
+        <div class="poi-map-footer">
+            <div class="poi-map-current">
+                <div><strong>Tọa độ đang chọn:</strong> <code id="poiMapCoordinateText">...</code></div>
+                <div>Click trên bản đồ hoặc kéo marker để đổi vị trí. Thay đổi bán kính sẽ cập nhật vòng geofence.</div>
+            </div>
+
+            <div class="poi-map-actions">
+                <button type="button" id="btnPasteGoogleMap" class="btn btn-secondary btn-sm">
+                    <i class="fa-brands fa-google"></i> Dán link Google Maps
+                </button>
+                <button type="button" id="btnCopyCoordinate" class="btn btn-secondary btn-sm">
+                    <i class="fa-solid fa-copy"></i> Copy tọa độ
+                </button>
+                <button type="button" id="btnOpenGoogleDirection" class="btn btn-secondary btn-sm">
+                    <i class="fa-solid fa-route"></i> Chỉ đường
+                </button>
+                <button type="button" id="btnResetSaigon" class="btn btn-secondary btn-sm">
+                    <i class="fa-solid fa-rotate-left"></i> Reset TP.HCM
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+    (function () {
+        const mapEl = document.getElementById('poiAdminMapPicker');
+        const latInput = document.getElementById('Latitude');
+        const lngInput = document.getElementById('Longitude');
+        const radiusInput = document.getElementById('Radius');
+
+        const searchInput = document.getElementById('poiMapSearch');
+        const searchButton = document.getElementById('btnSearchPoiMap');
+        const searchResults = document.getElementById('poiMapSearchResults');
+        const locateButton = document.getElementById('btnUseMyLocation');
+        const pasteGoogleButton = document.getElementById('btnPasteGoogleMap');
+        const copyButton = document.getElementById('btnCopyCoordinate');
+        const directionButton = document.getElementById('btnOpenGoogleDirection');
+        const resetButton = document.getElementById('btnResetSaigon');
+        const coordinateText = document.getElementById('poiMapCoordinateText');
+
+        if (!mapEl || !latInput || !lngInput || !radiusInput || !window.L) return;
+
+        const defaultLat = 10.762622;
+        const defaultLng = 106.660172;
+
+        function parseNumber(value) {
+            if (value === null || value === undefined) return NaN;
+            return Number(String(value).replace(',', '.').trim());
+        }
+
+        function isValidLatLng(lat, lng) {
+            return Number.isFinite(lat)
+                && Number.isFinite(lng)
+                && lat >= -90
+                && lat <= 90
+                && lng >= -180
+                && lng <= 180;
+        }
+
+        function readRadius() {
+            const radius = parseInt(radiusInput.value, 10);
+            return Number.isFinite(radius) && radius > 0 ? radius : 50;
+        }
+
+        let currentLat = parseNumber(latInput.value);
+        let currentLng = parseNumber(lngInput.value);
+
+        if (!isValidLatLng(currentLat, currentLng)) {
+            currentLat = defaultLat;
+            currentLng = defaultLng;
+            latInput.value = currentLat.toFixed(6);
+            lngInput.value = currentLng.toFixed(6);
+        }
+
+        let adminMarker = null;
+        let adminCircle = null;
+
+        const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap'
+        });
+
+        const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 19,
+            attribution: '&copy; Esri'
+        });
+
+        const topo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+            maxZoom: 17,
+            attribution: '&copy; OpenTopoMap'
+        });
+
+        const map = L.map(mapEl, {
+            zoomControl: true,
+            scrollWheelZoom: true,
+            layers: [osm]
+        }).setView([currentLat, currentLng], 16);
+
+        const baseMaps = {
+            "Bản đồ tiêu chuẩn": osm,
+            "Vệ tinh": satellite,
+            "Địa hình": topo
+        };
+
+        L.control.layers(baseMaps).addTo(map);
+
+        const marker = L.marker([currentLat, currentLng], {
+            draggable: true,
+            autoPan: true
+        }).addTo(map);
+
+        const circle = L.circle([currentLat, currentLng], {
+            radius: readRadius(),
+            color: '#5b8cff',
+            weight: 2,
+            opacity: 0.9,
+            fillColor: '#5b8cff',
+            fillOpacity: 0.14
+        }).addTo(map);
+
+        marker.bindPopup('Kéo marker hoặc click bản đồ để chọn vị trí.').openPopup();
+
+        function updateCoordinateText() {
+            coordinateText.textContent = `${currentLat.toFixed(6)}, ${currentLng.toFixed(6)} · bán kính ${readRadius()}m`;
+        }
+
+        function setLocation(lat, lng, options = {}) {
+            lat = Number(lat);
+            lng = Number(lng);
+
+            if (!isValidLatLng(lat, lng)) return;
+
+            currentLat = lat;
+            currentLng = lng;
+
+            latInput.value = currentLat.toFixed(6);
+            lngInput.value = currentLng.toFixed(6);
+
+            marker.setLatLng([currentLat, currentLng]);
+            circle.setLatLng([currentLat, currentLng]);
+            circle.setRadius(readRadius());
+
+            updateCoordinateText();
+
+            if (!options.noPan) {
+                map.setView([currentLat, currentLng], options.zoom || Math.max(map.getZoom(), 16));
+            }
+        }
+
+        function syncMapFromInputs() {
+            const lat = parseNumber(latInput.value);
+            const lng = parseNumber(lngInput.value);
+
+            if (!isValidLatLng(lat, lng)) return;
+
+            currentLat = lat;
+            currentLng = lng;
+
+            marker.setLatLng([currentLat, currentLng]);
+            circle.setLatLng([currentLat, currentLng]);
+            circle.setRadius(readRadius());
+            updateCoordinateText();
+        }
+
+        map.on('click', function (event) {
+            setLocation(event.latlng.lat, event.latlng.lng, { zoom: map.getZoom() });
+        });
+
+        marker.on('dragend', function () {
+            const pos = marker.getLatLng();
+            setLocation(pos.lat, pos.lng, { zoom: map.getZoom() });
+        });
+
+        latInput.addEventListener('input', syncMapFromInputs);
+        lngInput.addEventListener('input', syncMapFromInputs);
+
+        radiusInput.addEventListener('input', function () {
+            circle.setRadius(readRadius());
+            updateCoordinateText();
+        });
+
+        locateButton?.addEventListener('click', function () {
+            if (!navigator.geolocation) {
+                alert('Trình duyệt không hỗ trợ lấy vị trí hiện tại.');
+                return;
+            }
+
+            locateButton.disabled = true;
+            locateButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang lấy...';
+
+            navigator.geolocation.getCurrentPosition(
+                function (position) {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    const acc = position.coords.accuracy;
+
+                    if (adminMarker) {
+                        adminMarker.setLatLng([lat, lng]);
+                        adminCircle.setLatLng([lat, lng]);
+                        adminCircle.setRadius(acc);
+                    } else {
+                        const adminIcon = L.divIcon({
+                            className: 'custom-map-icon',
+                            html: `<div class="custom-marker" style="background:#3b82f6; border-color:#ffffff;"><i class="fa-solid fa-user-tie"></i></div>`,
+                            iconSize: [32, 32],
+                            iconAnchor: [16, 32],
+                            popupAnchor: [0, -32]
+                        });
+
+                        adminMarker = L.marker([lat, lng], { icon: adminIcon })
+                            .addTo(map)
+                            .bindPopup('Vị trí hiện tại của bạn');
+
+                        adminCircle = L.circle([lat, lng], {
+                            radius: acc,
+                            color: '#3b82f6',
+                            weight: 1,
+                            fillOpacity: 0.1
+                        }).addTo(map);
+                    }
+
+                    setLocation(lat, lng, { zoom: 17 });
+                    adminMarker.openPopup();
+
+                    locateButton.disabled = false;
+                    locateButton.innerHTML = '<i class="fa-solid fa-location-crosshairs"></i> Vị trí hiện tại';
+                },
+                function () {
+                    alert('Không lấy được vị trí. Hãy kiểm tra quyền Location của trình duyệt.');
+                    locateButton.disabled = false;
+                    locateButton.innerHTML = '<i class="fa-solid fa-location-crosshairs"></i> Vị trí hiện tại';
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 12000,
+                    maximumAge: 0
+                }
+            );
+        });
+
+        async function searchPlace() {
+            const keyword = searchInput.value.trim();
+            if (!keyword) return;
+
+            searchResults.classList.add('active');
+            searchResults.innerHTML = '<button type="button" class="poi-map-result"><strong>Đang tìm...</strong><span>Vui lòng chờ vài giây</span></button>';
+
+            try {
+                const url = `https://nominatim.openstreetmap.org/search?format=json&limit=6&countrycodes=vn&accept-language=vi&q=${encodeURIComponent(keyword)}`;
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (!Array.isArray(data) || data.length === 0) {
+                    searchResults.innerHTML = '<button type="button" class="poi-map-result"><strong>Không tìm thấy</strong><span>Thử nhập tên địa điểm cụ thể hơn</span></button>';
+                    return;
+                }
+
+                searchResults.innerHTML = '';
+
+                data.forEach(function (item) {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = 'poi-map-result';
+
+                    const title = document.createElement('strong');
+                    title.textContent = item.name || item.display_name?.split(',')[0] || 'Địa điểm';
+
+                    const subtitle = document.createElement('span');
+                    subtitle.textContent = item.display_name || '';
+
+                    button.appendChild(title);
+                    button.appendChild(subtitle);
+
+                    button.addEventListener('click', function () {
+                        setLocation(parseNumber(item.lat), parseNumber(item.lon), { zoom: 17 });
+                        searchResults.classList.remove('active');
+                        searchInput.value = item.name || title.textContent;
+                    });
+
+                    searchResults.appendChild(button);
+                });
+            } catch (error) {
+                console.error(error);
+                searchResults.innerHTML = '<button type="button" class="poi-map-result"><strong>Lỗi tìm kiếm</strong><span>Kiểm tra mạng rồi thử lại</span></button>';
+            }
+        }
+
+        searchButton?.addEventListener('click', searchPlace);
+
+        searchInput?.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                searchPlace();
+            }
+        });
+
+        document.addEventListener('click', function (event) {
+            if (!searchResults.contains(event.target) && event.target !== searchInput && event.target !== searchButton) {
+                searchResults.classList.remove('active');
+            }
+        });
+
+        pasteGoogleButton?.addEventListener('click', function () {
+            const text = prompt('Dán link Google Maps hoặc chuỗi tọa độ vào đây:');
+            if (!text) return;
+
+            const patterns = [
+                /@@(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/,
+                /[?&](?:q|ll)=(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/,
+                /!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/,
+                /(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/
+            ];
+
+            for (const pattern of patterns) {
+                const match = text.match(pattern);
+                if (match) {
+                    const lat = parseNumber(match[1]);
+                    const lng = parseNumber(match[2]);
+
+                    if (isValidLatLng(lat, lng)) {
+                        setLocation(lat, lng, { zoom: 17 });
+                        return;
+                    }
+                }
+            }
+
+            alert('Không đọc được tọa độ từ nội dung vừa dán.');
+        });
+
+        copyButton?.addEventListener('click', async function () {
+            const text = `${currentLat.toFixed(6)}, ${currentLng.toFixed(6)}`;
+
+            try {
+                await navigator.clipboard.writeText(text);
+                copyButton.innerHTML = '<i class="fa-solid fa-check"></i> Đã copy';
+                setTimeout(function () {
+                    copyButton.innerHTML = '<i class="fa-solid fa-copy"></i> Copy tọa độ';
+                }, 1400);
+            } catch {
+                prompt('Copy tọa độ này:', text);
+            }
+        });
+
+        directionButton?.addEventListener('click', function () {
+            let originUrl = '';
+            if (adminMarker) {
+                const pos = adminMarker.getLatLng();
+                originUrl = `&origin=${pos.lat},${pos.lng}`;
+            }
+            window.open(`https://www.google.com/maps/dir/?api=1&destination=${currentLat},${currentLng}${originUrl}`, '_blank');
+        });
+
+        resetButton?.addEventListener('click', function () {
+            setLocation(defaultLat, defaultLng, { zoom: 15 });
+        });
+
+        updateCoordinateText();
+
+        setTimeout(function () {
+            map.invalidateSize();
+        }, 250);
+    })();
+</script>

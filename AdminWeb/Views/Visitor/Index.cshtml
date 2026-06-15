@@ -1,0 +1,86 @@
+@model IEnumerable<AdminWeb.ViewModels.VisitorListItemViewModel>
+@{
+    ViewData["Title"] = "Quản lý Du khách";
+}
+
+<div class="page-heading">
+    <div>
+        <div class="page-title">Du khách & thành tựu</div>
+        <div class="page-subtitle">Theo dõi điểm khám phá, cấp hạng và hoạt động của người dùng ứng dụng.</div>
+    </div>
+    <div class="page-actions">
+        <a asp-action="Create" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Thêm du khách</a>
+    </div>
+</div>
+
+<div class="toolbar">
+    <form asp-action="Index" method="get">
+        <input type="search" name="searchString" value="@ViewData["CurrentFilter"]"
+               class="form-control" placeholder="Tìm theo tên hoặc email..." />
+        <button type="submit" class="btn btn-secondary"><i class="fa-solid fa-magnifying-glass"></i> Tìm</button>
+        @if (!string.IsNullOrWhiteSpace(ViewData["CurrentFilter"] as string))
+        {
+            <a asp-action="Index" class="btn btn-secondary"><i class="fa-solid fa-xmark"></i></a>
+        }
+    </form>
+</div>
+
+<div class="table-wrapper">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Du khách</th>
+                <th>Hạng</th>
+                <th>Điểm</th>
+                <th>POI khám phá</th>
+                <th>Ngày đăng ký</th>
+                <th>Thao tác</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Model.Any())
+            {
+                foreach (var item in Model)
+                {
+                    <tr>
+                        <td>
+                            <strong>@item.Tourist.FullName</strong><br />
+                            <small style="color:var(--text-soft)">@item.Tourist.Email</small>
+                        </td>
+                        <td><span class="badge blue"><i class="fa-solid fa-medal"></i> @item.RankName</span></td>
+                        <td style="font-weight:700;color:var(--accent)">@item.TotalPoints</td>
+                        <td>@item.DiscoveredPoiCount</td>
+                        <td>@item.Tourist.CreatedAt.ToString("dd/MM/yyyy")</td>
+                        <td>
+                            <div class="actions">
+                                <a asp-action="Details" asp-route-id="@item.Tourist.Id" class="btn btn-secondary btn-sm" title="Xem thành tựu">
+                                    <i class="fa-solid fa-trophy"></i>
+                                </a>
+                                <a asp-action="Edit" asp-route-id="@item.Tourist.Id" class="btn btn-secondary btn-sm" title="Sửa">
+                                    <i class="fa-solid fa-pen"></i>
+                                </a>
+                                <form asp-action="Delete" asp-route-id="@item.Tourist.Id" method="post"
+                                      onsubmit="return confirm('Xóa tài khoản và toàn bộ dữ liệu thành tựu của du khách này?');">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-danger btn-sm" title="Xóa"><i class="fa-solid fa-trash"></i></button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            }
+            else
+            {
+                <tr>
+                    <td colspan="6">
+                        <div class="empty-state">
+                            <i class="fa-solid fa-users"></i>
+                            <h2>Chưa có du khách phù hợp</h2>
+                            <p>Du khách đăng ký trên ứng dụng sẽ xuất hiện tại đây.</p>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

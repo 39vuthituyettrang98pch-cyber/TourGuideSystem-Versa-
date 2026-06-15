@@ -1,0 +1,67 @@
+@model IEnumerable<AdminWeb.Models.PoiTranslation>
+@{
+    ViewData["Title"] = "Quản lý bản dịch POI";
+}
+
+<div class="page-title">Bản dịch: @ViewBag.PoiName</div>
+<div class="page-subtitle">Quản lý nội dung, audio và video đa ngôn ngữ cho điểm tham quan.</div>
+
+<div class="toolbar">
+    <div>
+        <a asp-controller="Poi" asp-action="Index" class="btn btn-secondary btn-sm"><i class="fa-solid fa-arrow-left"></i> Quay lại danh sách POI</a>
+    </div>
+    <div>
+        @if (ViewBag.PoiId != null)
+        {
+            <a asp-controller="PoiTranslation" asp-action="Create" asp-route-poiId="@ViewBag.PoiId" class="btn btn-primary btn-sm"><i class="fa-solid fa-plus"></i> Thêm ngôn ngữ</a>
+        }
+    </div>
+</div>
+
+<div class="table-wrapper">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>POI ID</th>
+                <th>Ngôn ngữ</th>
+                <th>Tên hiển thị</th>
+                <th>Ngày cập nhật</th>
+                <th>Công cụ</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Model != null && Model.Any())
+            {
+                foreach (var item in Model)
+                {
+                    <tr>
+                        <td style="font-weight: bold; color: var(--accent);">#@item.PoiId</td>
+                        <td><span class="badge" style="background: var(--accent); color: #fff; text-transform: uppercase;">@item.LanguageCode</span></td>
+                        <td style="font-weight: 600;">@item.Name</td>
+                        <td style="color: var(--text2);">@item.UpdatedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                        <td>
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                                <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-info text-white" title="Chi tiết"><i class="fa-solid fa-eye"></i> Chi tiết</a>
+                                <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning text-dark" title="Sửa"><i class="fa-solid fa-pen"></i> Chỉnh sửa</a>
+                                <form asp-action="Delete" asp-route-id="@item.Id" method="post" style="display:inline;" onsubmit="return confirm('Bạn có chắc chắn muốn xóa bản dịch này?');">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="poiId" value="@item.PoiId" />
+                                    <button type="submit" class="btn btn-sm btn-danger" title="Xóa"><i class="fa-solid fa-trash"></i> Xóa</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            }
+            else
+            {
+                <tr>
+                    <td colspan="5" style="text-align: center; padding: 40px 20px; color: var(--text2);">
+                        <i class="fa-solid fa-language" style="font-size: 32px; margin-bottom: 12px; opacity: 0.5; display: block;"></i>
+                        <em>Hiện tại chưa có bản dịch nào. Hãy bấm "Thêm ngôn ngữ mới".</em>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

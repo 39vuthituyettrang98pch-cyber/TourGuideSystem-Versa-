@@ -1,0 +1,907 @@
+@model AdminWeb.Areas.DuKhach.Models.DuKhachDashboardViewModel
+
+@{
+    ViewData["Title"] = "Trang chủ du khách";
+
+    var featuredPois = Model.FeaturedPois?.ToList() ?? new();
+    var recentDiscoveries = Model.RecentDiscoveries?.ToList() ?? new();
+
+    var isTourist = User.Identity?.IsAuthenticated == true && User.IsInRole("Tourist");
+    var hasPois = featuredPois.Count > 0;
+    var hasRecentDiscoveries = recentDiscoveries.Count > 0;
+}
+
+<style>
+    .tourist-hero {
+        position: relative;
+        overflow: hidden;
+        border: 1px solid var(--border);
+        border-radius: 34px;
+        min-height: 520px;
+        padding: 54px;
+        background:
+            linear-gradient(115deg, rgba(52, 211, 153, 0.18), rgba(56, 189, 248, 0.12)),
+            linear-gradient(135deg, rgba(15, 29, 52, 0.96), rgba(7, 18, 34, 0.82)),
+            url("https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=1600&q=80");
+        background-size: cover;
+        background-position: center;
+        box-shadow: var(--shadow);
+    }
+
+    html[data-theme="light"] .tourist-hero {
+        background:
+            linear-gradient(115deg, rgba(255, 255, 255, 0.92), rgba(232, 248, 255, 0.74)),
+            url("https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=1600&q=80");
+        background-size: cover;
+        background-position: center;
+    }
+
+    .tourist-hero::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background:
+            radial-gradient(circle at 82% 24%, rgba(56, 189, 248, 0.34), transparent 28%),
+            radial-gradient(circle at 14% 86%, rgba(52, 211, 153, 0.30), transparent 28%);
+        pointer-events: none;
+    }
+
+    .tourist-hero-grid {
+        position: relative;
+        z-index: 2;
+        display: grid;
+        grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
+        gap: 36px;
+        align-items: center;
+    }
+
+    .tourist-eyebrow {
+        width: fit-content;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 18px;
+        padding: 8px 13px;
+        border: 1px solid rgba(52, 211, 153, 0.32);
+        border-radius: 999px;
+        color: var(--accent);
+        background: rgba(52, 211, 153, 0.12);
+        font-weight: 900;
+        font-size: 13px;
+    }
+
+    .tourist-hero h1 {
+        max-width: 780px;
+        margin: 0;
+        font-size: clamp(42px, 6vw, 82px);
+        line-height: 0.92;
+        letter-spacing: -0.075em;
+        font-weight: 950;
+    }
+
+    .tourist-hero h1 span {
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+    }
+
+    .tourist-hero p {
+        max-width: 660px;
+        margin: 24px 0 0;
+        color: var(--muted);
+        font-size: 18px;
+        line-height: 1.8;
+    }
+
+    .tourist-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 30px;
+    }
+
+    .tourist-preview {
+        border: 1px solid var(--border);
+        border-radius: 32px;
+        padding: 22px;
+        background: rgba(6, 17, 31, 0.62);
+        backdrop-filter: blur(20px);
+        box-shadow: 0 26px 80px rgba(0, 0, 0, 0.28);
+    }
+
+    html[data-theme="light"] .tourist-preview {
+        background: rgba(255,255,255,0.76);
+    }
+
+    .tourist-phone {
+        border-radius: 28px;
+        border: 1px solid var(--border);
+        overflow: hidden;
+        background: linear-gradient(180deg, var(--surface), rgba(15, 29, 52, 0.54));
+    }
+
+    .tourist-phone-map {
+        height: 250px;
+        position: relative;
+        background:
+            linear-gradient(90deg, rgba(255,255,255,0.07) 1px, transparent 1px),
+            linear-gradient(rgba(255,255,255,0.07) 1px, transparent 1px),
+            radial-gradient(circle at 30% 38%, rgba(52, 211, 153, 0.28), transparent 18%),
+            radial-gradient(circle at 72% 64%, rgba(56, 189, 248, 0.30), transparent 20%),
+            linear-gradient(135deg, #0b1f36, #11284a);
+        background-size: 44px 44px, 44px 44px, auto, auto, auto;
+    }
+
+    html[data-theme="light"] .tourist-phone-map {
+        background:
+            linear-gradient(90deg, rgba(15,23,42,0.07) 1px, transparent 1px),
+            linear-gradient(rgba(15,23,42,0.07) 1px, transparent 1px),
+            radial-gradient(circle at 30% 38%, rgba(52, 211, 153, 0.22), transparent 18%),
+            radial-gradient(circle at 72% 64%, rgba(56, 189, 248, 0.24), transparent 20%),
+            linear-gradient(135deg, #eaf7ff, #d9f3ee);
+        background-size: 44px 44px, 44px 44px, auto, auto, auto;
+    }
+
+    .demo-pin {
+        position: absolute;
+        width: 42px;
+        height: 42px;
+        display: grid;
+        place-items: center;
+        border-radius: 16px 16px 16px 4px;
+        transform: rotate(-45deg);
+        color: #03131d;
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        box-shadow: 0 14px 34px rgba(52, 211, 153, 0.38);
+    }
+
+    .demo-pin i {
+        transform: rotate(45deg);
+    }
+
+    .pin-a {
+        left: 18%;
+        top: 26%;
+    }
+
+    .pin-b {
+        right: 22%;
+        top: 54%;
+    }
+
+    .pin-c {
+        left: 48%;
+        bottom: 18%;
+    }
+
+    .tourist-phone-body {
+        padding: 20px;
+    }
+
+    .tourist-phone-body h3 {
+        margin: 0 0 8px;
+        font-weight: 950;
+    }
+
+    .tourist-phone-body p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.6;
+        font-size: 14px;
+    }
+
+    .tourist-stats {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 16px;
+        margin-top: 22px;
+    }
+
+    .tourist-stat {
+        border: 1px solid var(--border);
+        border-radius: 24px;
+        padding: 24px;
+        background: var(--card);
+        box-shadow: 0 18px 50px rgba(0,0,0,0.12);
+        min-width: 0;
+    }
+
+    .tourist-stat strong {
+        display: block;
+        font-size: 38px;
+        line-height: 1;
+        letter-spacing: -0.05em;
+        margin-bottom: 10px;
+        word-break: break-word;
+    }
+
+    .tourist-stat span {
+        color: var(--muted);
+        font-weight: 800;
+        font-size: 13px;
+    }
+
+    .tourist-section {
+        margin-top: 48px;
+    }
+
+    .tourist-section-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: end;
+        gap: 18px;
+        margin-bottom: 18px;
+    }
+
+    .tourist-kicker {
+        color: var(--accent);
+        font-size: 13px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+    }
+
+    .tourist-title {
+        margin: 6px 0 0;
+        font-size: clamp(28px, 4vw, 46px);
+        letter-spacing: -0.055em;
+        font-weight: 950;
+    }
+
+    .tourist-desc {
+        max-width: 540px;
+        color: var(--muted);
+        line-height: 1.7;
+        margin: 0;
+    }
+
+    .feature-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 18px;
+    }
+
+    .feature-card {
+        border: 1px solid var(--border);
+        border-radius: 28px;
+        padding: 28px;
+        background: var(--card);
+        min-height: 230px;
+        position: relative;
+        overflow: hidden;
+        transition: 0.2s ease;
+    }
+
+    .feature-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--shadow);
+    }
+
+    .feature-card::after {
+        content: "";
+        position: absolute;
+        right: -30px;
+        top: -30px;
+        width: 130px;
+        height: 130px;
+        border-radius: 50%;
+        background: rgba(56, 189, 248, 0.12);
+    }
+
+    .feature-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 20px;
+        display: grid;
+        place-items: center;
+        color: #03131d;
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        margin-bottom: 22px;
+        font-size: 22px;
+    }
+
+    .feature-card h3 {
+        margin: 0 0 12px;
+        font-size: 20px;
+        font-weight: 950;
+    }
+
+    .feature-card p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.7;
+    }
+
+    .poi-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 18px;
+    }
+
+    .poi-card {
+        overflow: hidden;
+        border: 1px solid var(--border);
+        border-radius: 28px;
+        background: var(--card);
+        transition: 0.2s ease;
+    }
+
+    .poi-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--shadow);
+    }
+
+    .poi-cover {
+        height: 190px;
+        background:
+            linear-gradient(135deg, rgba(52, 211, 153, 0.28), rgba(56, 189, 248, 0.22)),
+            url("https://images.unsplash.com/photo-1583417319070-4a69db38a482?auto=format&fit=crop&w=900&q=80");
+        background-size: cover;
+        background-position: center;
+    }
+
+    .poi-body {
+        padding: 20px;
+    }
+
+    .poi-body h3 {
+        margin: 0 0 8px;
+        font-size: 19px;
+        font-weight: 950;
+    }
+
+    .poi-body p {
+        margin: 0 0 16px;
+        color: var(--muted);
+        line-height: 1.6;
+        min-height: 52px;
+    }
+
+    .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 11px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        color: var(--muted);
+        background: rgba(148, 163, 184, 0.08);
+        font-size: 12px;
+        font-weight: 900;
+    }
+
+    .empty-showcase {
+        border: 1px solid var(--border);
+        border-radius: 34px;
+        padding: 30px;
+        background:
+            linear-gradient(135deg, rgba(52,211,153,0.12), rgba(56,189,248,0.08)),
+            var(--card);
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(300px, 1fr);
+        gap: 24px;
+        align-items: center;
+    }
+
+    .empty-content h3 {
+        margin: 0 0 14px;
+        font-size: 34px;
+        letter-spacing: -0.05em;
+        font-weight: 950;
+    }
+
+    .empty-content p {
+        color: var(--muted);
+        line-height: 1.8;
+        margin: 0 0 20px;
+    }
+
+    .empty-visual {
+        min-height: 300px;
+        border-radius: 28px;
+        border: 1px solid var(--border);
+        background:
+            radial-gradient(circle at 28% 28%, rgba(52, 211, 153, 0.34), transparent 18%),
+            radial-gradient(circle at 74% 62%, rgba(56, 189, 248, 0.34), transparent 20%),
+            linear-gradient(135deg, rgba(15, 29, 52, 0.92), rgba(6, 17, 31, 0.76));
+        display: grid;
+        place-items: center;
+        position: relative;
+        overflow: hidden;
+    }
+
+    html[data-theme="light"] .empty-visual {
+        background:
+            radial-gradient(circle at 28% 28%, rgba(52, 211, 153, 0.26), transparent 18%),
+            radial-gradient(circle at 74% 62%, rgba(56, 189, 248, 0.25), transparent 20%),
+            linear-gradient(135deg, #effaff, #e8fff5);
+    }
+
+    .empty-visual i {
+        font-size: 94px;
+        color: var(--accent);
+        filter: drop-shadow(0 20px 35px rgba(52, 211, 153, 0.32));
+    }
+
+    .steps {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 16px;
+    }
+
+    .step {
+        border: 1px solid var(--border);
+        border-radius: 26px;
+        background: var(--card);
+        padding: 22px;
+    }
+
+    .step-number {
+        width: 42px;
+        height: 42px;
+        display: grid;
+        place-items: center;
+        border-radius: 15px;
+        color: #03131d;
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        font-weight: 950;
+        margin-bottom: 16px;
+    }
+
+    .step h3 {
+        margin: 0 0 8px;
+        font-size: 18px;
+        font-weight: 950;
+    }
+
+    .step p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.6;
+        font-size: 14px;
+    }
+
+    .recent-card {
+        border: 1px solid var(--border);
+        border-radius: 28px;
+        background: var(--card);
+        overflow: hidden;
+    }
+
+    .recent-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 130px 90px 150px;
+        gap: 12px;
+        padding: 16px 18px;
+        border-bottom: 1px solid var(--border);
+        align-items: center;
+    }
+
+    .recent-row:last-child {
+        border-bottom: 0;
+    }
+
+    .recent-row small {
+        color: var(--muted);
+        font-weight: 800;
+    }
+
+    .cta-box {
+        border: 1px solid var(--border);
+        border-radius: 34px;
+        padding: 38px;
+        background:
+            radial-gradient(circle at 80% 20%, rgba(52, 211, 153, 0.22), transparent 28%),
+            linear-gradient(135deg, rgba(56, 189, 248, 0.13), rgba(167, 139, 250, 0.10)),
+            var(--card);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 26px;
+    }
+
+    .cta-box h2 {
+        margin: 0 0 10px;
+        font-size: clamp(28px, 4vw, 44px);
+        letter-spacing: -0.055em;
+        font-weight: 950;
+    }
+
+    .cta-box p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.7;
+    }
+
+    .cta-actions {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    @@media (max-width: 1050px) {
+        .tourist-hero {
+            padding: 34px;
+        }
+
+        .tourist-hero-grid,
+        .empty-showcase {
+            grid-template-columns: 1fr;
+        }
+
+        .tourist-stats,
+        .steps {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .feature-grid,
+        .poi-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .cta-box {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .recent-row {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @@media (max-width: 640px) {
+        .tourist-hero {
+            padding: 26px;
+            min-height: auto;
+        }
+
+        .tourist-stats,
+        .steps {
+            grid-template-columns: 1fr;
+        }
+
+        .tourist-section-head {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+    }
+</style>
+
+<section class="tourist-hero">
+    <div class="tourist-hero-grid">
+        <div>
+            <div class="tourist-eyebrow">
+                <i class="fa-solid fa-sparkles"></i>
+                Web du khách riêng trong Area
+            </div>
+
+            <h1>
+                Khám phá thành phố bằng <span>bản đồ thông minh.</span>
+            </h1>
+
+            <p>
+                Du khách có thể đăng ký, đăng nhập, xem bản đồ POI, check-in bằng vị trí
+                và dùng cùng một tài khoản trên app mobile.
+            </p>
+
+            <div class="tourist-actions">
+                <a class="dk-btn dk-btn-primary" asp-area="DuKhach" asp-controller="Map" asp-action="Index">
+                    <i class="fa-solid fa-map-location-dot"></i>
+                    Mở bản đồ
+                </a>
+
+                @if (!isTourist)
+                {
+                    <a class="dk-btn dk-btn-ghost" asp-area="DuKhach" asp-controller="Account" asp-action="Register">
+                        <i class="fa-solid fa-user-plus"></i>
+                        Tạo tài khoản du khách
+                    </a>
+
+                    <a class="dk-btn dk-btn-ghost" asp-area="DuKhach" asp-controller="Account" asp-action="Login">
+                        <i class="fa-solid fa-right-to-bracket"></i>
+                        Đăng nhập
+                    </a>
+                }
+                else
+                {
+                    <a class="dk-btn dk-btn-ghost" asp-area="DuKhach" asp-controller="Account" asp-action="Profile">
+                        <i class="fa-solid fa-id-card"></i>
+                        Hồ sơ của tôi
+                    </a>
+                }
+            </div>
+        </div>
+
+        <div class="tourist-preview">
+            <div class="tourist-phone">
+                <div class="tourist-phone-map">
+                    <span class="demo-pin pin-a">
+                        <i class="fa-solid fa-landmark"></i>
+                    </span>
+
+                    <span class="demo-pin pin-b">
+                        <i class="fa-solid fa-camera"></i>
+                    </span>
+
+                    <span class="demo-pin pin-c">
+                        <i class="fa-solid fa-utensils"></i>
+                    </span>
+                </div>
+
+                <div class="tourist-phone-body">
+                    <h3>Bản đồ POI gần bạn</h3>
+                    <p>
+                        Xem vị trí, bán kính geofence, mở chỉ đường và check-in khi ở gần điểm tham quan.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="tourist-stats">
+    <div class="tourist-stat">
+        <strong>@Model.ApprovedPoiCount</strong>
+        <span>POI đã duyệt</span>
+    </div>
+
+    <div class="tourist-stat">
+        <strong>@Model.TourCount</strong>
+        <span>Tour đang mở</span>
+    </div>
+
+    <div class="tourist-stat">
+        <strong>@Model.DiscoveredPoiCount</strong>
+        <span>POI bạn đã khám phá</span>
+    </div>
+
+    <div class="tourist-stat">
+        <strong>@Model.TotalPoints</strong>
+        <span>Điểm · @Model.RankName</span>
+    </div>
+</div>
+
+<section class="tourist-section">
+    <div class="tourist-section-head">
+        <div>
+            <div class="tourist-kicker">Tính năng nổi bật</div>
+            <h2 class="tourist-title">Một tài khoản, nhiều trải nghiệm.</h2>
+        </div>
+
+        <p class="tourist-desc">
+            Giao diện du khách được tách riêng khỏi admin, nhưng vẫn dùng chung dữ liệu tài khoản
+            với app mobile.
+        </p>
+    </div>
+
+    <div class="feature-grid">
+        <div class="feature-card">
+            <div class="feature-icon">
+                <i class="fa-solid fa-map"></i>
+            </div>
+            <h3>Bản đồ tham quan</h3>
+            <p>Xem các điểm tham quan đã duyệt, vị trí, bán kính kích hoạt và mở chỉ đường nhanh.</p>
+        </div>
+
+        <div class="feature-card">
+            <div class="feature-icon">
+                <i class="fa-solid fa-location-crosshairs"></i>
+            </div>
+            <h3>Check-in vị trí</h3>
+            <p>Du khách có thể dùng GPS để khám phá POI nằm trong vùng geofence.</p>
+        </div>
+
+        <div class="feature-card">
+            <div class="feature-icon">
+                <i class="fa-solid fa-mobile-screen-button"></i>
+            </div>
+            <h3>Dùng chung với app</h3>
+            <p>Tài khoản đăng ký trên web được lưu vào bảng du khách, app có thể đăng nhập cùng tài khoản.</p>
+        </div>
+    </div>
+</section>
+
+<section class="tourist-section">
+    <div class="tourist-section-head">
+        <div>
+            <div class="tourist-kicker">Địa điểm</div>
+            <h2 class="tourist-title">Điểm tham quan mới.</h2>
+        </div>
+
+        <a asp-area="DuKhach" asp-controller="Map" asp-action="Index" class="dk-btn dk-btn-ghost">
+            <i class="fa-solid fa-map-location-dot"></i>
+            Xem trên bản đồ
+        </a>
+    </div>
+
+    @if (hasPois)
+    {
+        <div class="poi-grid">
+            @foreach (var poi in featuredPois)
+            {
+                <article class="poi-card">
+                    @if (!string.IsNullOrWhiteSpace(poi.CoverImageUrl))
+                    {
+                        <div class="poi-cover"
+                             style="background-image:linear-gradient(135deg, rgba(52, 211, 153, 0.18), rgba(56, 189, 248, 0.16)), url('@poi.CoverImageUrl');">
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="poi-cover"></div>
+                    }
+
+                    <div class="poi-body">
+                        <h3>@poi.Name</h3>
+                        <p>@poi.ShortDescription</p>
+
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                            <a class="pill" asp-area="DuKhach" asp-controller="Map" asp-action="Index" asp-fragment="poi-@poi.Id">
+                                <i class="fa-solid fa-location-crosshairs"></i>
+                                Xem trên bản đồ
+                            </a>
+
+                            <a class="pill" href="https://www.google.com/maps/dir/?api=1&destination=@poi.Latitude,@poi.Longitude" target="_blank">
+                                <i class="fa-solid fa-route"></i>
+                                Chỉ đường
+                            </a>
+                        </div>
+                    </div>
+                </article>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="empty-showcase">
+            <div class="empty-content">
+                <div class="tourist-kicker">Chưa có dữ liệu hiển thị</div>
+
+                <h3>Hãy duyệt POI để trang du khách sống động hơn.</h3>
+
+                <p>
+                    Hiện chưa có POI trạng thái <strong>Approved</strong>, nên trang chủ chưa có địa điểm thật để hiển thị.
+                    Giao diện vẫn có đầy đủ khối giới thiệu, tính năng, hướng dẫn và nút mở bản đồ.
+                </p>
+
+                <div class="tourist-actions">
+                    @if (User.IsInRole("Admin") || User.IsInRole("Editor"))
+                    {
+                        <a asp-area="" asp-controller="Poi" asp-action="Index" class="dk-btn dk-btn-primary">
+                            <i class="fa-solid fa-screwdriver-wrench"></i>
+                            Vào quản lý POI
+                        </a>
+                    }
+
+                    <a asp-area="DuKhach" asp-controller="Map" asp-action="Index" class="dk-btn dk-btn-ghost">
+                        <i class="fa-solid fa-map"></i>
+                        Xem bản đồ
+                    </a>
+                </div>
+            </div>
+
+            <div class="empty-visual">
+                <i class="fa-solid fa-map-location-dot"></i>
+            </div>
+        </div>
+    }
+</section>
+
+@if (isTourist)
+{
+    <section class="tourist-section">
+        <div class="tourist-section-head">
+            <div>
+                <div class="tourist-kicker">Lịch sử</div>
+                <h2 class="tourist-title">Khám phá gần đây.</h2>
+            </div>
+        </div>
+
+        @if (!hasRecentDiscoveries)
+        {
+            <div class="empty-showcase">
+                <div class="empty-content">
+                    <h3>Bạn chưa check-in POI nào.</h3>
+                    <p>Mở bản đồ và thử check-in khi bạn ở gần điểm tham quan để nhận điểm.</p>
+
+                    <a asp-area="DuKhach" asp-controller="Map" asp-action="Index" class="dk-btn dk-btn-primary">
+                        <i class="fa-solid fa-map-location-dot"></i>
+                        Mở bản đồ
+                    </a>
+                </div>
+
+                <div class="empty-visual">
+                    <i class="fa-solid fa-location-crosshairs"></i>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="recent-card">
+                @foreach (var item in recentDiscoveries)
+                {
+                    <div class="recent-row">
+                        <div>
+                            <strong>@item.PoiName</strong>
+                            <br />
+                            <small>POI #@item.PoiId</small>
+                        </div>
+
+                        <div>@item.Method</div>
+                        <div>+@item.Points điểm</div>
+                        <div>@item.DiscoveredAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</div>
+                    </div>
+                }
+            </div>
+        }
+    </section>
+}
+
+<section class="tourist-section">
+    <div class="tourist-section-head">
+        <div>
+            <div class="tourist-kicker">Quy trình</div>
+            <h2 class="tourist-title">Du khách sử dụng như thế nào?</h2>
+        </div>
+    </div>
+
+    <div class="steps">
+        <div class="step">
+            <div class="step-number">1</div>
+            <h3>Tạo tài khoản</h3>
+            <p>Đăng ký tài khoản du khách trên web bằng email và mật khẩu.</p>
+        </div>
+
+        <div class="step">
+            <div class="step-number">2</div>
+            <h3>Mở bản đồ</h3>
+            <p>Xem các POI đã duyệt, tìm địa điểm và chọn điểm muốn khám phá.</p>
+        </div>
+
+        <div class="step">
+            <div class="step-number">3</div>
+            <h3>Đến địa điểm</h3>
+            <p>Dùng chỉ đường để di chuyển tới vị trí POI ngoài thực tế.</p>
+        </div>
+
+        <div class="step">
+            <div class="step-number">4</div>
+            <h3>Dùng trên app</h3>
+            <p>Tài khoản web có thể đăng nhập trên app để tiếp tục trải nghiệm.</p>
+        </div>
+    </div>
+</section>
+
+<section class="tourist-section">
+    <div class="cta-box">
+        <div>
+            <h2>Sẵn sàng khám phá chưa?</h2>
+            <p>
+                Mở bản đồ du khách để xem các điểm tham quan, hoặc tạo tài khoản để dùng chung với app mobile.
+            </p>
+        </div>
+
+        <div class="cta-actions">
+            <a asp-area="DuKhach" asp-controller="Map" asp-action="Index" class="dk-btn dk-btn-primary">
+                <i class="fa-solid fa-map-location-dot"></i>
+                Mở bản đồ
+            </a>
+
+            @if (!isTourist)
+            {
+                <a asp-area="DuKhach" asp-controller="Account" asp-action="Register" class="dk-btn dk-btn-ghost">
+                    <i class="fa-solid fa-user-plus"></i>
+                    Đăng ký
+                </a>
+            }
+            else
+            {
+                <a asp-area="DuKhach" asp-controller="Account" asp-action="Profile" class="dk-btn dk-btn-ghost">
+                    <i class="fa-solid fa-user"></i>
+                    Hồ sơ của tôi
+                </a>
+            }
+        </div>
+    </div>
+</section>

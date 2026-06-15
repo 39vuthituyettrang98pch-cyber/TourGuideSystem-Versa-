@@ -1,0 +1,39 @@
+@model AdminWeb.Models.CategoryTranslation
+
+@{
+    ViewData["Title"] = "Thêm bản dịch Danh mục";
+}
+
+<div class="page-title">Thêm bản dịch Danh mục</div>
+<div class="page-subtitle">Thêm nội dung và ngôn ngữ mới cho Danh mục.</div>
+<div class="card" style="padding:28px;">
+    <form asp-action="Create" method="post">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="CategoryId" />
+        
+        <div class="form-grid">
+            <div class="form-group">
+                <label class="form-label">Mã ngôn ngữ</label>
+                <input class="form-control" asp-for="LanguageCode" list="lang-list" placeholder="VD: vi, en, fr..." required autocomplete="off" />
+                <datalist id="lang-list">
+                    <option value="vi">Tiếng Việt</option>
+                    <option value="en">Tiếng Anh</option>
+                    <option value="fr">Tiếng Pháp</option>
+                    <option value="de">Tiếng Đức</option>
+                    <option value="ja">Tiếng Nhật</option>
+                    <option value="ko">Tiếng Hàn</option>
+                    <option value="zh">Tiếng Trung</option>
+                </datalist>
+                <small style="color:var(--text2);font-size:12px;margin-top:6px;display:block;">Chọn từ danh sách hoặc tự gõ mã mới.</small>
+            </div>
+            <div class="form-group full">
+                <label class="form-label">Tên Danh mục</label>
+                <input class="form-control" asp-for="Name" type="text" required />
+            </div>
+        </div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap; margin-top:24px;">
+            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Lưu bản dịch</button>
+            <a asp-action="Index" asp-route-categoryId="@Model.CategoryId" class="btn btn-secondary">Quay lại</a>
+        </div>
+    </form>
+</div>

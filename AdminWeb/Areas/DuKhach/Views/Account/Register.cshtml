@@ -1,0 +1,47 @@
+@model DuKhachRegisterViewModel
+@{
+    ViewData["Title"] = "Đăng ký du khách";
+}
+
+<section class="cardx form-card">
+    <div class="eyebrow">Tài khoản du khách</div>
+    <h1 style="font-weight:900;letter-spacing:-.05em;margin:8px 0 8px;">Đăng ký</h1>
+    <p style="color:var(--muted);line-height:1.7;">Tài khoản này lưu vào bảng <strong>tourists</strong>, nên có thể đăng nhập cả web du khách và app mobile.</p>
+
+    <form asp-area="DuKhach" asp-controller="Account" asp-action="Register" method="post" novalidate>
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="ReturnUrl" />
+        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+        <div class="mb-3">
+            <label asp-for="FullName" class="form-label"></label>
+            <input asp-for="FullName" class="form-control" placeholder="Nguyễn Văn A" />
+            <span asp-validation-for="FullName" class="text-danger"></span>
+        </div>
+        <div class="mb-3">
+            <label asp-for="Email" class="form-label"></label>
+            <input asp-for="Email" class="form-control" placeholder="email@example.com" />
+            <span asp-validation-for="Email" class="text-danger"></span>
+        </div>
+        <div class="mb-3">
+            <label asp-for="Password" class="form-label"></label>
+            <input asp-for="Password" class="form-control" placeholder="Ít nhất 8 ký tự" />
+            <span asp-validation-for="Password" class="text-danger"></span>
+        </div>
+        <div class="mb-3">
+            <label asp-for="ConfirmPassword" class="form-label"></label>
+            <input asp-for="ConfirmPassword" class="form-control" placeholder="Nhập lại mật khẩu" />
+            <span asp-validation-for="ConfirmPassword" class="text-danger"></span>
+        </div>
+        <button class="btnx primary w-100" type="submit"><i class="fa-solid fa-user-plus"></i> Tạo tài khoản</button>
+    </form>
+
+    <div style="margin-top:16px;color:var(--muted);">
+        Đã có tài khoản?
+        <a asp-area="DuKhach" asp-controller="Account" asp-action="Login" asp-route-returnUrl="@Model.ReturnUrl" style="color:var(--brand2);font-weight:800;">Đăng nhập</a>
+    </div>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

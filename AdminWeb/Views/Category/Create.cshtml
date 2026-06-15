@@ -1,0 +1,30 @@
+@model AdminWeb.Models.Category
+
+@{
+    ViewData["Title"] = "Thêm danh mục";
+}
+
+<div class="page-title">Thêm danh mục mới</div>
+<div class="page-subtitle">Tạo danh mục để phân loại POI theo chủ đề.</div>
+<div class="card" style="padding:28px;">
+    <form asp-action="Create" method="post">
+        @Html.AntiForgeryToken()
+        <div class="form-grid">
+            <div class="form-group full">
+                <label class="form-label">Tên danh mục (Tiếng Việt)</label>
+                <input class="form-control" name="Name" type="text" placeholder="Ví dụ: Di tích lịch sử" required />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Trạng thái</label>
+                <select class="form-control" name="Status">
+                    <option value="active">Hoạt động</option>
+                    <option value="disabled">Đã ẩn</option>
+                </select>
+            </div>
+        </div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;">
+            <button type="submit" class="btn btn-primary">Lưu danh mục</button>
+            <a asp-action="Index" class="btn btn-secondary">Quay lại</a>
+        </div>
+    </form>
+</div>

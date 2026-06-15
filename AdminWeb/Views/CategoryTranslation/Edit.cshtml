@@ -1,0 +1,33 @@
+@model AdminWeb.Models.CategoryTranslation
+
+@{
+    ViewData["Title"] = "Sửa bản dịch Danh mục";
+}
+
+<div class="page-title">Sửa bản dịch Danh mục</div>
+<div class="page-subtitle">Cập nhật nội dung ngôn ngữ <strong>@Model.LanguageCode.ToUpper()</strong>.</div>
+
+<div class="card" style="padding:28px;">
+    <form asp-action="Edit" method="post">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="Id" />
+        <input type="hidden" asp-for="CategoryId" />
+        <input type="hidden" asp-for="LanguageCode" />
+
+        <div class="form-grid">
+            <div class="form-group">
+                <label class="form-label">Ngôn ngữ</label>
+                <input class="form-control" type="text" value="@Model.LanguageCode.ToUpper()" disabled style="opacity:0.6;" />
+            </div>
+            <div class="form-group full">
+                <label class="form-label">Tên Danh mục <span style="color:var(--danger)">*</span></label>
+                <input class="form-control" asp-for="Name" type="text" required />
+            </div>
+        </div>
+
+        <div style="display:flex;gap:12px;flex-wrap:wrap; margin-top:24px;">
+            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Cập nhật</button>
+            <a asp-action="Index" asp-route-categoryId="@Model.CategoryId" class="btn btn-secondary">Quay lại</a>
+        </div>
+    </form>
+</div>

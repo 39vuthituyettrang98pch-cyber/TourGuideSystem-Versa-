@@ -1,0 +1,68 @@
+@model AdminWeb.Models.Poi
+
+@{
+    ViewData["Title"] = "Chỉnh sửa thông số POI";
+}
+
+<div class="page-title">Chỉnh sửa thông số POI #@Model.Id</div>
+<div class="page-subtitle">Cập nhật vị trí và các thông số cài đặt của điểm tham quan.</div>
+<div class="card" style="padding:28px;">
+    <form asp-action="Edit" method="post" enctype="multipart/form-data">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="Id" />
+        <input type="hidden" asp-for="CreatedAt" />
+        <input type="hidden" asp-for="CoverImageUrl" />
+        <div class="form-grid">
+           <div class="form-group">
+    <label class="form-label">Vĩ độ (Latitude)</label>
+    <input class="form-control" asp-for="Latitude" type="number" step="any" required />
+</div>
+
+<div class="form-group">
+    <label class="form-label">Kinh độ (Longitude)</label>
+    <input class="form-control" asp-for="Longitude" type="number" step="any" required />
+</div>
+
+<div class="form-group">
+    <label class="form-label">Bán kính kích hoạt Geofence (mét)</label>
+    <input class="form-control" asp-for="Radius" type="number" min="10" required />
+</div>
+
+@await Html.PartialAsync("PoiLocationPicker")
+            <div class="form-group">
+                <label class="form-label">Trạng thái</label>
+                @if (User.IsInRole("Admin"))
+                {
+                    <select class="form-control" asp-for="Status">
+                        <option value="Pending">Pending</option>
+                        <option value="Approved">Approved</option>
+                        <option value="Rejected">Rejected</option>
+                    </select>
+                }
+                else
+                {
+                    <input class="form-control" value="@Model.Status" readonly />
+                    <input type="hidden" asp-for="Status" />
+                    <small style="color:var(--text2);font-size:12px;margin-top:6px;display:block;">Khi cập nhật POI sẽ được gửi Admin duyệt lại.</small>
+                }
+            </div>
+
+            <div class="form-group full">
+                <label class="form-label">Ảnh bìa (Thumbnail)</label>
+                @if (!string.IsNullOrEmpty(Model.CoverImageUrl))
+                {
+                    <div style="margin-bottom: 12px;">
+                        <img src="@Model.CoverImageUrl" alt="Cover Image" style="max-height: 120px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);" />
+                    </div>
+                }
+                <input class="form-control" type="file" name="coverImage" accept="image/*" />
+                <small style="color:var(--text2);font-size:12px;margin-top:6px;display:block;">Để trống nếu không muốn thay đổi ảnh hiện tại.</small>
+            </div>
+        </div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap; margin-top:24px;">
+            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Cập nhật POI</button>
+            <a asp-controller="PoiTranslation" asp-action="Index" asp-route-poiId="@Model.Id" class="btn btn-secondary"><i class="fa-solid fa-language"></i> Cập nhật bản dịch</a>
+            <a asp-action="Index" class="btn btn-secondary">Quay lại</a>
+        </div>
+    </form>
+</div>

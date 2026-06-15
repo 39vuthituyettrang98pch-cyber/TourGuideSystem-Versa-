@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="UserMobile.Views.MapPage"
+             Title="Khám phá"
+             BackgroundColor="#EEF1F5">
+    <Grid>
+        <WebView x:Name="MapWebView"
+                 Navigating="OnMapNavigating"
+                 VerticalOptions="Fill"
+                 HorizontalOptions="Fill" />
+
+        <Border Margin="14"
+                Padding="14,11"
+                VerticalOptions="Start"
+                BackgroundColor="#F4FFFFFF"
+                Stroke="#E4E8F0"
+                StrokeShape="RoundRectangle 18">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                <VerticalStackLayout Spacing="1">
+                    <Label Text="Khám phá quanh bạn"
+                           FontAttributes="Bold"
+                           FontSize="16"
+                           TextColor="{StaticResource Ink}" />
+                    <Label Text="Chạm marker để xem thuyết minh"
+                           FontSize="11"
+                           TextColor="{StaticResource Muted}" />
+                </VerticalStackLayout>
+                <Button Grid.Column="1"
+                        Text="↻"
+                        FontSize="21"
+                        Clicked="OnRefreshClicked"
+                        Style="{StaticResource SecondaryButton}"
+                        Padding="12,4"
+                        MinimumWidthRequest="44"
+                        MinimumHeightRequest="40" />
+            </Grid>
+        </Border>
+
+        <Border BackgroundColor="#F8FAFD"
+                Stroke="#E5EAF2"
+                StrokeShape="RoundRectangle 22"
+                Padding="15"
+                Margin="14"
+                VerticalOptions="End">
+            <Grid RowDefinitions="Auto,180">
+                <Grid ColumnDefinitions="*,Auto" Margin="2,0,2,10">
+                    <VerticalStackLayout Spacing="2">
+                        <Label Text="Điểm tham quan"
+                               FontSize="17"
+                               FontAttributes="Bold"
+                               TextColor="#172033" />
+                        <Label Text="Chạm marker hoặc thẻ để mở chi tiết"
+                               FontSize="11"
+                               TextColor="#68748A" />
+                    </VerticalStackLayout>
+                    <ActivityIndicator Grid.Column="1"
+                                       IsRunning="{Binding IsLoading}"
+                                       IsVisible="{Binding IsLoading}" />
+                </Grid>
+
+                <Grid Grid.Row="1">
+                    <VerticalStackLayout IsVisible="{Binding IsEmpty}"
+                                         VerticalOptions="Center"
+                                         Spacing="5">
+                        <Label Text="Chưa có POI được duyệt"
+                               FontAttributes="Bold"
+                               TextColor="#172033"
+                               HorizontalOptions="Center" />
+                        <Label Text="{Binding Message}"
+                               FontSize="12"
+                               TextColor="#68748A"
+                               HorizontalTextAlignment="Center" />
+                    </VerticalStackLayout>
+
+                    <CollectionView x:Name="PlacesList"
+                                    ItemsSource="{Binding Places}"
+                                    SelectionMode="Single"
+                                    SelectionChanged="OnSelectionChanged"
+                                    ItemsLayout="HorizontalList">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <Border WidthRequest="220"
+                                        Margin="0,0,10,0"
+                                        Padding="11"
+                                        BackgroundColor="White"
+                                        Stroke="#E5EAF2"
+                                        StrokeShape="RoundRectangle 16">
+                                    <VerticalStackLayout Spacing="6">
+                                        <Border HeightRequest="82"
+                                                Stroke="Transparent"
+                                                StrokeShape="RoundRectangle 11">
+                                            <Image Source="{Binding ImageUrl}" Aspect="AspectFill" />
+                                        </Border>
+                                        <Label Text="{Binding Title}"
+                                               FontAttributes="Bold"
+                                               TextColor="#172033"
+                                               MaxLines="1" />
+                                        <Label Text="{Binding Description}"
+                                               FontSize="11"
+                                               TextColor="#68748A"
+                                               MaxLines="2" />
+                                    </VerticalStackLayout>
+                                </Border>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </Grid>
+            </Grid>
+        </Border>
+    </Grid>
+</ContentPage>

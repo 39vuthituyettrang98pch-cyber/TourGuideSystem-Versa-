@@ -1,0 +1,43 @@
+@model IEnumerable<AdminWeb.Models.SupportedLanguage>
+@{
+    ViewData["Title"] = "Ngôn ngữ và giọng đọc";
+}
+
+<div class="page-heading">
+    <div>
+        <div class="page-title">Ngôn ngữ và giọng đọc</div>
+        <div class="page-subtitle">Danh sách này đồng bộ với app. Tiếng Việt là nội dung nguồn; các ngôn ngữ đang bật còn lại sẽ được AI dịch và tạo audio Edge-TTS.</div>
+    </div>
+    <div class="page-actions">
+        <a asp-action="Create" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Thêm ngôn ngữ</a>
+    </div>
+</div>
+
+<div class="table-wrapper">
+    <table class="data-table">
+        <thead><tr><th>Mã</th><th>Ngôn ngữ</th><th>Edge-TTS voice</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+        <tbody>
+            @foreach (var language in Model)
+            {
+                <tr>
+                    <td><code>@language.LanguageCode</code></td>
+                    <td><strong>@language.LanguageName</strong></td>
+                    <td><code>@language.EdgeTtsVoice</code></td>
+                    <td><span class="badge @(language.IsActive ? "green" : "gray")">@(language.IsActive ? "Đang bật" : "Đã tắt")</span></td>
+                    <td>
+                        <div class="actions">
+                            <a asp-action="Edit" asp-route-id="@language.LanguageCode" class="btn btn-secondary btn-sm"><i class="fa-solid fa-pen"></i> Sửa</a>
+                            <form asp-action="Toggle" asp-route-id="@language.LanguageCode" method="post">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn @(language.IsActive ? "btn-danger" : "btn-primary") btn-sm">
+                                    <i class="fa-solid @(language.IsActive ? "fa-pause" : "fa-play")"></i>
+                                    @(language.IsActive ? "Tắt" : "Bật")
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
