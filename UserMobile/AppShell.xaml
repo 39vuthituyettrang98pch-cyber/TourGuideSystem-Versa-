@@ -25,6 +25,10 @@
                       Icon="heart.svg"
                       ContentTemplate="{DataTemplate views:FavoritesPage}"
                       Route="FavoritesPage" />
+        <ShellContent Title="AI"
+                      Icon="profile.svg"
+                      ContentTemplate="{DataTemplate views:AiChatPage}"
+                      Route="AiChatPage" />
         <ShellContent Title="Cá nhân"
                       Icon="profile.svg"
                       ContentTemplate="{DataTemplate views:ProfilePage}"

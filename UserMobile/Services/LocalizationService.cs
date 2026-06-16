@@ -6,6 +6,8 @@ public class LocalizationService : ILocalizationService
 {
     private const string LanguageKey = "selected_language";
     private readonly ILocalStorageService _storage;
+    private readonly IApiService _apiService;
+    private bool _loadedRemoteLanguages;
     private readonly Dictionary<string, Dictionary<string, string>> _translations = new()
     {
         ["vi"] = new()
@@ -92,9 +94,10 @@ public class LocalizationService : ILocalizationService
 
     private string _currentLanguage = "vi";
 
-    public LocalizationService(ILocalStorageService storage)
+    public LocalizationService(ILocalStorageService storage, IApiService apiService)
     {
         _storage = storage;
+        _apiService = apiService;
     }
 
     public IList<LanguageOption> SupportedLanguages { get; } = new List<LanguageOption>
@@ -106,8 +109,50 @@ public class LocalizationService : ILocalizationService
         new() { Code = "ko", Name = "한국어", NativeName = "한국어" }
     };
 
+    public async Task<IReadOnlyList<LanguageOption>> RefreshSupportedLanguagesAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var response = await _apiService.GetAsync<List<LanguageOption>>("api/languages", cancellationToken);
+            if (response.Success && response.Data is { Count: > 0 })
+            {
+                SupportedLanguages.Clear();
+                foreach (var language in response.Data
+                    .Where(item => !string.IsNullOrWhiteSpace(item.Code))
+                    .GroupBy(item => item.Code.Trim().ToLowerInvariant(), StringComparer.OrdinalIgnoreCase)
+                    .Select(group => group.First()))
+                {
+                    var code = language.Code.Trim().ToLowerInvariant();
+                    var name = string.IsNullOrWhiteSpace(language.Name) ? code.ToUpperInvariant() : language.Name.Trim();
+                    var nativeName = string.IsNullOrWhiteSpace(language.NativeName) ? name : language.NativeName.Trim();
+
+                    SupportedLanguages.Add(new LanguageOption
+                    {
+                        Code = code,
+                        Name = name,
+                        NativeName = nativeName
+                    });
+                }
+            }
+        }
+        catch (Exception exception)
+        {
+            System.Diagnostics.Debug.WriteLine($"Cannot load remote languages: {exception}");
+        }
+
+        _loadedRemoteLanguages = true;
+        return SupportedLanguages.ToList();
+    }
+
+    private async Task EnsureRemoteLanguagesLoadedAsync()
+    {
+        if (!_loadedRemoteLanguages)
+            await RefreshSupportedLanguagesAsync();
+    }
+
     public async Task<LanguageOption?> GetSavedLanguageAsync()
     {
+        await EnsureRemoteLanguagesLoadedAsync();
         var code = await _storage.GetAsync(LanguageKey);
         if (string.IsNullOrWhiteSpace(code))
         {
@@ -119,8 +164,19 @@ public class LocalizationService : ILocalizationService
 
     public async Task SetLanguageAsync(LanguageOption language)
     {
-        _currentLanguage = language.Code;
-        await _storage.SaveAsync(LanguageKey, language.Code);
+        var code = language.Code.Trim().ToLowerInvariant();
+        if (!SupportedLanguages.Any(item => string.Equals(item.Code, code, StringComparison.OrdinalIgnoreCase)))
+        {
+            SupportedLanguages.Add(new LanguageOption
+            {
+                Code = code,
+                Name = string.IsNullOrWhiteSpace(language.Name) ? code.ToUpperInvariant() : language.Name,
+                NativeName = string.IsNullOrWhiteSpace(language.NativeName) ? language.Name : language.NativeName
+            });
+        }
+
+        _currentLanguage = code;
+        await _storage.SaveAsync(LanguageKey, code);
     }
 
     public string Translate(string key)

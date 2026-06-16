@@ -284,6 +284,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
 
     <style>
         .admin-map-card {
@@ -520,6 +521,10 @@
             margin: 12px 14px;
         }
 
+        .leaflet-routing-container {
+            display: none !important;
+        }
+
         .admin-popup {
             min-width: 230px;
         }
@@ -603,6 +608,7 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
 
     <script>
         (function () {
@@ -628,6 +634,7 @@
             let markerClusterGroup = null;
             let adminMarker = null;
             let adminCircle = null;
+            let routingControl = null;
 
             const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 maxZoom: 19,
@@ -880,7 +887,8 @@
                                 <div class="admin-popup-actions">
                                     <a href="/Poi/Edit/${poi.id}">Sửa POI</a>
                                     <a href="/Poi/QrCode/${poi.id}">Mã QR</a>
-                                    <a href="${directionUrl}" target="_blank">Chỉ đường</a>
+                                    <a href="#" onclick="showRouteToPoi(${lat}, ${lng}); return false;">Chỉ đường</a>
+                                    <a href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}${directionOrigin}" target="_blank" title="Mở Google Maps"><i class="fa-brands fa-google"></i></a>
                                 </div>
                             </div>
                         `;
@@ -954,6 +962,45 @@
                     }
                 }
             }
+            
+            window.showRouteToPoi = function(destLat, destLng) {
+                if (!adminMarker) {
+                    alert('Vui lòng bấm nút "Vị trí của tôi" trước khi chỉ đường.');
+                    document.getElementById('btnLocateAdmin')?.click();
+                    return;
+                }
+
+                if (routingControl) {
+                    map.removeControl(routingControl);
+                }
+
+                const startLatLng = adminMarker.getLatLng();
+
+                routingControl = L.Routing.control({
+                    waypoints: [
+                        L.latLng(startLatLng.lat, startLatLng.lng),
+                        L.latLng(Number(destLat), Number(destLng))
+                    ],
+                    routeWhileDragging: false,
+                    addWaypoints: false,
+                    show: false,
+                    lineOptions: {
+                        styles: [
+                            { color: '#3b82f6', opacity: 0.9, weight: 6, dashArray: '10, 8' }
+                        ]
+                    },
+                    createMarker: function () { return null; }
+                }).addTo(map);
+
+                routingControl.on('routesfound', function (e) {
+                    const summary = e.routes[0].summary;
+                    map.invalidateSize();
+                });
+
+                routingControl.on('routingerror', function () {
+                    alert('Không thể tìm thấy tuyến đường.');
+                });
+            };
 
             fitButton?.addEventListener('click', fitMap);
 
@@ -1037,6 +1084,10 @@
             setTimeout(function () {
                 map.invalidateSize();
             }, 300);
+
+            setTimeout(function () {
+                document.getElementById('btnLocateAdmin')?.click();
+            }, 500);
         })();
     </script>
 }

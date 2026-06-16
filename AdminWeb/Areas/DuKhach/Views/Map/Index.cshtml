@@ -1,8 +1,17 @@
 @using System.Text.Json
 @model DuKhachMapViewModel
+
 @{
+    ArgumentNullException.ThrowIfNull(Model);
+
     ViewData["Title"] = "Bản đồ du khách";
-    var poiJson = JsonSerializer.Serialize(Model.Pois, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+
+    var poiJson = JsonSerializer.Serialize(
+        Model.Pois,
+        new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        });
 }
 
 @section Styles {
@@ -10,109 +19,693 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+
     <style>
-        .map-page {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) 380px;
-            gap: 18px;
-            min-height: calc(100vh - 190px);
+        .dk-shell {
+            width: min(1440px, calc(100% - 32px));
         }
-        #touristMap {
-            min-height: 680px;
-            border-radius: 28px;
-            border: 1px solid var(--line);
-            box-shadow: var(--shadow);
+
+        .map-btn.bookmark {
+            color: #ef4444;
+            background: rgba(239, 68, 68, 0.1);
+        }
+        .map-btn.bookmark.active {
+            background: #ef4444;
+            color: #fff;
+        }
+
+        .map-language-box {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-height: 42px;
+            padding: 0 12px;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            background: rgba(148, 163, 184, 0.10);
+            color: var(--text);
+            font-weight: 900;
+            font-size: 13px;
+        }
+
+        .map-language-box i {
+            color: var(--accent-2);
+        }
+
+        .map-language-box select {
+            border: 0;
+            outline: 0;
+            color: var(--text);
+            background: transparent;
+            font-weight: 900;
+            cursor: pointer;
+        }
+
+        .map-language-box option {
+            color: #0f172a;
+            background: #fff;
+        }
+
+        .narration-note {
+            margin: 10px 0;
+            padding: 12px 13px;
+            border: 1px dashed var(--border);
+            border-radius: 16px;
+            color: var(--muted);
+            background: rgba(148, 163, 184, 0.08);
+            font-size: 13px;
+            line-height: 1.55;
+        }
+
+        .rating-stars { display: flex; gap: 4px; color: #f59e0b; }
+        .rating-stars .star { cursor: pointer; }
+        .rating-form { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+        .rating-form textarea {
+            width: 100%;
+            padding: 10px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: var(--surface-2);
+            color: var(--text);
+            min-height: 80px;
+            margin-top: 10px;
+            resize: vertical;
+        }
+
+
+        .map-hero {
+            position: relative;
             overflow: hidden;
-            background: var(--panel2);
+            margin-bottom: 20px;
+            padding: 34px;
+            border: 1px solid var(--border);
+            border-radius: 34px;
+            background:
+                radial-gradient(circle at 15% 20%, rgba(52, 211, 153, 0.20), transparent 30%),
+                radial-gradient(circle at 88% 32%, rgba(56, 189, 248, 0.18), transparent 32%),
+                linear-gradient(135deg, rgba(15, 29, 52, 0.92), rgba(7, 18, 34, 0.78)),
+                var(--card);
+            box-shadow: var(--shadow);
         }
+
+        html[data-theme="light"] .map-hero {
+            background:
+                radial-gradient(circle at 15% 20%, rgba(52, 211, 153, 0.18), transparent 30%),
+                radial-gradient(circle at 88% 32%, rgba(56, 189, 248, 0.18), transparent 32%),
+                linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(238, 248, 255, 0.84)),
+                var(--card);
+        }
+
+        .map-hero-inner {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(320px, 470px);
+            gap: 28px;
+            align-items: end;
+        }
+
+        .map-eyebrow {
+            width: fit-content;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 13px;
+            border-radius: 999px;
+            border: 1px solid rgba(52, 211, 153, 0.30);
+            color: var(--accent);
+            background: rgba(52, 211, 153, 0.10);
+            font-size: 13px;
+            font-weight: 900;
+        }
+
+        .map-hero h1 {
+            max-width: 760px;
+            margin: 14px 0 12px;
+            font-size: clamp(36px, 5vw, 64px);
+            line-height: 0.96;
+            font-weight: 950;
+            letter-spacing: -0.07em;
+        }
+
+        .map-hero h1 span {
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .map-hero p {
+            max-width: 760px;
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.75;
+            font-size: 16px;
+        }
+
+        .map-stat-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .map-stat-card {
+            min-width: 0;
+            padding: 18px;
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            background: rgba(148, 163, 184, 0.10);
+            backdrop-filter: blur(14px);
+        }
+
+        .map-stat-card strong {
+            display: block;
+            font-size: 30px;
+            line-height: 1;
+            font-weight: 950;
+            letter-spacing: -0.045em;
+            word-break: break-word;
+        }
+
+        .map-stat-card span {
+            display: block;
+            margin-top: 9px;
+            color: var(--muted);
+            font-size: 13px;
+            font-weight: 800;
+        }
+
+        .map-login-alert {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 20px;
+            padding: 16px 18px;
+            border-radius: 22px;
+            border: 1px solid rgba(251, 113, 133, 0.30);
+            color: var(--text);
+            background: rgba(251, 113, 133, 0.10);
+            line-height: 1.6;
+        }
+
+        .map-login-alert i {
+            color: var(--danger);
+            margin-top: 4px;
+        }
+
+        .map-login-alert a {
+            color: var(--accent-2);
+            font-weight: 900;
+            text-decoration: none;
+        }
+
+        .map-page {
+            width: 100%;
+            max-width: 100%;
+            min-width: 0;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 410px;
+            gap: 20px;
+            align-items: stretch;
+        }
+
+        .map-main {
+            min-width: 0;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            border-radius: 34px;
+            background: var(--card);
+            box-shadow: var(--shadow);
+        }
+
+        #touristMap {
+            width: 100%;
+            height: 720px;
+            min-height: 720px;
+            border-radius: 34px;
+            overflow: hidden;
+            background: var(--surface);
+            z-index: 1;
+        }
+
         .map-side {
-            border: 1px solid var(--line);
-            background: var(--panel);
-            border-radius: 28px;
+            min-width: 0;
+            height: 720px;
+            border: 1px solid var(--border);
+            background: var(--card);
+            border-radius: 34px;
             overflow: hidden;
             display: flex;
             flex-direction: column;
-            min-height: 680px;
+            box-shadow: var(--shadow);
         }
-        .map-side-head { padding: 18px; border-bottom: 1px solid var(--line); }
-        .map-search {
-            display: flex; align-items: center; gap: 10px;
-            background: var(--panel2); border: 1px solid var(--line); border-radius: 16px;
-            padding: 0 12px; min-height: 46px; margin-top: 14px;
-        }
-        .map-search input { flex: 1; border: 0; outline: 0; background: transparent; color: var(--text); }
-        .poi-list { overflow: auto; padding: 12px; display: grid; gap: 10px; }
-        .poi-list-item {
-            border: 1px solid var(--line); border-radius: 18px; padding: 13px;
-            background: var(--panel2); cursor: pointer; transition: transform .15s ease, border-color .15s ease;
-        }
-        .poi-list-item:hover { transform: translateY(-1px); border-color: rgba(56,189,248,.42); }
-        .poi-list-item.active { border-color: var(--brand2); }
-        .poi-list-title { font-weight: 900; letter-spacing: -.02em; display: flex; gap: 8px; justify-content: space-between; }
-        .poi-list-desc { color: var(--muted); font-size: 13px; line-height: 1.5; margin-top: 6px; }
-        .badge-soft {
-            display: inline-flex; align-items: center; gap: 6px; padding: 5px 8px; border-radius: 999px;
-            background: rgba(34,197,94,.14); color: var(--brand); font-size: 12px; font-weight: 800; white-space: nowrap;
-        }
-        .badge-muted { background: rgba(148,163,184,.12); color: var(--muted); }
-        .map-toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
-        .detail-panel { padding: 18px; border-top: 1px solid var(--line); background: rgba(0,0,0,.08); }
-        .detail-panel img { width:100%; max-height:180px; object-fit:cover; border-radius:18px; border:1px solid var(--line); margin-bottom:12px; }
-        .detail-title { font-weight: 900; letter-spacing: -.04em; font-size: 22px; margin-bottom: 8px; }
-        .detail-desc { color: var(--muted); line-height: 1.6; font-size: 14px; max-height: 140px; overflow:auto; }
-        .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: #0f172a; color: #e5f0ff; }
-        html[data-theme="light"] .leaflet-popup-content-wrapper, html[data-theme="light"] .leaflet-popup-tip { background: #fff; color: #0f172a; }
-        .map-message { margin-top: 12px; color: var(--muted); font-size: 14px; line-height: 1.5; }
-        .map-message.ok { color: var(--brand); }
-        .map-message.err { color: var(--danger); }
 
-        /* Style cho Custom Marker Pins */
+        .map-side-head {
+            flex: 0 0 auto;
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+            background: rgba(148, 163, 184, 0.06);
+        }
+
+        .side-eyebrow {
+            width: fit-content;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 11px;
+            border-radius: 999px;
+            border: 1px solid rgba(52, 211, 153, 0.24);
+            color: var(--accent);
+            background: rgba(52, 211, 153, 0.10);
+            font-size: 12px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .map-side-title {
+            margin-top: 12px;
+            font-size: 24px;
+            line-height: 1.05;
+            font-weight: 950;
+            letter-spacing: -0.05em;
+        }
+
+        .map-side-subtitle {
+            margin-top: 8px;
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.55;
+        }
+
+        .map-search {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-height: 48px;
+            margin-top: 16px;
+            padding: 0 14px;
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            background: var(--surface);
+        }
+
+        .map-search i {
+            color: var(--muted);
+        }
+
+        .map-search input {
+            flex: 1;
+            min-width: 0;
+            border: 0;
+            outline: 0;
+            background: transparent;
+            color: var(--text);
+            font-weight: 700;
+        }
+
+        .map-search input::placeholder {
+            color: var(--soft);
+            font-weight: 600;
+        }
+
+        .map-toolbar {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 14px;
+        }
+
+        .map-btn {
+            min-height: 42px;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            padding: 9px 14px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            color: var(--text);
+            background: rgba(148, 163, 184, 0.10);
+            font-weight: 900;
+            cursor: pointer;
+            transition: 0.2s ease;
+            text-decoration: none;
+            font-size: 13px;
+        }
+
+        .map-btn:hover {
+            color: var(--text);
+            transform: translateY(-1px);
+            background: rgba(148, 163, 184, 0.16);
+        }
+
+        .map-btn.primary {
+            color: #03131d;
+            border-color: transparent;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        }
+
+        .map-btn.primary:hover {
+            color: #03131d;
+        }
+
+        .map-message {
+            min-height: 22px;
+            margin-top: 12px;
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .map-message.ok {
+            color: var(--accent);
+        }
+
+        .map-message.err {
+            color: var(--danger);
+        }
+
+        .poi-list {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow: auto;
+            padding: 14px;
+            display: grid;
+            gap: 11px;
+            align-content: start;
+        }
+
+        .poi-list::-webkit-scrollbar,
+        .detail-panel::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .poi-list::-webkit-scrollbar-thumb,
+        .detail-panel::-webkit-scrollbar-thumb {
+            background: rgba(148, 163, 184, 0.28);
+            border-radius: 999px;
+        }
+
+        .poi-list-item {
+            width: 100%;
+            min-width: 0;
+            border: 1px solid var(--border);
+            border-radius: 22px;
+            padding: 15px;
+            color: var(--text);
+            background: rgba(148, 163, 184, 0.08);
+            cursor: pointer;
+            text-align: left;
+            transition: 0.18s ease;
+        }
+
+        .poi-list-item:hover {
+            transform: translateY(-2px);
+            border-color: rgba(56, 189, 248, 0.42);
+            background: rgba(56, 189, 248, 0.08);
+        }
+
+        .poi-list-item.active {
+            border-color: var(--accent-2);
+            background: rgba(56, 189, 248, 0.13);
+            box-shadow: 0 12px 34px rgba(56, 189, 248, 0.08);
+        }
+
+        .poi-list-title {
+            min-width: 0;
+            display: flex;
+            gap: 8px;
+            justify-content: space-between;
+            align-items: flex-start;
+            font-weight: 950;
+            letter-spacing: -0.02em;
+        }
+
+        .poi-list-title span:first-child {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .poi-list-desc {
+            margin-top: 8px;
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.55;
+        }
+
+        .badge-soft {
+            flex: 0 0 auto;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 8px;
+            border-radius: 999px;
+            background: rgba(34, 197, 94, 0.14);
+            color: var(--accent);
+            font-size: 12px;
+            font-weight: 900;
+            white-space: nowrap;
+        }
+
+        .badge-muted {
+            background: rgba(148, 163, 184, 0.12);
+            color: var(--muted);
+        }
+
+        .detail-panel {
+            flex: 0 0 auto;
+            max-height: 320px;
+            overflow: auto;
+            padding: 20px;
+            border-top: 1px solid var(--border);
+            background: rgba(0, 0, 0, 0.08);
+        }
+
+        html[data-theme="light"] .detail-panel {
+            background: rgba(15, 23, 42, 0.04);
+        }
+
+        .detail-panel img {
+            width: 100%;
+            max-height: 165px;
+            object-fit: cover;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            margin-bottom: 14px;
+        }
+
+        .detail-title {
+            margin-bottom: 8px;
+            font-size: 24px;
+            font-weight: 950;
+            letter-spacing: -0.05em;
+        }
+
+        .detail-desc {
+            max-height: 130px;
+            overflow: auto;
+            color: var(--muted);
+            line-height: 1.65;
+            font-size: 14px;
+        }
+
+        .detail-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        .empty-list {
+            border: 1px dashed var(--border);
+            border-radius: 22px;
+            padding: 18px;
+            color: var(--muted);
+            line-height: 1.6;
+            background: rgba(148, 163, 184, 0.06);
+        }
+
         .custom-map-icon {
             background: transparent;
             border: none;
         }
+
         .custom-marker {
             display: flex;
             justify-content: center;
             align-items: center;
-            width: 32px;
-            height: 32px;
+            width: 34px;
+            height: 34px;
             border-radius: 50% 50% 50% 0;
             transform: rotate(-45deg);
             border: 2px solid #ffffff;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            box-shadow: 0 8px 18px rgba(0, 0, 0, 0.30);
             color: #ffffff;
             font-size: 14px;
         }
-        .custom-marker i { transform: rotate(45deg); }
-        .custom-marker.discovered { background: #22c55e; } /* Green */
-        .custom-marker.undiscovered { background: #3b82f6; } /* Blue */
 
-        @@media (max-width: 1000px) {
-            .map-page { grid-template-columns: 1fr; }
-            #touristMap, .map-side { min-height: 520px; }
+        .custom-marker i {
+            transform: rotate(45deg);
+        }
+
+        .custom-marker.discovered {
+            background: #22c55e;
+        }
+
+        .custom-marker.undiscovered {
+            background: #3b82f6;
+        }
+
+        .custom-marker.user {
+            background: #f59e0b;
+        }
+
+        .leaflet-container {
+            width: 100%;
+            max-width: 100%;
+            font-family: inherit;
+        }
+
+        .leaflet-control-container {
+            max-width: 100%;
+        }
+
+        .leaflet-popup-content-wrapper,
+        .leaflet-popup-tip {
+            background: var(--card);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .leaflet-popup-content {
+            margin: 13px 15px;
+        }
+
+        .leaflet-popup-content button {
+            color: #03131d;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        }
+
+        .leaflet-routing-container {
+            display: none !important;
+        }
+
+        .marker-cluster-small,
+        .marker-cluster-medium,
+        .marker-cluster-large {
+            background-color: rgba(56, 189, 248, 0.22);
+        }
+
+        .marker-cluster-small div,
+        .marker-cluster-medium div,
+        .marker-cluster-large div {
+            background-color: rgba(52, 211, 153, 0.92);
+            color: #03131d;
+            font-weight: 950;
+        }
+
+        @@media (max-width: 1200px) {
+            .map-hero-inner {
+                grid-template-columns: 1fr;
+            }
+
+            .map-page {
+                grid-template-columns: 1fr;
+            }
+
+            #touristMap {
+                height: 620px;
+                min-height: 620px;
+            }
+
+            .map-side {
+                height: auto;
+                min-height: 560px;
+            }
+        }
+
+        @@media (max-width: 720px) {
+            .dk-shell {
+                width: min(100% - 20px, 1440px);
+            }
+
+            .map-hero {
+                padding: 24px;
+                border-radius: 28px;
+            }
+
+            .map-stat-grid {
+                grid-template-columns: 1fr;
+            }
+
+            #touristMap {
+                height: 480px;
+                min-height: 480px;
+                border-radius: 26px;
+            }
+
+            .map-main,
+            .map-side {
+                border-radius: 26px;
+            }
+
+            .map-toolbar .map-btn {
+                width: 100%;
+            }
         }
     </style>
 }
 
-<div class="hero" style="padding:24px;margin-bottom:18px;">
-    <div class="eyebrow">Bản đồ POI</div>
-    <h1 style="font-size:clamp(30px,5vw,46px);">Tìm điểm tham quan gần bạn</h1>
-    <p>
-        Hiển thị các POI đã được duyệt. Đăng nhập du khách để check-in bằng GPS và đồng bộ tiến độ với app.
-    </p>
-    <div class="grid cols-3" style="margin-top:16px;">
-        <div class="cardx" style="padding:14px;"><span class="stat-value">@Model.TotalPoiCount</span><span class="stat-label">POI trên bản đồ</span></div>
-        <div class="cardx" style="padding:14px;"><span class="stat-value">@Model.DiscoveredCount</span><span class="stat-label">Đã check-in</span></div>
-        <div class="cardx" style="padding:14px;"><span class="stat-value">@(Model.IsTouristSignedIn ? "Đã đăng nhập" : "Khách")</span><span class="stat-label">Trạng thái</span></div>
+<div class="map-hero">
+    <div class="map-hero-inner">
+        <div>
+            <div class="map-eyebrow">
+                <i class="fa-solid fa-map-location-dot"></i>
+                Bản đồ POI
+            </div>
+
+            <h1>
+                Tìm điểm tham quan <span>gần bạn.</span>
+            </h1>
+
+            <p>
+                Hiển thị các POI đã được duyệt. Đăng nhập du khách để check-in bằng GPS,
+                xem chi tiết địa điểm, chọn ngôn ngữ thuyết minh và đồng bộ tiến độ với app mobile.
+            </p>
+        </div>
+
+        <div class="map-stat-grid">
+            <div class="map-stat-card">
+                <strong>@Model.TotalPoiCount</strong>
+                <span>POI trên bản đồ</span>
+            </div>
+
+            <div class="map-stat-card">
+                <strong>@Model.DiscoveredCount</strong>
+                <span>Đã check-in</span>
+            </div>
+
+            <div class="map-stat-card">
+                <strong>@Model.SelectedLanguageName</strong>
+                <span>Ngôn ngữ thuyết minh</span>
+            </div>
+        </div>
     </div>
 </div>
 
 @if (!Model.IsTouristSignedIn)
 {
-    <div class="alertx error">
+    <div class="map-login-alert">
         <i class="fa-solid fa-circle-info"></i>
-        <span>Bạn vẫn xem được bản đồ, nhưng muốn check-in nhận điểm thì cần <a asp-area="DuKhach" asp-controller="Account" asp-action="Login" asp-route-returnUrl="/DuKhach/Map" style="color:var(--brand2);font-weight:900;">đăng nhập du khách</a>.</span>
+        <span>
+            Bạn vẫn xem được bản đồ, nhưng muốn check-in nhận điểm thì cần
+            <a asp-area="DuKhach"
+               asp-controller="Account"
+               asp-action="Login"
+               asp-route-returnUrl="/DuKhach/Map">
+                đăng nhập du khách
+            </a>.
+        </span>
     </div>
 }
 
@@ -121,25 +714,81 @@
 </form>
 
 <div class="map-page">
-    <div id="touristMap"></div>
+    <div class="map-main">
+        <div id="touristMap"></div>
+    </div>
+
     <aside class="map-side">
         <div class="map-side-head">
-            <div class="eyebrow">Danh sách POI</div>
-            <div style="font-size:22px;font-weight:900;letter-spacing:-.04em;">Khám phá trên bản đồ</div>
+            <div class="side-eyebrow">
+                <i class="fa-solid fa-list"></i>
+                Danh sách POI
+            </div>
+
+            <div class="map-side-title">Khám phá trên bản đồ</div>
+
+            <div class="map-side-subtitle">
+                Chọn một địa điểm để xem mô tả, chỉ đường hoặc check-in bằng GPS.
+            </div>
+
             <div class="map-search">
-                <i class="fa-solid fa-magnifying-glass" style="color:var(--muted);"></i>
+                <i class="fa-solid fa-magnifying-glass"></i>
                 <input id="poiSearch" type="search" placeholder="Tìm POI theo tên hoặc mô tả..." />
             </div>
+
             <div class="map-toolbar">
-                <button class="btnx primary" type="button" id="btnLocate"><i class="fa-solid fa-location-crosshairs"></i> Vị trí của tôi</button>
-                <button class="btnx" type="button" id="btnFit"><i class="fa-solid fa-expand"></i> Xem tất cả</button>
+                <button class="map-btn primary" type="button" id="btnLocate">
+                    <i class="fa-solid fa-location-crosshairs"></i>
+                    Vị trí của tôi
+                </button>
+
+                <button class="map-btn" type="button" id="btnFit">
+                    <i class="fa-solid fa-expand"></i>
+                    Xem tất cả
+                </button>
+
+                <label class="map-language-box" title="Chọn ngôn ngữ thuyết minh">
+                    <i class="fa-solid fa-language"></i>
+                    <select id="mapLanguageSelect" aria-label="Chọn ngôn ngữ thuyết minh">
+                        @foreach (var language in Model.Languages)
+                        {
+                            if (language.Code == Model.SelectedLanguageCode)
+                            {
+                                <option value="@language.Code" selected>
+                                    @language.Name
+                                </option>
+                            }
+                            else
+                            {
+                                <option value="@language.Code">
+                                    @language.Name
+                                </option>
+                            }
+                        }
+                    </select>
+                </label>
+                
+                <button class="map-btn bookmark" type="button" id="btnFilterBookmark" title="Chỉ hiện POI đã lưu">
+                    <i class="fa-solid fa-heart"></i>
+                    Đã lưu
+                </button>
+                
+                <button class="map-btn" type="button" id="btnFilterRating" title="Chỉ hiện POI từ 4 sao">
+                    <i class="fa-solid fa-star" style="color: #f59e0b;"></i>
+                    4+ Sao
+                </button>
             </div>
+
             <div id="mapMessage" class="map-message"></div>
         </div>
+
         <div id="poiList" class="poi-list"></div>
+
         <div id="poiDetail" class="detail-panel">
             <div class="detail-title">Chọn một POI</div>
-            <div class="detail-desc">Bấm marker hoặc chọn trong danh sách để xem mô tả, nghe audio và check-in khi bạn ở gần địa điểm.</div>
+            <div class="detail-desc">
+                Bấm marker hoặc chọn trong danh sách để xem mô tả, nghe audio và check-in khi bạn ở gần địa điểm.
+            </div>
         </div>
     </aside>
 </div>
@@ -148,23 +797,103 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+
     <script>
-        const pois = @Html.Raw(poiJson);
+        const pois = (@Html.Raw(poiJson)) || [];
         const isSignedIn = @Json.Serialize(Model.IsTouristSignedIn);
         const checkInUrl = '@Url.Action("CheckIn", "Map", new { area = "DuKhach" })';
+        const toggleBookmarkUrl = '@Url.Action("ToggleBookmark", "Map", new { area = "DuKhach" })';
+        const submitReviewUrl = '@Url.Action("SubmitReview", "Map", new { area = "DuKhach" })';
+        const logAudioUrl = '@Url.Action("LogAudio", "Map", new { area = "DuKhach" })';
+        let selectedLanguageCode = @Html.Raw(JsonSerializer.Serialize(Model.SelectedLanguageCode));
+
         const mapMessage = document.getElementById('mapMessage');
         const poiList = document.getElementById('poiList');
         const poiSearch = document.getElementById('poiSearch');
         const poiDetail = document.getElementById('poiDetail');
+        const mapLanguageSelect = document.getElementById('mapLanguageSelect');
         const token = document.querySelector('#antiForgeryForm input[name="__RequestVerificationToken"]')?.value;
+
         let userLocation = null;
         let userMarker = null;
         let userCircle = null;
         let activePoiId = null;
         let routingControl = null;
         let markerClusterGroup = null;
+
         const markers = new Map();
         const circles = new Map();
+
+        const loggedAudioPois = new Set();
+        let showOnlyBookmarks = false;
+        let showOnlyHighRating = false;
+
+        const escapeHtml = value => String(value ?? '')
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#039;');
+
+        const setMessage = (message, type = '') => {
+            mapMessage.textContent = message || '';
+            mapMessage.className = `map-message ${type}`;
+        };
+
+        const normalizeLanguageCode = value => String(value || 'vi').trim().toLowerCase();
+
+        const getNarration = poi => {
+            const languageCode = normalizeLanguageCode(selectedLanguageCode);
+            const narrations = Array.isArray(poi.narrations) ? poi.narrations : [];
+
+            return narrations.find(item => normalizeLanguageCode(item.languageCode) === languageCode)
+                || narrations.find(item => normalizeLanguageCode(item.languageCode) === 'vi')
+                || narrations.find(item => normalizeLanguageCode(item.languageCode) === 'en')
+                || {
+                    languageCode: poi.languageCode || languageCode,
+                    languageName: poi.languageName || languageCode.toUpperCase(),
+                    name: poi.name,
+                    shortDescription: poi.shortDescription,
+                    fullDescription: poi.fullDescription,
+                    narrationText: poi.narrationText || poi.fullDescription || poi.shortDescription || poi.name,
+                    audioUrl: poi.audioUrl,
+                    videoUrl: poi.videoUrl
+                };
+        };
+
+        const getPoiText = poi => {
+            const narration = getNarration(poi);
+
+            return {
+                languageCode: normalizeLanguageCode(narration.languageCode || selectedLanguageCode),
+                languageName: narration.languageName || selectedLanguageCode.toUpperCase(),
+                name: narration.name || poi.name || `POI #${poi.id}`,
+                shortDescription: narration.shortDescription || poi.shortDescription || '',
+                fullDescription: narration.fullDescription || poi.fullDescription || '',
+                narrationText: narration.narrationText || narration.fullDescription || narration.shortDescription || narration.name || '',
+                audioUrl: narration.audioUrl || '',
+                videoUrl: narration.videoUrl || ''
+            };
+        };
+
+        const updateUrlLanguage = () => {
+            const url = new URL(window.location.href);
+            url.searchParams.set('lang', selectedLanguageCode);
+            history.replaceState(null, '', `${url.pathname}${url.search}${location.hash || ''}`);
+            localStorage.setItem('versa-dukhach-lang', selectedLanguageCode);
+        };
+
+        const isValidLatLng = (lat, lng) => {
+            const nLat = Number(lat);
+            const nLng = Number(lng);
+
+            return Number.isFinite(nLat)
+                && Number.isFinite(nLng)
+                && nLat >= -90
+                && nLat <= 90
+                && nLng >= -180
+                && nLng <= 180;
+        };
 
         const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
@@ -181,216 +910,672 @@
             attribution: '&copy; OpenTopoMap'
         });
 
-        const mapCenter = pois.length
-            ? [pois[0].latitude, pois[0].longitude]
+        const firstValidPoi = pois.find(poi => isValidLatLng(poi.latitude, poi.longitude));
+
+        const mapCenter = firstValidPoi
+            ? [Number(firstValidPoi.latitude), Number(firstValidPoi.longitude)]
             : [10.7769, 106.7009];
-        const map = L.map('touristMap', { zoomControl: true, layers: [osm] }).setView(mapCenter, pois.length ? 14 : 12);
+
+        const map = L.map('touristMap', {
+            zoomControl: true,
+            layers: [osm]
+        }).setView(mapCenter, firstValidPoi ? 14 : 12);
 
         const baseMaps = {
-            "Bản đồ tiêu chuẩn": osm,
-            "Vệ tinh": satellite,
-            "Địa hình": topo
+            'Bản đồ tiêu chuẩn': osm,
+            'Vệ tinh': satellite,
+            'Địa hình': topo
         };
 
         L.control.layers(baseMaps).addTo(map);
 
-        const escapeHtml = value => String(value ?? '')
-            .replaceAll('&', '&amp;')
-            .replaceAll('<', '&lt;')
-            .replaceAll('>', '&gt;')
-            .replaceAll('"', '&quot;')
-            .replaceAll("'", '&#039;');
+        const createPoiIcon = poi => {
+            const statusClass = poi.isDiscovered ? 'discovered' : 'undiscovered';
 
-        const setMessage = (message, type = '') => {
-            mapMessage.textContent = message || '';
-            mapMessage.className = `map-message ${type}`;
+            return L.divIcon({
+                className: 'custom-map-icon',
+                html: `<div class="custom-marker ${statusClass}"><i class="fa-solid fa-map-pin"></i></div>`,
+                iconSize: [34, 34],
+                iconAnchor: [17, 34],
+                popupAnchor: [0, -34]
+            });
         };
 
-        const popupHtml = poi => `
-            <div style="min-width:220px;">
-                <div style="font-weight:900;font-size:15px;margin-bottom:6px;">${escapeHtml(poi.name)}</div>
-                <div style="opacity:.78;font-size:13px;line-height:1.45;margin-bottom:10px;">${escapeHtml(poi.shortDescription || 'Điểm tham quan')}</div>
-                <button type="button" data-select-poi="${poi.id}" style="border:0;border-radius:10px;padding:8px 10px;font-weight:800;cursor:pointer;">Xem chi tiết</button>
-            </div>`;
+        const popupHtml = poi => {
+            const text = getPoiText(poi);
+
+            return `
+                <div style="min-width:230px;">
+                    <div style="font-weight:950;font-size:15px;margin-bottom:6px;">
+                        ${escapeHtml(text.name)}
+                    </div>
+
+                    <div style="opacity:.78;font-size:13px;line-height:1.45;margin-bottom:10px;">
+                        ${escapeHtml(text.shortDescription || 'Điểm tham quan')}
+                    </div>
+
+                    <div style="opacity:.72;font-size:12px;margin-bottom:10px;">
+                        <i class="fa-solid fa-language"></i> ${escapeHtml(text.languageName)}
+                    </div>
+
+                    <button type="button"
+                            data-select-poi="${poi.id}"
+                            style="border:0;border-radius:12px;padding:9px 12px;font-weight:900;cursor:pointer;">
+                        Xem chi tiết
+                    </button>
+                </div>`;
+        };
 
         const renderDetail = poi => {
             activePoiId = poi.id;
-            const imageHtml = poi.coverImageUrl ? `<img src="${escapeHtml(poi.coverImageUrl)}" alt="${escapeHtml(poi.name)}" />` : '';
-            const audioHtml = poi.audioUrl ? `<audio controls style="width:100%;margin:10px 0;"><source src="${escapeHtml(poi.audioUrl)}" /></audio>` : '';
-            const videoHtml = poi.videoUrl ? `<a class="btnx" href="${escapeHtml(poi.videoUrl)}" target="_blank" rel="noopener"><i class="fa-solid fa-video"></i> Xem video</a>` : '';
-            
+            const text = getPoiText(poi);
+
+            const imageHtml = poi.coverImageUrl
+                ? `<img src="${escapeHtml(poi.coverImageUrl)}" alt="${escapeHtml(text.name)}" />`
+                : '';
+
+            const audioHtml = text.audioUrl
+                ? `<audio controls style="width:100%;margin:10px 0;" onplay="logAudioPlay(${poi.id})"><source src="${escapeHtml(text.audioUrl)}" /></audio>`
+                : text.narrationText
+                    ? `<div class="narration-note">
+                           <i class="fa-solid fa-circle-info"></i> Chưa có file audio cho ${escapeHtml(text.languageName)}. Có thể nghe thuyết minh bằng giọng đọc của trình duyệt.
+                       </div>
+                       <button class="map-btn primary" type="button" onclick="speakPoi(${poi.id})">
+                           <i class="fa-solid fa-volume-high"></i> Nghe thuyết minh ${escapeHtml(text.languageName)}
+                       </button>`
+                    : `<div class="narration-note">Chưa có nội dung thuyết minh cho ngôn ngữ này.</div>`;
+
+            const videoHtml = text.videoUrl
+                ? `<a class="map-btn" href="${escapeHtml(text.videoUrl)}" target="_blank" rel="noopener">
+                        <i class="fa-solid fa-video"></i> Xem video
+                   </a>`
+                : '';
+
+            const discoveredHtml = poi.isDiscovered
+                ? '<span class="badge-soft"><i class="fa-solid fa-circle-check"></i> Đã check-in</span>'
+                : '<span class="badge-soft badge-muted"><i class="fa-regular fa-circle"></i> Chưa check-in</span>';
+
+            const ratingHtml = `
+                <div style="display:flex; align-items:center; gap: 8px; margin-bottom: 12px;">
+                    <div class="rating-stars" style="font-size: 18px;">
+                        ${[...Array(5)].map((_, i) => `<i class="fa-${i < Math.round(poi.averageRating) ? 'solid' : 'regular'} fa-star"></i>`).join('')}
+                    </div>
+                    <span style="font-size: 13px; color: var(--muted); font-weight: 700;">
+                        ${poi.averageRating > 0 ? poi.averageRating.toFixed(1) : 'Chưa có'} (${poi.ratingCount} đánh giá)
+                    </span>
+                </div>
+            `;
+
+            const reviewFormHtml = isSignedIn ? `
+                <div id="review-form-${poi.id}" class="rating-form"></div>
+            ` : `
+                <div style="margin-top:16px;padding:14px;border:1px dashed var(--border);border-radius:16px;color:var(--muted);line-height:1.5;">
+                    <i class="fa-solid fa-right-to-bracket"></i> Đăng nhập để đánh giá và bình luận POI này.
+                </div>
+            `;
+
+            const reviewsListHtml = poi.reviews && poi.reviews.length > 0 ? `
+                <div style="margin-top: 20px; border-top: 1px solid var(--border); padding-top: 16px;">
+                    <strong style="font-size: 15px; display: block; margin-bottom: 12px;">Đánh giá của cộng đồng</strong>
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        ${poi.reviews.map(r => `
+                            <div style="background: var(--surface-2); padding: 12px; border-radius: 12px;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                                    <strong style="font-size: 13px;">${escapeHtml(r.touristName)}</strong>
+                                    <span style="font-size: 11px; color: var(--muted);">${new Date(r.createdAt).toLocaleDateString('vi-VN')}</span>
+                                </div>
+                                <div class="rating-stars" style="font-size: 12px; margin-bottom: 6px;">
+                                    ${[...Array(5)].map((_, i) => `<i class="fa-${i < r.rating ? 'solid' : 'regular'} fa-star"></i>`).join('')}
+                                </div>
+                                ${r.comment ? `<div style="font-size: 13px; line-height: 1.5; color: var(--text);">${escapeHtml(r.comment)}</div>` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            ` : '';
+
             poiDetail.innerHTML = `
                 ${imageHtml}
-                <div class="detail-title">${escapeHtml(poi.name)}</div>
-                <div style="margin-bottom:10px;">${poi.isDiscovered ? '<span class="badge-soft"><i class="fa-solid fa-circle-check"></i> Đã check-in</span>' : '<span class="badge-soft badge-muted"><i class="fa-regular fa-circle"></i> Chưa check-in</span>'}</div>
-                <div class="detail-desc">${escapeHtml(poi.fullDescription || poi.shortDescription || 'Chưa có mô tả chi tiết.')}</div>
+
+                <div class="detail-title">${escapeHtml(text.name)}</div>
+
+                <div class="narration-note">
+                    <i class="fa-solid fa-language"></i> Đang xem và nghe thuyết minh bằng <strong>${escapeHtml(text.languageName)}</strong>.
+                </div>
+
+                <div style="margin-bottom:10px;">
+                    ${discoveredHtml}
+                </div>
+
+                ${ratingHtml}
+
+                <div class="detail-desc">
+                    ${escapeHtml(text.fullDescription || text.shortDescription || 'Chưa có mô tả chi tiết cho ngôn ngữ này.')}
+                </div>
+
                 ${audioHtml}
-                <div class="actions" style="margin-top:14px;">
-                    <button class="btnx primary" type="button" onclick="checkInPoi(${poi.id})"><i class="fa-solid fa-circle-check"></i> Check-in GPS</button>
-                    <button class="btnx" type="button" onclick="showRouteToPoi(${poi.latitude}, ${poi.longitude})"><i class="fa-solid fa-route"></i> Chỉ đường</button>
+
+                <div class="detail-actions">
+                    <button class="map-btn bookmark ${poi.isBookmarked ? 'active' : ''}" type="button" onclick="handleBookmark(${poi.id}, this)">
+                        <i class="fa-solid fa-heart"></i> <span class="bm-text">${poi.isBookmarked ? 'Đã lưu' : 'Lưu lại'}</span>
+                    </button>
+
+                    <button class="map-btn primary" type="button" onclick="checkInPoi(${poi.id})">
+                        <i class="fa-solid fa-circle-check"></i>
+                        Check-in GPS
+                    </button>
+
+                    <button class="map-btn" type="button" onclick="showRouteToPoi(${poi.latitude}, ${poi.longitude})">
+                        <i class="fa-solid fa-route"></i>
+                        Chỉ đường
+                    </button>
+
                     ${videoHtml}
-                </div>`;
+                </div>
+                
+                ${reviewFormHtml}
+                ${reviewsListHtml}
+                `;
+            
+            if (isSignedIn) {
+                const reviewFormContainer = document.getElementById(`review-form-${poi.id}`);
+                if (reviewFormContainer) {
+                    renderReviewForm(reviewFormContainer, poi.id);
+                }
+            }
+        };
+
+        const renderReviewForm = (container, poiId) => {
+            container.innerHTML = `
+                <strong style="font-size:15px;">Để lại đánh giá của bạn</strong>
+                <div class="rating-stars" id="submit-rating-${poiId}" style="font-size: 24px; margin-top: 8px;">
+                    ${[...Array(5)].map((_, i) => `<i class="star fa-regular fa-star" data-value="${i + 1}"></i>`).join('')}
+                </div>
+                <textarea id="comment-${poiId}" placeholder="Chia sẻ cảm nhận của bạn..."></textarea>
+                <button class="map-btn primary" style="margin-top:10px;" onclick="submitReview(${poiId})">Gửi đánh giá</button>
+            `;
+
+            const stars = container.querySelectorAll('.star');
+            stars.forEach(star => {
+                star.addEventListener('mouseover', function() {
+                    const rating = this.dataset.value;
+                    stars.forEach(s => {
+                        s.classList.toggle('fa-solid', s.dataset.value <= rating);
+                        s.classList.toggle('fa-regular', s.dataset.value > rating);
+                    });
+                });
+                star.addEventListener('click', function() {
+                    container.dataset.rating = this.dataset.value;
+                });
+            });
+
+            container.addEventListener('mouseleave', function() {
+                const currentRating = container.dataset.rating || 0;
+                 stars.forEach(s => {
+                    s.classList.toggle('fa-solid', s.dataset.value <= currentRating);
+                    s.classList.toggle('fa-regular', s.dataset.value > currentRating);
+                });
+            });
+        };
+
+        window.submitReview = async (poiId) => {
+            const container = document.getElementById(`review-form-${poiId}`);
+            const rating = container.dataset.rating;
+            const comment = document.getElementById(`comment-${poiId}`).value;
+
+            if (!rating) {
+                alert('Vui lòng chọn số sao để đánh giá.');
+                return;
+            }
+
+            try {
+                const res = await fetch(submitReviewUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token },
+                    body: JSON.stringify({ poiId, rating: parseInt(rating), comment })
+                });
+                const data = await res.json();
+                setMessage(data.message, data.success ? 'ok' : 'err');
+                if (data.success) {
+                    setTimeout(() => window.location.reload(), 1500);
+                }
+            } catch (e) { 
+                setMessage('Lỗi khi gửi đánh giá.', 'err'); 
+            }
+        };
+
+        window.logAudioPlay = async (poiId) => {
+            if (!isSignedIn || loggedAudioPois.has(`${poiId}-${selectedLanguageCode}`)) return;
+            try {
+                const res = await fetch(logAudioUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': token
+                    },
+                    body: JSON.stringify({ poiId, languageCode: selectedLanguageCode })
+                });
+                if (res.ok) {
+                    loggedAudioPois.add(`${poiId}-${selectedLanguageCode}`);
+                }
+            } catch (e) {
+            }
+        };
+
+        window.speakPoi = (poiId) => {
+            const poi = pois.find(item => Number(item.id) === Number(poiId));
+            if (!poi) return;
+
+            const text = getPoiText(poi);
+            if (!text.narrationText) {
+                setMessage('POI này chưa có nội dung thuyết minh cho ngôn ngữ đã chọn.', 'err');
+                return;
+            }
+
+            if (!('speechSynthesis' in window)) {
+                setMessage('Trình duyệt này không hỗ trợ đọc thuyết minh tự động.', 'err');
+                return;
+            }
+
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text.narrationText);
+            utterance.lang = text.languageCode === 'en' ? 'en-US'
+                : text.languageCode === 'zh' ? 'zh-CN'
+                : text.languageCode === 'ja' ? 'ja-JP'
+                : text.languageCode === 'ko' ? 'ko-KR'
+                : 'vi-VN';
+            utterance.rate = 0.95;
+            window.speechSynthesis.speak(utterance);
+            logAudioPlay(poiId);
+            setMessage(`Đang đọc thuyết minh bằng ${text.languageName}.`, 'ok');
         };
 
         const focusPoi = poi => {
             activePoiId = poi.id;
+
             const marker = markers.get(poi.id);
+
             if (markerClusterGroup && marker) {
-                markerClusterGroup.zoomToShowLayer(marker, function() {
+                markerClusterGroup.zoomToShowLayer(marker, function () {
                     marker.openPopup();
+                    map.setView(marker.getLatLng(), Math.max(map.getZoom(), 16));
                 });
-            } else {
-                map.setView([poi.latitude, poi.longitude], Math.max(map.getZoom(), 16));
-                marker?.openPopup();
+            } else if (marker) {
+                map.setView([Number(poi.latitude), Number(poi.longitude)], Math.max(map.getZoom(), 16));
+                marker.openPopup();
             }
+
             renderDetail(poi);
+
             document.querySelectorAll('.poi-list-item').forEach(item => {
-                item.classList.toggle('active', Number(item.dataset.poiId) === poi.id);
+                item.classList.toggle('active', Number(item.dataset.poiId) === Number(poi.id));
             });
-            history.replaceState(null, '', `#poi-${poi.id}`);
+
+            history.replaceState(null, '', `${location.pathname}${location.search}#poi-${poi.id}`);
+
+            setTimeout(() => {
+                map.invalidateSize();
+            }, 100);
+        };
+
+        window.handleBookmark = async (id, btn) => {
+            if (!isSignedIn) {
+                const returnUrl = encodeURIComponent('/DuKhach/Map#poi-' + id);
+                window.location.href = `/DuKhach/Account/Login?returnUrl=${returnUrl}`;
+                return;
+            }
+
+            try {
+                const res = await fetch(toggleBookmarkUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': token
+                    },
+                    body: JSON.stringify(id)
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    const poi = pois.find(p => Number(p.id) === Number(id));
+                    if (poi) poi.isBookmarked = data.isBookmarked;
+                    
+                    btn.classList.toggle('active', data.isBookmarked);
+                    btn.querySelector('.bm-text').textContent = data.isBookmarked ? 'Đã lưu' : 'Lưu lại';
+                    if (showOnlyBookmarks) {
+                        const filtered = filterPois();
+                        renderList(filtered);
+                        updateMapMarkers(filtered);
+                    }
+                }
+            } catch (error) {
+                alert('Có lỗi xảy ra khi lưu địa điểm.');
+            }
+        };
+
+        const filterPois = () => {
+            const keyword = (poiSearch.value || '').trim().toLowerCase();
+
+            let filtered = pois;
+            if (keyword) {
+                filtered = filtered.filter(poi => {
+                    const text = getPoiText(poi);
+                    return `${text.name} ${text.shortDescription} ${text.fullDescription}`
+                        .toLowerCase()
+                        .includes(keyword);
+                });
+            }
+            
+            if (showOnlyBookmarks) {
+                filtered = filtered.filter(poi => poi.isBookmarked);
+            }
+            
+            if (showOnlyHighRating) {
+                filtered = filtered.filter(poi => poi.averageRating >= 4);
+            }
+            
+            return filtered;
+        };
+
+        const updateMapMarkers = (filteredItems) => {
+            if (!markerClusterGroup) return;
+            markerClusterGroup.clearLayers();
+            
+            filteredItems.forEach(poi => {
+                const marker = markers.get(poi.id);
+                if (marker) {
+                    markerClusterGroup.addLayer(marker);
+                }
+            });
+            
+            circles.forEach((circle, id) => {
+                if (filteredItems.find(p => p.id === id)) {
+                    if (!map.hasLayer(circle)) map.addLayer(circle);
+                } else {
+                    if (map.hasLayer(circle)) map.removeLayer(circle);
+                }
+            });
         };
 
         const renderList = items => {
             poiList.innerHTML = '';
-            if (items.length === 0) {
-                poiList.innerHTML = '<div class="cardx">Không tìm thấy POI phù hợp.</div>';
+
+            if (!items.length) {
+                poiList.innerHTML = `
+                    <div class="empty-list">
+                        <strong>Không tìm thấy POI phù hợp.</strong><br />
+                        Thử nhập tên địa điểm hoặc mô tả khác.
+                    </div>`;
                 return;
             }
+
             for (const poi of items) {
+                const text = getPoiText(poi);
                 const item = document.createElement('button');
+
                 const statusBadge = poi.isDiscovered
                     ? '<span class="badge-soft"><i class="fa-solid fa-check"></i> Done</span>'
-                    : `<span class="badge-soft badge-muted">${poi.radius}m</span>`;
+                    : `<span class="badge-soft badge-muted">${escapeHtml(poi.radius)}m</span>`;
+
+                const ratingHtml = `
+                    <div style="display:flex; align-items:center; gap: 6px; margin-top: 6px;">
+                        <div class="rating-stars" style="font-size: 13px;">
+                            ${[...Array(5)].map((_, i) => `<i class="fa-${i < Math.round(poi.averageRating) ? 'solid' : 'regular'} fa-star"></i>`).join('')}
+                        </div>
+                        <span style="font-size: 12px; color: var(--muted); font-weight: 700;">
+                            ${poi.averageRating > 0 ? poi.averageRating.toFixed(1) : 'Chưa có'} (${poi.ratingCount})
+                        </span>
+                    </div>
+                `;
+
                 item.type = 'button';
                 item.className = 'poi-list-item';
                 item.dataset.poiId = poi.id;
+
                 item.innerHTML = `
                     <div class="poi-list-title">
-                        <span>${escapeHtml(poi.name)}</span>
+                        <span>${escapeHtml(text.name)}</span>
                         ${statusBadge}
                     </div>
-                    <div class="poi-list-desc">${escapeHtml(poi.shortDescription || 'Chạm để xem chi tiết và chỉ đường.')}</div>`;
+
+                    <div class="poi-list-desc">
+                        ${escapeHtml(text.shortDescription || 'Chạm để xem chi tiết và chỉ đường.')}
+                    </div>
+                    
+                    ${ratingHtml}`;
+
                 item.addEventListener('click', () => focusPoi(poi));
+
                 poiList.appendChild(item);
             }
         };
 
         const refreshDiscovered = poiId => {
-            const poi = pois.find(item => item.id === poiId);
-            if (!poi) return;
-            poi.isDiscovered = true;
-            
-            const marker = markers.get(poiId);
-            if (marker) {
-                const customIcon = L.divIcon({
-                    className: 'custom-map-icon',
-                    html: `<div class="custom-marker discovered"><i class="fa-solid fa-map-pin"></i></div>`,
-                    iconSize: [32, 32],
-                    iconAnchor: [16, 32],
-                    popupAnchor: [0, -32]
-                });
-                marker.setIcon(customIcon);
-                circles.get(poiId)?.setStyle({ color: '#22c55e' });
-            }
-            
-            renderList(filterPois());
-            renderDetail(poi);
-        };
+            const poi = pois.find(item => Number(item.id) === Number(poiId));
 
-        const filterPois = () => {
-            const keyword = (poiSearch.value || '').trim().toLowerCase();
-            if (!keyword) return pois;
-            return pois.filter(poi =>
-                `${poi.name} ${poi.shortDescription} ${poi.fullDescription}`.toLowerCase().includes(keyword));
+            if (!poi) {
+                return;
+            }
+
+            poi.isDiscovered = true;
+
+            const marker = markers.get(poiId);
+
+            if (marker) {
+                marker.setIcon(createPoiIcon(poi));
+                circles.get(poiId)?.setStyle({
+                    color: '#22c55e'
+                });
+            }
+
+            const filtered = filterPois();
+            renderList(filtered);
+            updateMapMarkers(filtered);
+            renderDetail(poi);
         };
 
         markerClusterGroup = L.markerClusterGroup({
             showCoverageOnHover: false,
-            maxClusterRadius: 40,
+            maxClusterRadius: 42,
             spiderfyOnMaxZoom: true
         });
 
-        for (const poi of pois) {
-            const isDiscovered = poi.isDiscovered;
-            const statusClass = isDiscovered ? 'discovered' : 'undiscovered';
-            const customIcon = L.divIcon({
-                className: 'custom-map-icon',
-                html: `<div class="custom-marker ${statusClass}"><i class="fa-solid fa-map-pin"></i></div>`,
-                iconSize: [32, 32],
-                iconAnchor: [16, 32],
-                popupAnchor: [0, -32]
+        document.getElementById('btnFilterBookmark')?.addEventListener('click', function() {
+            showOnlyBookmarks = !showOnlyBookmarks;
+            this.classList.toggle('active', showOnlyBookmarks);
+            const filtered = filterPois();
+            renderList(filtered);
+            updateMapMarkers(filtered);
+        });
+
+        document.getElementById('btnFilterRating')?.addEventListener('click', function() {
+            showOnlyHighRating = !showOnlyHighRating;
+            this.classList.toggle('primary', showOnlyHighRating);
+            const filtered = filterPois();
+            renderList(filtered);
+            updateMapMarkers(filtered);
+        });
+
+        mapLanguageSelect?.addEventListener('change', function () {
+            selectedLanguageCode = normalizeLanguageCode(this.value);
+            updateUrlLanguage();
+            setMessage(`Đã chuyển ngôn ngữ thuyết minh sang ${this.options[this.selectedIndex]?.text || selectedLanguageCode}.`, 'ok');
+
+            markers.forEach((marker, id) => {
+                const poi = pois.find(item => Number(item.id) === Number(id));
+                if (poi) {
+                    marker.bindPopup(popupHtml(poi));
+                }
             });
 
-            const marker = L.marker([poi.latitude, poi.longitude], { icon: customIcon }).bindPopup(popupHtml(poi));
-            const circle = L.circle([poi.latitude, poi.longitude], {
-                radius: poi.radius,
-                color: isDiscovered ? '#22c55e' : '#3b82f6',
+            const filtered = filterPois();
+            renderList(filtered);
+            updateMapMarkers(filtered);
+
+            if (activePoiId) {
+                const activePoi = pois.find(item => Number(item.id) === Number(activePoiId));
+                if (activePoi) {
+                    renderDetail(activePoi);
+                }
+            }
+        });
+
+        for (const poi of pois) {
+            if (!isValidLatLng(poi.latitude, poi.longitude)) {
+                continue;
+            }
+
+            const lat = Number(poi.latitude);
+            const lng = Number(poi.longitude);
+            const radius = Number(poi.radius) > 0 ? Number(poi.radius) : 50;
+
+            const marker = L.marker([lat, lng], {
+                icon: createPoiIcon(poi)
+            }).bindPopup(popupHtml(poi));
+
+            const circle = L.circle([lat, lng], {
+                radius: radius,
+                color: poi.isDiscovered ? '#22c55e' : '#3b82f6',
                 weight: 1,
-                fillOpacity: .08
+                fillOpacity: 0.08
             }).addTo(map);
+
             markers.set(poi.id, marker);
             circles.set(poi.id, circle);
+
             markerClusterGroup.addLayer(marker);
-            marker.on('click', () => renderDetail(poi));
+
+            marker.on('click', () => {
+                renderDetail(poi);
+
+                document.querySelectorAll('.poi-list-item').forEach(item => {
+                    item.classList.toggle('active', Number(item.dataset.poiId) === Number(poi.id));
+                });
+            });
         }
+
         map.addLayer(markerClusterGroup);
 
         map.on('popupopen', e => {
             const button = e.popup.getElement()?.querySelector('[data-select-poi]');
+
             button?.addEventListener('click', () => {
-                const poi = pois.find(item => item.id === Number(button.dataset.selectPoi));
-                if (poi) focusPoi(poi);
+                const poi = pois.find(item => Number(item.id) === Number(button.dataset.selectPoi));
+
+                if (poi) {
+                    focusPoi(poi);
+                }
             });
         });
 
+        const fitAllPois = () => {
+            if (!markerClusterGroup || markers.size === 0) {
+                map.setView([10.7769, 106.7009], 12);
+                return;
+            }
+
+            const bounds = markerClusterGroup.getBounds();
+
+            if (bounds && bounds.isValid()) {
+                map.fitBounds(bounds.pad(0.18), {
+                    maxZoom: 16
+                });
+            }
+        };
+
         renderList(pois);
-        if (pois.length > 1) {
-            map.fitBounds(markerClusterGroup.getBounds().pad(.18));
+
+        if (markers.size > 0) {
+            setTimeout(fitAllPois, 200);
         }
 
         document.getElementById('btnFit')?.addEventListener('click', () => {
-            if (!pois.length) return;
-            map.fitBounds(markerClusterGroup.getBounds().pad(.18));
+            fitAllPois();
+
+            setTimeout(() => {
+                map.invalidateSize();
+            }, 100);
         });
 
-        poiSearch.addEventListener('input', () => renderList(filterPois()));
+        poiSearch.addEventListener('input', () => {
+            const filtered = filterPois();
+            renderList(filtered);
+            updateMapMarkers(filtered);
+        });
 
         document.getElementById('btnLocate')?.addEventListener('click', () => {
             if (!navigator.geolocation) {
                 setMessage('Trình duyệt không hỗ trợ lấy vị trí.', 'err');
                 return;
             }
+
             setMessage('Đang lấy vị trí của bạn...');
-            navigator.geolocation.getCurrentPosition(position => {
-                userLocation = {
-                    latitude: position.coords.latitude,
-                    longitude: position.coords.longitude,
-                    accuracyMeters: position.coords.accuracy
-                };
-                const latLng = [userLocation.latitude, userLocation.longitude];
-                const radius = Math.min(userLocation.accuracyMeters || 30, 120);
-                
-                if (userMarker) {
-                    userMarker.setLatLng(latLng);
-                    userCircle.setLatLng(latLng);
-                    userCircle.setRadius(radius);
-                } else {
-                    const userIcon = L.divIcon({
-                        className: 'custom-map-icon',
-                        html: `<div class="custom-marker" style="background:#f59e0b; border-color:#ffffff;"><i class="fa-solid fa-user"></i></div>`,
-                        iconSize: [32, 32],
-                        iconAnchor: [16, 32],
-                        popupAnchor: [0, -32]
-                    });
-                    userMarker = L.marker(latLng, { icon: userIcon }).addTo(map).bindPopup('Vị trí của bạn');
-                    userCircle = L.circle(latLng, { radius: radius, color: '#f59e0b', weight: 1, fillOpacity: .1 }).addTo(map);
+
+            navigator.geolocation.getCurrentPosition(
+                position => {
+                    userLocation = {
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude,
+                        accuracyMeters: position.coords.accuracy
+                    };
+
+                    const latLng = [
+                        userLocation.latitude,
+                        userLocation.longitude
+                    ];
+
+                    const radius = Math.min(userLocation.accuracyMeters || 30, 120);
+
+                    if (userMarker) {
+                        userMarker.setLatLng(latLng);
+                        userCircle.setLatLng(latLng);
+                        userCircle.setRadius(radius);
+                    } else {
+                        const userIcon = L.divIcon({
+                            className: 'custom-map-icon',
+                            html: `<div class="custom-marker user">
+                                      <i class="fa-solid fa-user"></i>
+                                   </div>`,
+                            iconSize: [34, 34],
+                            iconAnchor: [17, 34],
+                            popupAnchor: [0, -34]
+                        });
+
+                        userMarker = L.marker(latLng, {
+                            icon: userIcon
+                        }).addTo(map).bindPopup('Vị trí của bạn');
+
+                        userCircle = L.circle(latLng, {
+                            radius: radius,
+                            color: '#f59e0b',
+                            weight: 1,
+                            fillOpacity: 0.1
+                        }).addTo(map);
+                    }
+
+                    map.setView(latLng, 16);
+
+                    setMessage(
+                        `Đã lấy vị trí. Độ chính xác khoảng ${Math.round(userLocation.accuracyMeters || 0)}m.`,
+                        'ok'
+                    );
+
+                    setTimeout(() => {
+                        map.invalidateSize();
+                    }, 100);
+                },
+                error => {
+                    setMessage(
+                        error.message || 'Không lấy được vị trí. Hãy cấp quyền Location cho trình duyệt.',
+                        'err'
+                    );
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 12000,
+                    maximumAge: 10000
                 }
-                
-                map.setView(latLng, 16);
-                setMessage(`Đã lấy vị trí. Độ chính xác khoảng ${Math.round(userLocation.accuracyMeters || 0)}m.`, 'ok');
-            }, error => {
-                setMessage(error.message || 'Không lấy được vị trí. Hãy cấp quyền Location cho trình duyệt.', 'err');
-            }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 10000 });
+            );
         });
 
         window.checkInPoi = async poiId => {
@@ -399,47 +1584,70 @@
                 window.location.href = `/DuKhach/Account/Login?returnUrl=${returnUrl}`;
                 return;
             }
+
             if (!navigator.geolocation) {
                 setMessage('Trình duyệt không hỗ trợ lấy vị trí.', 'err');
                 return;
             }
+
             setMessage('Đang kiểm tra vị trí để check-in...');
-            navigator.geolocation.getCurrentPosition(async position => {
-                userLocation = {
-                    latitude: position.coords.latitude,
-                    longitude: position.coords.longitude,
-                    accuracyMeters: position.coords.accuracy
-                };
-                try {
-                    const response = await fetch(checkInUrl, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'RequestVerificationToken': token
-                        },
-                        body: JSON.stringify({
-                            poiId,
-                            latitude: userLocation.latitude,
-                            longitude: userLocation.longitude,
-                            accuracyMeters: userLocation.accuracyMeters
-                        })
-                    });
-                    const data = await response.json();
-                    if (!response.ok || !data.success) throw new Error(data.message || 'Check-in thất bại.');
-                    setMessage(data.message, 'ok');
-                    if (data.isNewDiscovery) refreshDiscovered(poiId);
-                } catch (error) {
-                    setMessage(error.message || 'Check-in thất bại.', 'err');
+
+            navigator.geolocation.getCurrentPosition(
+                async position => {
+                    userLocation = {
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude,
+                        accuracyMeters: position.coords.accuracy
+                    };
+
+                    try {
+                        const response = await fetch(checkInUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'RequestVerificationToken': token
+                            },
+                            body: JSON.stringify({
+                                poiId: poiId,
+                                languageCode: selectedLanguageCode,
+                                latitude: userLocation.latitude,
+                                longitude: userLocation.longitude,
+                                accuracyMeters: userLocation.accuracyMeters
+                            })
+                        });
+
+                        const data = await response.json();
+
+                        if (!response.ok || !data.success) {
+                            throw new Error(data.message || 'Check-in thất bại.');
+                        }
+
+                        setMessage(data.message, 'ok');
+
+                        if (data.isNewDiscovery) {
+                            refreshDiscovered(poiId);
+                        }
+                    } catch (error) {
+                        setMessage(error.message || 'Check-in thất bại.', 'err');
+                    }
+                },
+                error => {
+                    setMessage(
+                        error.message || 'Không lấy được vị trí. Hãy cấp quyền Location cho trình duyệt.',
+                        'err'
+                    );
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 12000,
+                    maximumAge: 5000
                 }
-            }, error => {
-                setMessage(error.message || 'Không lấy được vị trí. Hãy cấp quyền Location cho trình duyệt.', 'err');
-            }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 5000 });
+            );
         };
 
         window.showRouteToPoi = (destLat, destLng) => {
             if (!userLocation) {
                 setMessage('Vui lòng lấy "Vị trí của tôi" trước khi chỉ đường.', 'err');
-                // Tự động kích hoạt nút lấy vị trí
                 document.getElementById('btnLocate')?.click();
                 return;
             }
@@ -453,43 +1661,81 @@
             routingControl = L.Routing.control({
                 waypoints: [
                     L.latLng(userLocation.latitude, userLocation.longitude),
-                    L.latLng(destLat, destLng)
+                    L.latLng(Number(destLat), Number(destLng))
                 ],
                 routeWhileDragging: false,
                 addWaypoints: false,
-                show: false, // Ẩn bảng hướng dẫn chi tiết mặc định để tránh che diện tích hiển thị trên điện thoại
+                show: false,
                 lineOptions: {
-                    styles: [{ color: '#3b82f6', opacity: 0.9, weight: 5, dashArray: '10, 8' }]
+                    styles: [
+                        {
+                            color: '#3b82f6',
+                            opacity: 0.9,
+                            weight: 5,
+                            dashArray: '10, 8'
+                        }
+                    ]
                 },
-                createMarker: function() { return null; } // Không tạo thêm pin thừa gây rối bản đồ
+                createMarker: function () {
+                    return null;
+                }
             }).addTo(map);
 
-            routingControl.on('routesfound', function(e) {
-                var routes = e.routes;
-                var summary = routes[0].summary;
-                var distance = summary.totalDistance > 1000 
-                    ? (summary.totalDistance / 1000).toFixed(2) + ' km' 
+            routingControl.on('routesfound', function (e) {
+                const routes = e.routes;
+                const summary = routes[0].summary;
+
+                const distance = summary.totalDistance > 1000
+                    ? (summary.totalDistance / 1000).toFixed(2) + ' km'
                     : Math.round(summary.totalDistance) + ' m';
-                
-                var totalMinutes = Math.round(summary.totalTime / 60);
-                var hours = Math.floor(totalMinutes / 60);
-                var mins = totalMinutes % 60;
-                var timeStr = hours > 0 ? `${hours} giờ ${mins} phút` : `${mins} phút`;
-                
+
+                const totalMinutes = Math.round(summary.totalTime / 60);
+                const hours = Math.floor(totalMinutes / 60);
+                const mins = totalMinutes % 60;
+
+                const timeStr = hours > 0
+                    ? `${hours} giờ ${mins} phút`
+                    : `${mins} phút`;
+
                 setMessage(`📍 Tuyến đường dài ${distance}, thời gian đi dự kiến ${timeStr}.`, 'ok');
+
+                setTimeout(() => {
+                    map.invalidateSize();
+                }, 100);
             });
 
-            routingControl.on('routingerror', function(e) {
+            routingControl.on('routingerror', function () {
                 setMessage('⚠️ Không thể tìm thấy tuyến đường đến POI này.', 'err');
             });
         };
 
         const openHashPoi = () => {
             const match = location.hash.match(/^#poi-(\d+)$/);
-            if (!match) return;
-            const poi = pois.find(item => item.id === Number(match[1]));
-            if (poi) focusPoi(poi);
+
+            if (!match) {
+                document.getElementById('btnLocate')?.click();
+                return;
+            }
+
+            const poi = pois.find(item => Number(item.id) === Number(match[1]));
+
+            if (poi) {
+                focusPoi(poi);
+            } else {
+                document.getElementById('btnLocate')?.click();
+            }
         };
+
         setTimeout(openHashPoi, 300);
+
+        setTimeout(() => {
+            map.invalidateSize();
+        }, 350);
+
+        window.addEventListener('resize', () => {
+            setTimeout(() => {
+                map.invalidateSize();
+            }, 150);
+        });
     </script>
 }

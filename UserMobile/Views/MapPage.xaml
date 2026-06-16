@@ -108,5 +108,20 @@
                 </Grid>
             </Grid>
         </Border>
+
+
+        <Button Text="AI"
+                FontAttributes="Bold"
+                FontSize="15"
+                TextColor="White"
+                BackgroundColor="#5B3FE4"
+                WidthRequest="58"
+                HeightRequest="58"
+                CornerRadius="29"
+                Padding="0"
+                VerticalOptions="End"
+                HorizontalOptions="End"
+                Margin="0,0,18,238"
+                Clicked="OnAiClicked" />
     </Grid>
 </ContentPage>

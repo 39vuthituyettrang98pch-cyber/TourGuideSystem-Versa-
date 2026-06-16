@@ -1,41 +1,563 @@
 @model DuKhachLoginViewModel
+
 @{
+    ArgumentNullException.ThrowIfNull(Model);
     ViewData["Title"] = "Đăng nhập du khách";
 }
 
-<section class="cardx form-card">
-    <div class="eyebrow">Tài khoản du khách</div>
-    <h1 style="font-weight:900;letter-spacing:-.05em;margin:8px 0 8px;">Đăng nhập</h1>
-    <p style="color:var(--muted);line-height:1.7;">Dùng đúng email/mật khẩu đã đăng ký trên web hoặc app.</p>
+@section Styles {
+    <style>
+        .login-page {
+            min-height: calc(100vh - 230px);
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 460px;
+            gap: 28px;
+            align-items: center;
+        }
 
-    <form asp-area="DuKhach" asp-controller="Account" asp-action="Login" method="post" novalidate>
-        @Html.AntiForgeryToken()
-        <input type="hidden" asp-for="ReturnUrl" />
-        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+        .login-hero {
+            position: relative;
+            overflow: hidden;
+            min-height: 620px;
+            border: 1px solid var(--border);
+            border-radius: 36px;
+            padding: 42px;
+            background:
+                radial-gradient(circle at 18% 20%, rgba(52, 211, 153, 0.22), transparent 28%),
+                radial-gradient(circle at 82% 34%, rgba(56, 189, 248, 0.18), transparent 30%),
+                linear-gradient(135deg, rgba(15, 29, 52, 0.94), rgba(7, 18, 34, 0.80)),
+                url("https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=1600&q=80");
+            background-size: cover;
+            background-position: center;
+            box-shadow: var(--shadow);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
 
-        <div class="mb-3">
-            <label asp-for="Email" class="form-label"></label>
-            <input asp-for="Email" class="form-control" placeholder="email@example.com" />
-            <span asp-validation-for="Email" class="text-danger"></span>
-        </div>
-        <div class="mb-3">
-            <label asp-for="Password" class="form-label"></label>
-            <input asp-for="Password" class="form-control" placeholder="Mật khẩu" />
-            <span asp-validation-for="Password" class="text-danger"></span>
-        </div>
-        <div class="form-check mb-3">
-            <input asp-for="RememberMe" class="form-check-input" />
-            <label asp-for="RememberMe" class="form-check-label" style="color:var(--muted);"></label>
-        </div>
-        <button class="btnx primary w-100" type="submit"><i class="fa-solid fa-right-to-bracket"></i> Đăng nhập</button>
-    </form>
+        html[data-theme="light"] .login-hero {
+            background:
+                radial-gradient(circle at 18% 20%, rgba(52, 211, 153, 0.18), transparent 28%),
+                radial-gradient(circle at 82% 34%, rgba(56, 189, 248, 0.18), transparent 30%),
+                linear-gradient(135deg, rgba(255, 255, 255, 0.93), rgba(238, 248, 255, 0.78)),
+                url("https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=1600&q=80");
+            background-size: cover;
+            background-position: center;
+        }
 
-    <div style="margin-top:16px;color:var(--muted);">
-        Chưa có tài khoản?
-        <a asp-area="DuKhach" asp-controller="Account" asp-action="Register" asp-route-returnUrl="@Model.ReturnUrl" style="color:var(--brand2);font-weight:800;">Đăng ký ngay</a>
-    </div>
-</section>
+        .login-eyebrow {
+            width: fit-content;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 13px;
+            border: 1px solid rgba(52, 211, 153, 0.30);
+            border-radius: 999px;
+            color: var(--accent);
+            background: rgba(52, 211, 153, 0.12);
+            font-size: 13px;
+            font-weight: 900;
+        }
+
+        .login-hero h1 {
+            max-width: 760px;
+            margin: 20px 0 16px;
+            font-size: clamp(42px, 5vw, 72px);
+            line-height: 0.94;
+            letter-spacing: -0.075em;
+            font-weight: 950;
+        }
+
+        .login-hero h1 span {
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .login-hero p {
+            max-width: 650px;
+            margin: 0;
+            color: var(--muted);
+            font-size: 17px;
+            line-height: 1.8;
+        }
+
+        .login-feature-row {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+            margin-top: 30px;
+        }
+
+        .login-feature {
+            min-width: 0;
+            padding: 18px;
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            background: rgba(6, 17, 31, 0.54);
+            backdrop-filter: blur(18px);
+        }
+
+        html[data-theme="light"] .login-feature {
+            background: rgba(255, 255, 255, 0.66);
+        }
+
+        .login-feature i {
+            width: 42px;
+            height: 42px;
+            display: grid;
+            place-items: center;
+            border-radius: 16px;
+            color: #03131d;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            margin-bottom: 12px;
+        }
+
+        .login-feature strong {
+            display: block;
+            font-weight: 950;
+            margin-bottom: 6px;
+        }
+
+        .login-feature span {
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.55;
+        }
+
+        .login-card {
+            position: relative;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            border-radius: 34px;
+            background: var(--card);
+            box-shadow: var(--shadow);
+        }
+
+        .login-card::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(circle at 20% 0%, rgba(52, 211, 153, 0.16), transparent 28%),
+                radial-gradient(circle at 100% 20%, rgba(56, 189, 248, 0.14), transparent 30%);
+            pointer-events: none;
+        }
+
+        .login-card-inner {
+            position: relative;
+            z-index: 2;
+            padding: 34px;
+        }
+
+        .login-card-top {
+            text-align: center;
+            margin-bottom: 28px;
+        }
+
+        .login-icon {
+            width: 68px;
+            height: 68px;
+            margin: 0 auto 16px;
+            display: grid;
+            place-items: center;
+            border-radius: 24px;
+            color: #03131d;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            box-shadow: 0 18px 45px rgba(52, 211, 153, 0.24);
+            font-size: 26px;
+        }
+
+        .login-card h2 {
+            margin: 0;
+            font-size: 34px;
+            font-weight: 950;
+            letter-spacing: -0.055em;
+        }
+
+        .login-card-subtitle {
+            margin: 10px auto 0;
+            max-width: 330px;
+            color: var(--muted);
+            line-height: 1.65;
+            font-size: 14px;
+        }
+
+        .login-field {
+            margin-bottom: 16px;
+        }
+
+        .login-label {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 8px;
+            color: var(--text);
+            font-weight: 900;
+            font-size: 13px;
+        }
+
+        .login-input-wrap {
+            position: relative;
+        }
+
+        .login-input-icon {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--muted);
+            pointer-events: none;
+        }
+
+        .login-input {
+            width: 100%;
+            min-height: 52px;
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 0 48px 0 44px;
+            color: var(--text);
+            background: var(--surface);
+            outline: none;
+            font-weight: 700;
+            transition: 0.2s ease;
+        }
+
+        .login-input::placeholder {
+            color: var(--soft);
+            font-weight: 600;
+        }
+
+        .login-input:focus {
+            border-color: var(--accent-2);
+            box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.12);
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 38px;
+            height: 38px;
+            border: 0;
+            border-radius: 14px;
+            color: var(--muted);
+            background: transparent;
+            cursor: pointer;
+            transition: 0.2s ease;
+        }
+
+        .password-toggle:hover {
+            color: var(--text);
+            background: rgba(148, 163, 184, 0.12);
+        }
+
+        .login-options {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin: 4px 0 18px;
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        .login-options .form-check {
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .login-options .form-check-input {
+            margin: 0;
+            border-color: var(--border);
+            background-color: var(--surface);
+        }
+
+        .login-options .form-check-input:checked {
+            background-color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .login-submit {
+            width: 100%;
+            min-height: 54px;
+            border: 0;
+            border-radius: 18px;
+            color: #03131d;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            font-weight: 950;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            box-shadow: 0 18px 46px rgba(52, 211, 153, 0.22);
+            transition: 0.2s ease;
+        }
+
+        .login-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 22px 56px rgba(52, 211, 153, 0.28);
+        }
+
+        .login-bottom {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+            text-align: center;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+        .login-bottom a {
+            color: var(--accent-2);
+            font-weight: 950;
+            text-decoration: none;
+        }
+
+        .login-bottom a:hover {
+            text-decoration: underline;
+        }
+
+        .login-sync-note {
+            margin-top: 18px;
+            display: flex;
+            gap: 10px;
+            padding: 14px;
+            border: 1px solid rgba(56, 189, 248, 0.22);
+            border-radius: 20px;
+            color: var(--muted);
+            background: rgba(56, 189, 248, 0.08);
+            line-height: 1.55;
+            font-size: 13px;
+        }
+
+        .login-sync-note i {
+            color: var(--accent-2);
+            margin-top: 3px;
+        }
+
+        .text-danger {
+            display: block;
+            margin-top: 6px;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .validation-summary-errors {
+            padding: 13px 14px;
+            border-radius: 18px;
+            border: 1px solid rgba(251, 113, 133, 0.28);
+            background: rgba(251, 113, 133, 0.10);
+            color: var(--danger);
+            font-weight: 800;
+            margin-bottom: 16px;
+        }
+
+        .validation-summary-errors ul {
+            margin: 0;
+            padding-left: 18px;
+        }
+
+        @@media (max-width: 1050px) {
+            .login-page {
+                grid-template-columns: 1fr;
+            }
+
+            .login-hero {
+                min-height: auto;
+            }
+        }
+
+        @@media (max-width: 720px) {
+            .login-hero,
+            .login-card-inner {
+                padding: 24px;
+            }
+
+            .login-feature-row {
+                grid-template-columns: 1fr;
+            }
+
+            .login-options {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+        }
+    </style>
+}
+
+<div class="login-page">
+    <section class="login-hero">
+        <div>
+            <div class="login-eyebrow">
+                <i class="fa-solid fa-location-dot"></i>
+                VERSA Travel
+            </div>
+
+            <h1>
+                Đăng nhập để tiếp tục <span>hành trình.</span>
+            </h1>
+
+            <p>
+                Sử dụng tài khoản du khách để xem bản đồ POI, check-in bằng GPS,
+                nhận điểm khám phá và đăng nhập cùng tài khoản trên app mobile.
+            </p>
+
+            <div class="login-feature-row">
+                <div class="login-feature">
+                    <i class="fa-solid fa-map-location-dot"></i>
+                    <strong>Bản đồ POI</strong>
+                    <span>Xem điểm tham quan đã duyệt và mở chỉ đường nhanh.</span>
+                </div>
+
+                <div class="login-feature">
+                    <i class="fa-solid fa-location-crosshairs"></i>
+                    <strong>Check-in GPS</strong>
+                    <span>Ghi nhận khám phá khi bạn ở gần địa điểm thật.</span>
+                </div>
+
+                <div class="login-feature">
+                    <i class="fa-solid fa-mobile-screen-button"></i>
+                    <strong>Dùng chung app</strong>
+                    <span>Tài khoản web đăng nhập được trên app mobile.</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="login-sync-note">
+            <i class="fa-solid fa-circle-info"></i>
+            <span>
+                Email và mật khẩu ở web du khách dùng chung với app.
+                Đăng ký trên web xong có thể đăng nhập trên app bằng cùng tài khoản.
+            </span>
+        </div>
+    </section>
+
+    <section class="login-card">
+        <div class="login-card-inner">
+            <div class="login-card-top">
+                <div class="login-icon">
+                    <i class="fa-solid fa-user-lock"></i>
+                </div>
+
+                <h2>Đăng nhập</h2>
+
+                <p class="login-card-subtitle">
+                    Nhập email và mật khẩu tài khoản du khách của bạn.
+                </p>
+            </div>
+
+            <form asp-area="DuKhach"
+                  asp-controller="Account"
+                  asp-action="Login"
+                  method="post"
+                  novalidate>
+                @Html.AntiForgeryToken()
+
+                <input type="hidden" asp-for="ReturnUrl" />
+
+                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+                <div class="login-field">
+                    <label asp-for="Email" class="login-label">
+                        Email
+                    </label>
+
+                    <div class="login-input-wrap">
+                        <i class="fa-solid fa-envelope login-input-icon"></i>
+
+                        <input asp-for="Email"
+                               class="login-input"
+                               type="email"
+                               autocomplete="email"
+                               placeholder="email@example.com" />
+                    </div>
+
+                    <span asp-validation-for="Email" class="text-danger"></span>
+                </div>
+
+                <div class="login-field">
+                    <label asp-for="Password" class="login-label">
+                        Mật khẩu
+                    </label>
+
+                    <div class="login-input-wrap">
+                        <i class="fa-solid fa-lock login-input-icon"></i>
+
+                        <input asp-for="Password"
+                               id="loginPassword"
+                               class="login-input"
+                               type="password"
+                               autocomplete="current-password"
+                               placeholder="Nhập mật khẩu" />
+
+                        <button type="button"
+                                class="password-toggle"
+                                id="togglePassword"
+                                title="Hiện/ẩn mật khẩu">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
+
+                    <span asp-validation-for="Password" class="text-danger"></span>
+                </div>
+
+                <div class="login-options">
+                    <div class="form-check">
+                        <input asp-for="RememberMe" class="form-check-input" />
+                        <label asp-for="RememberMe" class="form-check-label"></label>
+                    </div>
+
+                    <a asp-area="DuKhach"
+                       asp-controller="Account"
+                       asp-action="Register"
+                       asp-route-returnUrl="@Model.ReturnUrl"
+                       style="color:var(--accent-2);font-weight:900;text-decoration:none;">
+                        Tạo tài khoản mới
+                    </a>
+                </div>
+
+                <button class="login-submit" type="submit">
+                    <i class="fa-solid fa-right-to-bracket"></i>
+                    Đăng nhập
+                </button>
+            </form>
+
+            <div class="login-bottom">
+                Chưa có tài khoản?
+                <a asp-area="DuKhach"
+                   asp-controller="Account"
+                   asp-action="Register"
+                   asp-route-returnUrl="@Model.ReturnUrl">
+                    Đăng ký ngay
+                </a>
+            </div>
+        </div>
+    </section>
+</div>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+
+    <script>
+        (function () {
+            const passwordInput = document.getElementById('loginPassword');
+            const toggleButton = document.getElementById('togglePassword');
+
+            toggleButton?.addEventListener('click', function () {
+                const isPassword = passwordInput.type === 'password';
+
+                passwordInput.type = isPassword ? 'text' : 'password';
+
+                toggleButton.innerHTML = isPassword
+                    ? '<i class="fa-solid fa-eye-slash"></i>'
+                    : '<i class="fa-solid fa-eye"></i>';
+            });
+        })();
+    </script>
 }

@@ -188,6 +188,9 @@
                     if (p) selectedPois.push(p);
                 });
                 updateItinerary();
+                setTimeout(() => document.getElementById('btnFitMap')?.click(), 500);
+            } else {
+                setTimeout(() => document.getElementById('btnLocateAdmin')?.click(), 500);
             }
 
             // Lắng nghe sự kiện đổi chế độ di chuyển

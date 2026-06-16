@@ -86,6 +86,11 @@ public partial class MapPage : ContentPage
         RenderMap();
     }
 
+    private async void OnAiClicked(object? sender, EventArgs e)
+    {
+        await Shell.Current.GoToAsync("//AiChatPage");
+    }
+
     private static string BuildMapHtml(
         string placesJson,
         double initialLatitude,

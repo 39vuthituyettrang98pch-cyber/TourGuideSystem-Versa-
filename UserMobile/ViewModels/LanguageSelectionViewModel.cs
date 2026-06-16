@@ -39,11 +39,6 @@ public class LanguageSelectionViewModel : BaseViewModel
     {
         _localizationService = localizationService;
         _storageService = storageService;
-        foreach (var language in _localizationService.SupportedLanguages)
-        {
-            Languages.Add(language);
-        }
-
         SaveLanguageCommand = new Command(async () => await SaveLanguageAsync(), CanSaveLanguage);
     }
 
@@ -54,15 +49,21 @@ public class LanguageSelectionViewModel : BaseViewModel
 
     public async Task InitializeAsync()
     {
+        IsBusy = true;
+        var languages = await _localizationService.RefreshSupportedLanguagesAsync();
+
+        Languages.Clear();
+        foreach (var language in languages)
+        {
+            Languages.Add(language);
+        }
+
         var saved = await _localizationService.GetSavedLanguageAsync();
-        if (saved != null)
-        {
-            SelectedLanguage = saved;
-        }
-        else
-        {
-            SelectedLanguage = Languages.FirstOrDefault();
-        }
+        SelectedLanguage = saved != null
+            ? Languages.FirstOrDefault(language => string.Equals(language.Code, saved.Code, StringComparison.OrdinalIgnoreCase)) ?? saved
+            : Languages.FirstOrDefault();
+
+        IsBusy = false;
     }
 
     public async Task<bool> SaveLanguageAsync()

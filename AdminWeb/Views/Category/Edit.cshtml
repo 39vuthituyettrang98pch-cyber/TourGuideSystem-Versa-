@@ -1,0 +1,500 @@
+@model AdminWeb.Models.Category
+
+@{
+    ViewData["Title"] = "Chỉnh sửa danh mục";
+
+    var status = Model.Status?.Trim().ToLowerInvariant() ?? "active";
+    var statusText = status switch
+    {
+        "active" => "Đang hoạt động",
+        "disabled" => "Đã ẩn",
+        _ => Model.Status ?? "Chưa xác định"
+    };
+
+    var statusClass = status == "active" ? "status-active" : "status-disabled";
+    var iconPreview = string.IsNullOrWhiteSpace(Model.IconUrl) ? null : Model.IconUrl;
+}
+
+@section Styles {
+    <style>
+        .category-hero {
+            position: relative;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            border-radius: 30px;
+            padding: 28px;
+            margin-bottom: 22px;
+            background:
+                radial-gradient(circle at 8% 16%, rgba(52, 211, 153, .22), transparent 34%),
+                radial-gradient(circle at 92% 12%, rgba(56, 189, 248, .18), transparent 30%),
+                linear-gradient(135deg, rgba(12, 31, 42, .96), rgba(12, 18, 36, .92));
+            box-shadow: var(--shadow);
+        }
+
+        html[data-theme="light"] .category-hero {
+            background:
+                radial-gradient(circle at 8% 16%, rgba(52, 211, 153, .12), transparent 34%),
+                radial-gradient(circle at 92% 12%, rgba(56, 189, 248, .10), transparent 30%),
+                linear-gradient(135deg, rgba(255,255,255,.98), rgba(242,252,249,.94));
+        }
+
+        .category-hero-inner {
+            position: relative;
+            z-index: 2;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 24px;
+            align-items: center;
+        }
+
+        .category-kicker {
+            display: inline-flex;
+            align-items: center;
+            gap: 9px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            color: #d9fff1;
+            background: rgba(52, 211, 153, .14);
+            border: 1px solid rgba(52, 211, 153, .24);
+            font-size: 12px;
+            font-weight: 900;
+            margin-bottom: 14px;
+        }
+
+        .category-title {
+            font-size: clamp(28px, 3vw, 42px);
+            font-weight: 950;
+            letter-spacing: -.045em;
+            line-height: 1.02;
+            margin: 0;
+        }
+
+        .category-subtitle {
+            max-width: 760px;
+            margin-top: 12px;
+            color: var(--text-muted);
+            font-size: 15px;
+            line-height: 1.7;
+        }
+
+        .category-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .category-layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 360px;
+            gap: 22px;
+            align-items: start;
+        }
+
+        .category-card {
+            border: 1px solid var(--border);
+            border-radius: 28px;
+            background: var(--card);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        .category-card-header {
+            padding: 22px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .category-card-title {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 950;
+            letter-spacing: -.02em;
+        }
+
+        .category-card-subtitle {
+            color: var(--text-muted);
+            font-size: 13px;
+            margin-top: 4px;
+        }
+
+        .category-card-body {
+            padding: 24px;
+        }
+
+        .category-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 18px;
+        }
+
+        .category-field.full {
+            grid-column: 1 / -1;
+        }
+
+        .category-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 900;
+            font-size: 13px;
+            margin-bottom: 9px;
+            color: var(--text);
+        }
+
+        .category-label i {
+            color: #34d399;
+        }
+
+        .form-control,
+        .form-select {
+            min-height: 48px;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            background: rgba(148, 163, 184, .08);
+            color: var(--text);
+            font-weight: 700;
+        }
+
+        .form-control:focus,
+        .form-select:focus {
+            border-color: rgba(52, 211, 153, .65);
+            box-shadow: 0 0 0 .25rem rgba(52, 211, 153, .15);
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            font-weight: 950;
+            font-size: 12px;
+        }
+
+        .status-active {
+            color: #86efac;
+            background: rgba(34, 197, 94, .12);
+            border: 1px solid rgba(34, 197, 94, .24);
+        }
+
+        .status-disabled {
+            color: #fb7185;
+            background: rgba(244, 63, 94, .12);
+            border: 1px solid rgba(244, 63, 94, .24);
+        }
+
+        .icon-preview-card {
+            display: grid;
+            place-items: center;
+            min-height: 230px;
+            border-radius: 26px;
+            border: 1px dashed rgba(52, 211, 153, .35);
+            background:
+                radial-gradient(circle at center, rgba(52, 211, 153, .16), transparent 55%),
+                rgba(148, 163, 184, .06);
+            text-align: center;
+            padding: 24px;
+        }
+
+        .icon-preview-img {
+            width: 96px;
+            height: 96px;
+            border-radius: 28px;
+            object-fit: cover;
+            border: 1px solid var(--border);
+            box-shadow: 0 18px 45px rgba(0,0,0,.18);
+            background: rgba(255,255,255,.08);
+        }
+
+        .icon-preview-empty {
+            width: 96px;
+            height: 96px;
+            display: grid;
+            place-items: center;
+            border-radius: 28px;
+            color: #052e24;
+            background: linear-gradient(135deg, #34d399, #38bdf8);
+            font-size: 36px;
+            margin: 0 auto 14px;
+        }
+
+        .icon-preview-card strong {
+            display: block;
+            margin-top: 14px;
+            font-size: 15px;
+            font-weight: 950;
+        }
+
+        .icon-preview-card p {
+            margin: 7px 0 0;
+            color: var(--text-muted);
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .quick-list {
+            display: grid;
+            gap: 10px;
+        }
+
+        .quick-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 13px 14px;
+            border-radius: 18px;
+            border: 1px solid var(--border);
+            background: rgba(148, 163, 184, .08);
+            font-weight: 900;
+            transition: .2s ease;
+        }
+
+        .quick-link:hover {
+            transform: translateY(-2px);
+            color: var(--text);
+            border-color: rgba(52, 211, 153, .45);
+        }
+
+        .quick-link i {
+            color: #34d399;
+        }
+
+        .info-box {
+            padding: 18px;
+            border-radius: 24px;
+            border: 1px solid var(--border);
+            background: linear-gradient(135deg, rgba(52, 211, 153, .12), rgba(56, 189, 248, .08));
+        }
+
+        .info-box-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 16px;
+            display: grid;
+            place-items: center;
+            color: #052e24;
+            background: linear-gradient(135deg, #34d399, #38bdf8);
+            margin-bottom: 12px;
+        }
+
+        .info-box strong {
+            display: block;
+            font-size: 15px;
+            font-weight: 950;
+            margin-bottom: 6px;
+        }
+
+        .info-box p {
+            margin: 0;
+            color: var(--text-muted);
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .category-footer-actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 22px;
+        }
+
+        @@media (max-width: 1050px) {
+            .category-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .category-hero-inner {
+                grid-template-columns: 1fr;
+            }
+
+            .category-actions {
+                justify-content: flex-start;
+            }
+        }
+
+        @@media (max-width: 680px) {
+            .category-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .category-hero,
+            .category-card-body,
+            .category-card-header {
+                padding: 20px;
+            }
+        }
+    </style>
+}
+
+<div class="category-hero">
+    <div class="category-hero-inner">
+        <div>
+            <div class="category-kicker">
+                <i class="fa-solid fa-tags"></i>
+                Quản lý danh mục
+            </div>
+
+            <h1 class="category-title">Chỉnh sửa danh mục #@Model.Id</h1>
+
+            <div class="category-subtitle">
+                Cập nhật trạng thái, biểu tượng và quản lý bản dịch tên danh mục.
+                Danh mục giúp web và app phân loại POI rõ ràng hơn.
+            </div>
+        </div>
+
+        <div class="category-actions">
+            <a asp-controller="CategoryTranslation"
+               asp-action="Index"
+               asp-route-categoryId="@Model.Id"
+               class="btn btn-primary">
+                <i class="fa-solid fa-language"></i>
+                Bản dịch
+            </a>
+
+            <a asp-action="Index" class="btn btn-secondary">
+                <i class="fa-solid fa-arrow-left"></i>
+                Quay lại
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="category-layout">
+    <div class="category-card">
+        <div class="category-card-header">
+            <div>
+                <h2 class="category-card-title">Thông tin danh mục</h2>
+                <div class="category-card-subtitle">Thiết lập hiển thị cho web du khách và app mobile.</div>
+            </div>
+
+            <span class="status-pill @statusClass">
+                <i class="fa-solid fa-circle"></i>
+                @statusText
+            </span>
+        </div>
+
+        <div class="category-card-body">
+            <form asp-action="Edit" asp-route-id="@Model.Id" method="post">
+                @Html.AntiForgeryToken()
+
+                <input type="hidden" asp-for="Id" />
+
+                <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                <div class="category-grid">
+                    <div class="category-field">
+                        <label class="category-label">
+                            <i class="fa-solid fa-hashtag"></i>
+                            Mã danh mục
+                        </label>
+                        <input class="form-control" value="#@Model.Id" disabled />
+                    </div>
+
+                    <div class="category-field">
+                        <label asp-for="Status" class="category-label">
+                            <i class="fa-solid fa-toggle-on"></i>
+                            Trạng thái
+                        </label>
+                        <select asp-for="Status" class="form-select">
+                            <option value="active">Hoạt động</option>
+                            <option value="disabled">Đã ẩn</option>
+                        </select>
+                        <span asp-validation-for="Status" class="text-danger"></span>
+                    </div>
+
+                    <div class="category-field full">
+                        <label asp-for="IconUrl" class="category-label">
+                            <i class="fa-solid fa-image"></i>
+                            Icon URL
+                        </label>
+                        <input asp-for="IconUrl"
+                               class="form-control"
+                               placeholder="Ví dụ: /uploads/icons/history.png hoặc https://..." />
+                        <span asp-validation-for="IconUrl" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div class="info-box" style="margin-top:20px;">
+                    <div class="info-box-icon">
+                        <i class="fa-solid fa-circle-info"></i>
+                    </div>
+                    <strong>Tên danh mục là đa ngôn ngữ</strong>
+                    <p>
+                        Tên hiển thị của danh mục nên chỉnh trong mục <b>Bản dịch</b>.
+                        Khi thêm ngôn ngữ mới, hệ thống có thể dùng AI để dịch các danh mục còn thiếu.
+                    </p>
+                </div>
+
+                <div class="category-footer-actions">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fa-solid fa-floppy-disk"></i>
+                        Lưu thay đổi
+                    </button>
+
+                    <a asp-controller="CategoryTranslation"
+                       asp-action="Index"
+                       asp-route-categoryId="@Model.Id"
+                       class="btn btn-secondary">
+                        <i class="fa-solid fa-language"></i>
+                        Sửa tên danh mục
+                    </a>
+
+                    <a asp-action="Index" class="btn btn-secondary">
+                        Hủy
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <aside class="category-card">
+        <div class="category-card-header">
+            <div>
+                <h2 class="category-card-title">Xem trước icon</h2>
+                <div class="category-card-subtitle">Kiểm tra icon trước khi hiển thị ngoài web/app.</div>
+            </div>
+        </div>
+
+        <div class="category-card-body">
+            <div class="icon-preview-card">
+                @if (!string.IsNullOrWhiteSpace(iconPreview))
+                {
+                    <img src="@iconPreview" class="icon-preview-img" alt="Icon danh mục" />
+                    <strong>Icon hiện tại</strong>
+                    <p>@iconPreview</p>
+                }
+                else
+                {
+                    <div class="icon-preview-empty">
+                        <i class="fa-solid fa-tags"></i>
+                    </div>
+                    <strong>Chưa có icon riêng</strong>
+                    <p>Danh mục sẽ dùng icon mặc định cho đến khi bạn thêm URL icon.</p>
+                }
+            </div>
+
+            <div class="quick-list" style="margin-top:16px;">
+                <a asp-controller="CategoryTranslation"
+                   asp-action="Index"
+                   asp-route-categoryId="@Model.Id"
+                   class="quick-link">
+                    <i class="fa-solid fa-language"></i>
+                    Bản dịch danh mục
+                </a>
+
+                <a asp-action="Index" class="quick-link">
+                    <i class="fa-solid fa-table-list"></i>
+                    Danh sách danh mục
+                </a>
+            </div>
+        </div>
+    </aside>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

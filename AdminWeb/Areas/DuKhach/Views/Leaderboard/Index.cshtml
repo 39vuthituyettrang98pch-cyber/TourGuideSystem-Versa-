@@ -1,0 +1,57 @@
+@model IEnumerable<AdminWeb.Areas.DuKhach.Models.DuKhachLeaderboardItemViewModel>
+@{
+    ViewData["Title"] = "Bảng xếp hạng";
+}
+
+<div class="dk-shell" style="margin-top: 40px; margin-bottom: 60px;">
+    <div style="text-align: center; margin-bottom: 40px;">
+        <div style="display:inline-flex; align-items:center; gap:8px; padding:8px 16px; border-radius:999px; background:rgba(245,158,11,0.1); color:#d97706; font-size:14px; font-weight:900; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:16px;">
+            <i class="fa-solid fa-trophy"></i> Vinh danh
+        </div>
+        <h1 style="font-size: clamp(36px, 5vw, 56px); font-weight: 950; letter-spacing: -0.05em; margin: 0 0 16px;">Bảng xếp hạng Du khách</h1>
+        <p style="color: var(--muted); font-size: 18px; line-height: 1.7; max-width: 600px; margin: 0 auto;">
+            Thi đua khám phá các địa điểm trên bản đồ. Những du khách tích cực nhất sẽ được vinh danh tại đây.
+        </p>
+    </div>
+
+    <div style="max-width: 800px; margin: 0 auto; background: var(--card); border: 1px solid var(--border); border-radius: 28px; overflow: hidden; box-shadow: var(--shadow);">
+        @if (Model.Any())
+        {
+            <div style="display: flex; flex-direction: column;">
+                @foreach (var item in Model)
+                {
+                    var isTop3 = item.Rank <= 3;
+                    var rankColor = item.Rank == 1 ? "#fbbf24" : (item.Rank == 2 ? "#94a3b8" : (item.Rank == 3 ? "#b45309" : "var(--text-soft)"));
+                    var rankBg = item.Rank == 1 ? "rgba(251, 191, 36, 0.15)" : (item.Rank == 2 ? "rgba(148, 163, 184, 0.15)" : (item.Rank == 3 ? "rgba(180, 83, 9, 0.15)" : "transparent"));
+                    
+                    <div style="display: flex; align-items: center; gap: 16px; padding: 20px 24px; border-bottom: 1px solid var(--border); background: @rankBg; transition: 0.2s ease;">
+                        <div style="width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; font-size: 20px; font-weight: 950; color: @rankColor; background: var(--surface); border: 2px solid @(isTop3 ? rankColor : "transparent");">
+                            @(item.Rank == 1 ? "🥇" : (item.Rank == 2 ? "🥈" : (item.Rank == 3 ? "🥉" : item.Rank.ToString())))
+                        </div>
+                        
+                        <div style="flex: 1; min-width: 0;">
+                            <div style="font-size: 18px; font-weight: 900; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">@item.FullName</div>
+                            <div style="color: var(--muted); font-size: 14px; margin-top: 4px; display: flex; align-items: center; gap: 6px;">
+                                <span style="display: inline-block; padding: 2px 8px; border-radius: 6px; background: var(--surface-2); font-size: 12px; font-weight: 700;">@item.RankName</span>
+                                <span>• Khám phá @item.DiscoveredCount điểm</span>
+                            </div>
+                        </div>
+                        
+                        <div style="text-align: right;">
+                            <div style="font-size: 24px; font-weight: 950; color: var(--accent); letter-spacing: -0.05em;">@item.TotalPoints</div>
+                            <div style="font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em;">Điểm XP</div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div style="padding: 60px 20px; text-align: center;">
+                <i class="fa-solid fa-ranking-star" style="font-size: 48px; color: var(--muted); margin-bottom: 16px;"></i>
+                <h3 style="margin: 0 0 10px; font-size: 24px;">Chưa có dữ liệu</h3>
+                <p style="color: var(--muted); margin: 0;">Bảng xếp hạng sẽ cập nhật khi có du khách check-in.</p>
+            </div>
+        }
+    </div>
+</div>

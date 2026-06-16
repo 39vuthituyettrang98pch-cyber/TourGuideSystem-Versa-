@@ -11,6 +11,9 @@ public class PlaceItem
     public double Latitude { get; set; }
     public double Longitude { get; set; }
     public double Radius { get; set; }
+    public double AverageRating { get; set; }
+    public int RatingCount { get; set; }
+    public List<ReviewDto> Reviews { get; set; } = [];
     public double Distance { get; set; }
     public bool HasNarration { get; set; }
     public List<NarrationLanguage> NarrationLanguages { get; set; } = new();

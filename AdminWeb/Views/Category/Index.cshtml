@@ -8,7 +8,13 @@
 <div class="page-subtitle">Quản lý nhóm chủ đề và phân loại nội dung</div>
 <div class="toolbar">
     <div></div>
-    <div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
+        <form asp-action="GenerateMissingTranslations" method="post" onsubmit="return confirm('AI sẽ dịch các danh mục còn thiếu sang toàn bộ ngôn ngữ đang bật. Tiếp tục?');">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-secondary btn-sm">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> AI dịch còn thiếu
+            </button>
+        </form>
         <a asp-action="Create" class="btn btn-primary btn-sm"><i class="fa-solid fa-plus"></i> Thêm danh mục</a>
     </div>
 </div>

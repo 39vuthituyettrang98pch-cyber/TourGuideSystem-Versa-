@@ -60,9 +60,7 @@ public sealed class PoiCatalogService : IPoiCatalogService
     private static PlaceItem MapPlace(PoiCatalogDto item)
     {
         var narrationLanguages = item.Translations
-            .Where(translation =>
-                !string.IsNullOrWhiteSpace(translation.AudioUrl) ||
-                !string.IsNullOrWhiteSpace(translation.VideoUrl))
+            .Where(translation => !string.IsNullOrWhiteSpace(translation.LanguageCode))
             .Select(translation => new NarrationLanguage
             {
                 Code = translation.LanguageCode,
@@ -84,6 +82,9 @@ public sealed class PoiCatalogService : IPoiCatalogService
             Latitude = item.Latitude,
             Longitude = item.Longitude,
             Radius = item.Radius,
+            AverageRating = item.AverageRating,
+            RatingCount = item.RatingCount,
+            Reviews = item.RecentReviews ?? [],
             HasNarration = narrationLanguages.Any(language =>
                 !string.IsNullOrWhiteSpace(language.AudioUrl)),
             NarrationLanguages = narrationLanguages

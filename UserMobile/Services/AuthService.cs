@@ -115,6 +115,49 @@ public sealed class AuthService : IAuthService
         return response.Data;
     }
 
+
+    public async Task<ApiResponse<UserProfile>> UpdateProfileAsync(string fullName, string email)
+    {
+        if (string.IsNullOrWhiteSpace(fullName) || string.IsNullOrWhiteSpace(email))
+        {
+            return new ApiResponse<UserProfile>
+            {
+                Success = false,
+                Message = "Vui lòng nhập họ tên và email."
+            };
+        }
+
+        var response = await _apiService.PutAsync<UserProfile>(
+            "api/auth/me",
+            new { FullName = fullName.Trim(), Email = email.Trim() });
+
+        if (response.Success && response.Data is not null)
+        {
+            await _storageService.SaveAsync(ProfileKey, JsonSerializer.Serialize(response.Data));
+        }
+
+        return response;
+    }
+
+    public Task<ApiResponse<object>> ChangePasswordAsync(string currentPassword, string newPassword, string confirmPassword)
+    {
+        return _apiService.PostAsync<object>(
+            "api/auth/change-password",
+            new
+            {
+                CurrentPassword = currentPassword,
+                NewPassword = newPassword,
+                ConfirmPassword = confirmPassword
+            });
+    }
+
+    public Task<ApiResponse<object>> RequestPasswordResetAsync(string email)
+    {
+        return _apiService.PostAsync<object>(
+            "api/auth/forgot-password",
+            new { Email = email?.Trim() ?? string.Empty });
+    }
+
     private async Task<AuthResult> SaveResultAsync(ApiResponse<AuthDto> response)
     {
         if (!response.Success || response.Data is null)

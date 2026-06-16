@@ -1,0 +1,150 @@
+@using System.Text.Json
+@model AdminWeb.Areas.DuKhach.Models.DuKhachTourDetailViewModel
+@{
+    ViewData["Title"] = Model.Name;
+    var poisJson = JsonSerializer.Serialize(Model.Pois, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+    var travelModeText = Model.TravelMode == "foot" ? "Đi bộ" : (Model.TravelMode == "bike" ? "Xe đạp" : "Lái xe");
+    var travelIcon = Model.TravelMode == "foot" ? "fa-person-walking" : (Model.TravelMode == "bike" ? "fa-bicycle" : "fa-car");
+}
+
+@section Styles {
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+    <style>
+        .tour-map-wrap { height: 650px; border-radius: 28px; border: 1px solid var(--border); overflow: hidden; background: var(--surface); z-index: 1; }
+        .leaflet-routing-container { background: var(--card) !important; color: var(--text) !important; border-radius: 16px; border: 1px solid var(--border); box-shadow: var(--shadow); padding: 10px; }
+        .custom-map-icon { background: transparent; border: none; }
+        .tour-poi-item { padding: 18px; border-bottom: 1px solid var(--border); display: flex; gap: 14px; cursor: pointer; transition: 0.2s ease; }
+        .tour-poi-item:hover, .tour-poi-item.active { background: rgba(56, 189, 248, 0.08); }
+        .tour-poi-num { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #03131d; display: grid; place-items: center; font-weight: 900; font-size: 15px; flex-shrink: 0; box-shadow: 0 4px 10px rgba(52, 211, 153, 0.3); }
+        @@media (max-width: 992px) { .tour-layout { grid-template-columns: 1fr !important; } .tour-map-wrap { height: 500px; } }
+    </style>
+}
+
+<div class="dk-shell" style="margin-top: 30px; margin-bottom: 60px;">
+    <div style="margin-bottom: 24px;">
+        <a asp-action="Index" style="display:inline-flex; align-items:center; gap:8px; color:var(--muted); text-decoration:none; font-weight:700; margin-bottom:16px; transition:0.2s;"><i class="fa-solid fa-arrow-left"></i> Trở về danh sách</a>
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 20px;">
+            <div>
+                <h1 style="font-size: clamp(30px, 4vw, 42px); font-weight: 950; margin: 0 0 12px; letter-spacing: -0.04em;">@Model.Name</h1>
+                <p style="color: var(--muted); font-size: 16px; max-width: 800px; line-height: 1.6; margin: 0;">@(string.IsNullOrWhiteSpace(Model.Description) ? "Lộ trình hướng dẫn chi tiết dành cho du khách." : Model.Description)</p>
+                <div style="display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap;">
+                    <span style="display:inline-flex; align-items:center; gap:6px; padding:6px 14px; border-radius:999px; background:rgba(148,163,184,0.1); color:var(--text); font-size:13px; font-weight:800;"><i class="fa-solid fa-clock" style="color:var(--accent);"></i> @Model.EstimatedTime phút</span>
+                    <span style="display:inline-flex; align-items:center; gap:6px; padding:6px 14px; border-radius:999px; background:rgba(148,163,184,0.1); color:var(--text); font-size:13px; font-weight:800;"><i class="fa-solid @travelIcon" style="color:#f59e0b;"></i> @travelModeText</span>
+                </div>
+            </div>
+            <button class="dk-btn dk-btn-primary" id="btnStartTour" style="font-size: 15px;"><i class="fa-solid fa-play"></i> Bắt đầu đi theo Tour</button>
+        </div>
+    </div>
+
+    <div class="tour-layout" style="display: grid; grid-template-columns: 380px 1fr; gap: 24px; align-items: stretch;">
+        <div style="border: 1px solid var(--border); border-radius: 28px; background: var(--card); display: flex; flex-direction: column; overflow: hidden; max-height: 650px;">
+            <div style="padding: 22px; border-bottom: 1px solid var(--border); background: rgba(148,163,184,0.05);">
+                <h3 style="margin: 0; font-size: 18px; font-weight: 900;"><i class="fa-solid fa-list-ol" style="color:var(--accent); margin-right:8px;"></i> Các điểm đến (@Model.Pois.Count)</h3>
+            </div>
+            <div style="overflow-y: auto; flex: 1;" id="tourPoiList">
+                @for (int i = 0; i < Model.Pois.Count; i++)
+                {
+                    var poi = Model.Pois[i];
+                    <div class="tour-poi-item" onclick="focusTourPoi(@i, this)">
+                        <div class="tour-poi-num">@(i+1)</div>
+                        <div>
+                            <strong style="display: block; font-size: 16px; margin-bottom: 4px;">@poi.Name</strong>
+                            <span style="color: var(--muted); font-size: 13px; line-height: 1.5; display: block;">@(string.IsNullOrWhiteSpace(poi.ShortDescription) ? "Khám phá địa điểm này" : poi.ShortDescription)</span>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+        
+        <div class="tour-map-wrap" id="tourMap"></div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+    <script>
+        const pois = @Html.Raw(poisJson);
+        const travelMode = '@Model.TravelMode' || 'driving';
+        
+        const mapCenter = pois.length > 0 ? [pois[0].latitude, pois[0].longitude] : [10.7769, 106.7009];
+        const map = L.map('tourMap').setView(mapCenter, 14);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
+
+        const waypoints = pois.map(p => L.latLng(p.latitude, p.longitude));
+        const markers = [];
+
+        pois.forEach((p, i) => {
+            const icon = L.divIcon({
+                className: 'custom-map-icon',
+                html: `<div style="background:linear-gradient(135deg, var(--accent), var(--accent-2));color:#03131d;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:900;border:2px solid #fff;box-shadow:0 6px 12px rgba(0,0,0,0.3); font-size: 14px;">${i+1}</div>`,
+                iconSize: [34, 34],
+                iconAnchor: [17, 17]
+            });
+            const marker = L.marker([p.latitude, p.longitude], {icon}).addTo(map);
+            marker.bindPopup(`<div style="min-width:180px;"><strong>${i+1}. ${p.name}</strong><br/><a href="/DuKhach/Map#poi-${p.id}" target="_blank" style="display:inline-block;margin-top:8px;font-weight:700;color:var(--accent);">Mở POI này <i class="fa-solid fa-arrow-right"></i></a></div>`);
+            markers.push(marker);
+        });
+
+        let routingControl = null;
+
+        setTimeout(() => {
+            if(waypoints.length > 1) {
+                routingControl = L.Routing.control({
+                    waypoints: waypoints,
+                    router: L.Routing.osrmv1({ profile: travelMode }),
+                    routeWhileDragging: false,
+                    addWaypoints: false,
+                    show: false, // Ban đầu ẩn hộp thoại dẫn đường
+                    lineOptions: { styles: [{ color: '#3b82f6', opacity: 0.9, weight: 6, dashArray: '10, 8' }] },
+                    createMarker: () => null
+                }).addTo(map);
+            } else if (waypoints.length === 1) {
+                map.setView(waypoints[0], 16);
+            }
+        }, 500);
+
+        window.focusTourPoi = function(index, el) {
+            document.querySelectorAll('.tour-poi-item').forEach(x => x.classList.remove('active'));
+            if(el) el.classList.add('active');
+            
+            const m = markers[index];
+            if(m) {
+                map.setView(m.getLatLng(), 17);
+                m.openPopup();
+            }
+        };
+
+        document.getElementById('btnStartTour').addEventListener('click', function() {
+            const btn = this;
+            if(navigator.geolocation) {
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang lấy vị trí...';
+                navigator.geolocation.getCurrentPosition(pos => {
+                    btn.innerHTML = '<i class="fa-solid fa-play"></i> Bắt đầu đi theo Tour';
+                    const userLatLng = L.latLng(pos.coords.latitude, pos.coords.longitude);
+                    
+                    if(routingControl) {
+                        const newWaypoints = [userLatLng, ...waypoints];
+                        routingControl.setWaypoints(newWaypoints);
+                        routingControl.show(); // Hiện hộp thoại dẫn đường chi tiết rẽ trái/phải
+                    }
+                    
+                    map.setView(userLatLng, 16);
+                    
+                    const userIcon = L.divIcon({
+                        className: 'custom-map-icon',
+                        html: `<div style="background:#f59e0b;color:#fff;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-size:14px;border:2px solid #fff;box-shadow:0 6px 12px rgba(0,0,0,0.3);"><i class="fa-solid fa-user"></i></div>`,
+                        iconSize: [34, 34],
+                        iconAnchor: [17, 17]
+                    });
+                    L.marker(userLatLng, {icon: userIcon}).addTo(map).bindPopup('Vị trí của bạn').openPopup();
+                    
+                }, err => {
+                    alert('Không lấy được vị trí GPS. Hãy kiểm tra quyền Location.');
+                    btn.innerHTML = '<i class="fa-solid fa-play"></i> Bắt đầu đi theo Tour';
+                });
+            }
+        });
+    </script>
+}

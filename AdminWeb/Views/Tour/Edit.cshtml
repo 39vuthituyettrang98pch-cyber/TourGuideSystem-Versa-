@@ -1,0 +1,490 @@
+@model AdminWeb.Models.Tour
+
+@{
+    ViewData["Title"] = "Chỉnh sửa tour";
+
+    var status = Model.Status?.Trim().ToLowerInvariant() ?? "draft";
+    var statusText = status switch
+    {
+        "active" => "Đang hoạt động",
+        "draft" => "Bản nháp",
+        "disabled" => "Đã ẩn",
+        _ => Model.Status ?? "Chưa xác định"
+    };
+
+    var statusClass = status switch
+    {
+        "active" => "status-active",
+        "draft" => "status-draft",
+        "disabled" => "status-disabled",
+        _ => "status-draft"
+    };
+}
+
+@section Styles {
+    <style>
+        .edit-hero {
+            position: relative;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            border-radius: 30px;
+            padding: 28px;
+            margin-bottom: 22px;
+            background:
+                radial-gradient(circle at 10% 20%, rgba(91, 140, 255, .24), transparent 32%),
+                radial-gradient(circle at 90% 10%, rgba(124, 92, 255, .22), transparent 30%),
+                linear-gradient(135deg, rgba(17, 29, 58, .96), rgba(12, 18, 36, .92));
+            box-shadow: var(--shadow);
+        }
+
+        html[data-theme="light"] .edit-hero {
+            background:
+                radial-gradient(circle at 10% 20%, rgba(91, 140, 255, .14), transparent 32%),
+                radial-gradient(circle at 90% 10%, rgba(124, 92, 255, .12), transparent 30%),
+                linear-gradient(135deg, rgba(255,255,255,.98), rgba(245,247,255,.94));
+        }
+
+        .edit-hero-inner {
+            position: relative;
+            z-index: 2;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 24px;
+            align-items: center;
+        }
+
+        .edit-kicker {
+            display: inline-flex;
+            align-items: center;
+            gap: 9px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            color: #dce7ff;
+            background: rgba(91, 140, 255, .16);
+            border: 1px solid rgba(91, 140, 255, .24);
+            font-size: 12px;
+            font-weight: 900;
+            margin-bottom: 14px;
+        }
+
+        .edit-title {
+            font-size: clamp(28px, 3vw, 42px);
+            font-weight: 950;
+            letter-spacing: -.045em;
+            line-height: 1.02;
+            margin: 0;
+        }
+
+        .edit-subtitle {
+            max-width: 760px;
+            margin-top: 12px;
+            color: var(--text-muted);
+            font-size: 15px;
+            line-height: 1.7;
+        }
+
+        .edit-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .edit-layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 340px;
+            gap: 22px;
+            align-items: start;
+        }
+
+        .edit-card {
+            border: 1px solid var(--border);
+            border-radius: 28px;
+            background: var(--card);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        .edit-card-header {
+            padding: 22px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .edit-card-title {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 950;
+            letter-spacing: -.02em;
+        }
+
+        .edit-card-subtitle {
+            color: var(--text-muted);
+            font-size: 13px;
+            margin-top: 4px;
+        }
+
+        .edit-card-body {
+            padding: 24px;
+        }
+
+        .edit-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 18px;
+        }
+
+        .edit-field.full {
+            grid-column: 1 / -1;
+        }
+
+        .edit-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 900;
+            font-size: 13px;
+            margin-bottom: 9px;
+            color: var(--text);
+        }
+
+        .edit-label i {
+            color: #5b8cff;
+        }
+
+        .form-control,
+        .form-select {
+            min-height: 48px;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            background: rgba(148, 163, 184, .08);
+            color: var(--text);
+            font-weight: 700;
+        }
+
+        .form-control:focus,
+        .form-select:focus {
+            border-color: rgba(91, 140, 255, .65);
+            box-shadow: 0 0 0 .25rem rgba(91, 140, 255, .15);
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            font-weight: 950;
+            font-size: 12px;
+        }
+
+        .status-active {
+            color: #86efac;
+            background: rgba(34, 197, 94, .12);
+            border: 1px solid rgba(34, 197, 94, .24);
+        }
+
+        .status-draft {
+            color: #facc15;
+            background: rgba(234, 179, 8, .12);
+            border: 1px solid rgba(234, 179, 8, .24);
+        }
+
+        .status-disabled {
+            color: #fb7185;
+            background: rgba(244, 63, 94, .12);
+            border: 1px solid rgba(244, 63, 94, .24);
+        }
+
+        .side-panel {
+            display: grid;
+            gap: 16px;
+        }
+
+        .info-box {
+            padding: 18px;
+            border-radius: 24px;
+            border: 1px solid var(--border);
+            background: linear-gradient(135deg, rgba(91, 140, 255, .12), rgba(124, 92, 255, .08));
+        }
+
+        .info-box-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 16px;
+            display: grid;
+            place-items: center;
+            color: #fff;
+            background: linear-gradient(135deg, #5b8cff, #7c5cff);
+            margin-bottom: 12px;
+        }
+
+        .info-box strong {
+            display: block;
+            font-size: 15px;
+            font-weight: 950;
+            margin-bottom: 6px;
+        }
+
+        .info-box p {
+            margin: 0;
+            color: var(--text-muted);
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .quick-list {
+            display: grid;
+            gap: 10px;
+        }
+
+        .quick-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 13px 14px;
+            border-radius: 18px;
+            border: 1px solid var(--border);
+            background: rgba(148, 163, 184, .08);
+            font-weight: 900;
+            transition: .2s ease;
+        }
+
+        .quick-link:hover {
+            transform: translateY(-2px);
+            color: var(--text);
+            border-color: rgba(91, 140, 255, .45);
+        }
+
+        .quick-link i {
+            color: #5b8cff;
+        }
+
+        .edit-footer-actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 22px;
+        }
+
+        @@media (max-width: 1050px) {
+            .edit-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .edit-hero-inner {
+                grid-template-columns: 1fr;
+            }
+
+            .edit-actions {
+                justify-content: flex-start;
+            }
+        }
+
+        @@media (max-width: 680px) {
+            .edit-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .edit-hero,
+            .edit-card-body,
+            .edit-card-header {
+                padding: 20px;
+            }
+        }
+    </style>
+}
+
+<div class="edit-hero">
+    <div class="edit-hero-inner">
+        <div>
+            <div class="edit-kicker">
+                <i class="fa-solid fa-route"></i>
+                Quản lý tour du lịch
+            </div>
+
+            <h1 class="edit-title">Chỉnh sửa tour #@Model.Id</h1>
+
+            <div class="edit-subtitle">
+                Cập nhật thời gian, trạng thái và quản lý nội dung đa ngôn ngữ cho tour.
+                Tên tour, mô tả và thuyết minh nên chỉnh trong mục bản dịch.
+            </div>
+        </div>
+
+        <div class="edit-actions">
+            <a asp-controller="TourTranslation"
+               asp-action="Index"
+               asp-route-tourId="@Model.Id"
+               class="btn btn-primary">
+                <i class="fa-solid fa-language"></i>
+                Bản dịch
+            </a>
+
+            <a asp-action="ManagePois"
+               asp-route-id="@Model.Id"
+               class="btn btn-secondary">
+                <i class="fa-solid fa-list-ol"></i>
+                POI trong tour
+            </a>
+
+            <a asp-action="Index" class="btn btn-secondary">
+                <i class="fa-solid fa-arrow-left"></i>
+                Quay lại
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="edit-layout">
+    <div class="edit-card">
+        <div class="edit-card-header">
+            <div>
+                <h2 class="edit-card-title">Thông tin vận hành</h2>
+                <div class="edit-card-subtitle">Các thiết lập chính ảnh hưởng đến việc hiển thị tour trên web và app.</div>
+            </div>
+
+            <span class="status-pill @statusClass">
+                <i class="fa-solid fa-circle"></i>
+                @statusText
+            </span>
+        </div>
+
+        <div class="edit-card-body">
+            <form asp-action="Edit" asp-route-id="@Model.Id" method="post">
+                @Html.AntiForgeryToken()
+
+                <input type="hidden" asp-for="Id" />
+                <input type="hidden" asp-for="CreatedAt" />
+
+                <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                <div class="edit-grid">
+                    <div class="edit-field">
+                        <label class="edit-label">
+                            <i class="fa-solid fa-hashtag"></i>
+                            Mã tour
+                        </label>
+                        <input class="form-control" value="#@Model.Id" disabled />
+                    </div>
+
+                    <div class="edit-field">
+                        <label class="edit-label">
+                            <i class="fa-solid fa-calendar-plus"></i>
+                            Ngày tạo
+                        </label>
+                        <input class="form-control" value="@Model.CreatedAt.ToString("dd/MM/yyyy HH:mm")" disabled />
+                    </div>
+
+                    <div class="edit-field">
+                        <label asp-for="EstimatedTime" class="edit-label">
+                            <i class="fa-solid fa-clock"></i>
+                            Thời gian ước tính, phút
+                        </label>
+                        <input asp-for="EstimatedTime"
+                               class="form-control"
+                               type="number"
+                               min="5"
+                               step="5"
+                               placeholder="Ví dụ: 120" />
+                        <span asp-validation-for="EstimatedTime" class="text-danger"></span>
+                    </div>
+
+                    <div class="edit-field">
+                        <label asp-for="Status" class="edit-label">
+                            <i class="fa-solid fa-toggle-on"></i>
+                            Trạng thái
+                        </label>
+                        <select asp-for="Status" class="form-select">
+                            <option value="active">Hoạt động</option>
+                            <option value="draft">Bản nháp</option>
+                            <option value="disabled">Đã ẩn</option>
+                        </select>
+                        <span asp-validation-for="Status" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div class="info-box" style="margin-top:20px;">
+                    <div class="info-box-icon">
+                        <i class="fa-solid fa-circle-info"></i>
+                    </div>
+                    <strong>Nội dung tour là đa ngôn ngữ</strong>
+                    <p>
+                        Tên tour, mô tả ngắn, mô tả chi tiết và nội dung giới thiệu nên chỉnh trong mục
+                        <b>Bản dịch</b>. Khi thêm ngôn ngữ mới, hệ thống có thể tạo bản dịch còn thiếu bằng AI.
+                    </p>
+                </div>
+
+                <div class="edit-footer-actions">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fa-solid fa-floppy-disk"></i>
+                        Lưu thay đổi
+                    </button>
+
+                    <a asp-controller="TourTranslation"
+                       asp-action="Index"
+                       asp-route-tourId="@Model.Id"
+                       class="btn btn-secondary">
+                        <i class="fa-solid fa-language"></i>
+                        Sửa tên / mô tả
+                    </a>
+
+                    <a asp-action="Index" class="btn btn-secondary">
+                        Hủy
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <aside class="side-panel">
+        <div class="edit-card">
+            <div class="edit-card-header">
+                <div>
+                    <h2 class="edit-card-title">Thao tác nhanh</h2>
+                    <div class="edit-card-subtitle">Quản lý nội dung liên quan đến tour.</div>
+                </div>
+            </div>
+
+            <div class="edit-card-body">
+                <div class="quick-list">
+                    <a asp-controller="TourTranslation"
+                       asp-action="Index"
+                       asp-route-tourId="@Model.Id"
+                       class="quick-link">
+                        <i class="fa-solid fa-language"></i>
+                        Bản dịch tour
+                    </a>
+
+                    <a asp-action="ManagePois"
+                       asp-route-id="@Model.Id"
+                       class="quick-link">
+                        <i class="fa-solid fa-map-location-dot"></i>
+                        Sắp xếp POI trong tour
+                    </a>
+
+                    <a asp-action="Index" class="quick-link">
+                        <i class="fa-solid fa-table-list"></i>
+                        Danh sách tour
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="info-box">
+            <div class="info-box-icon">
+                <i class="fa-solid fa-lightbulb"></i>
+            </div>
+            <strong>Gợi ý hiển thị đẹp</strong>
+            <p>
+                Tour nên có từ 3 đến 7 POI, thời lượng rõ ràng và bản dịch đầy đủ cho các ngôn ngữ đang bật.
+            </p>
+        </div>
+    </aside>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

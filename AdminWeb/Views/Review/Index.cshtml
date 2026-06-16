@@ -1,0 +1,143 @@
+@model IReadOnlyList<AdminWeb.Models.PoiReview>
+
+@{
+    ViewData["Title"] = "Đánh giá POI";
+    var searchString = ViewBag.SearchString as string ?? "";
+    var currentPage = (int?)ViewBag.CurrentPage ?? 1;
+    var totalPages = (int?)ViewBag.TotalPages ?? 1;
+    var totalItems = (int?)ViewBag.TotalItems ?? 0;
+}
+
+<div class="page-heading">
+    <div>
+        <div class="page-title">Đánh giá POI</div>
+        <div class="page-subtitle">Quản lý số sao và bình luận của du khách cho từng điểm tham quan.</div>
+    </div>
+    <div class="page-actions">
+        <a asp-controller="Analytics" asp-action="Index" class="btn btn-secondary">
+            <i class="fa-solid fa-chart-line"></i> Xem phân tích
+        </a>
+    </div>
+</div>
+
+<div class="toolbar" style="margin-top:18px">
+    <form asp-action="Index" method="get" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <input type="search"
+               name="searchString"
+               value="@searchString"
+               class="form-control"
+               placeholder="Tìm bình luận, du khách, email hoặc tên POI..."
+               style="min-width:320px;max-width:520px;background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--text);border-radius:12px;padding:10px 12px;" />
+        <button type="submit" class="btn btn-secondary btn-sm">
+            <i class="fa-solid fa-magnifying-glass"></i> Tìm
+        </button>
+        @if (!string.IsNullOrWhiteSpace(searchString))
+        {
+            <a asp-action="Index" class="btn btn-secondary btn-sm">
+                <i class="fa-solid fa-xmark"></i> Xóa lọc
+            </a>
+        }
+    </form>
+    <div style="color:var(--text-muted);font-weight:800;font-size:13px;">
+        Tổng: @totalItems đánh giá
+    </div>
+</div>
+
+<div class="table-wrapper" style="margin-top:16px">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Thời gian</th>
+                <th>POI</th>
+                <th>Du khách</th>
+                <th>Đánh giá</th>
+                <th>Bình luận</th>
+                <th style="width:110px">Thao tác</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Model.Count > 0)
+            {
+                foreach (var review in Model)
+                {
+                    var poiName = review.Poi?.Translations?.FirstOrDefault(t => t.LanguageCode == "vi")?.Name
+                        ?? review.Poi?.Translations?.FirstOrDefault()?.Name
+                        ?? $"POI #{review.PoiId}";
+                    var touristName = string.IsNullOrWhiteSpace(review.Tourist?.FullName)
+                        ? $"Du khách #{review.TouristId}"
+                        : review.Tourist!.FullName;
+                    var email = review.Tourist?.Email ?? "";
+
+                    <tr>
+                        <td style="white-space:nowrap;color:var(--text-muted);font-size:12px;">
+                            @review.CreatedAt.ToString("dd/MM/yyyy HH:mm")
+                        </td>
+                        <td>
+                            <strong>@poiName</strong>
+                            <div style="font-size:12px;color:var(--text-muted);">POI #@review.PoiId</div>
+                        </td>
+                        <td>
+                            <strong>@touristName</strong>
+                            @if (!string.IsNullOrWhiteSpace(email))
+                            {
+                                <div style="font-size:12px;color:var(--text-muted);">@email</div>
+                            }
+                        </td>
+                        <td>
+                            <span class="badge amber">
+                                <i class="fa-solid fa-star"></i> @review.Rating/5
+                            </span>
+                        </td>
+                        <td style="max-width:420px;line-height:1.55;">
+                            @if (string.IsNullOrWhiteSpace(review.Comment))
+                            {
+                                <span style="color:var(--text-muted);">Không có bình luận.</span>
+                            }
+                            else
+                            {
+                                @review.Comment
+                            }
+                        </td>
+                        <td>
+                            <form asp-action="Delete" method="post" onsubmit="return confirm('Xóa đánh giá này?');">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@review.Id" />
+                                <button type="submit" class="btn btn-secondary btn-sm text-danger">
+                                    <i class="fa-solid fa-trash"></i> Xóa
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            }
+            else
+            {
+                <tr>
+                    <td colspan="6">
+                        <div class="empty-state compact">
+                            <i class="fa-solid fa-star"></i>
+                            <p>Chưa có đánh giá POI nào.</p>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@if (totalPages > 1)
+{
+    <div style="display:flex;justify-content:center;gap:8px;margin-top:20px;align-items:center;">
+        @if (currentPage > 1)
+        {
+            <a asp-action="Index" asp-route-page="@(currentPage - 1)" asp-route-searchString="@searchString" class="btn btn-secondary btn-sm">Trang trước</a>
+        }
+        <span style="display:inline-flex;align-items:center;padding:0 12px;background:rgba(255,255,255,.05);border-radius:8px;font-size:14px;font-weight:700;">
+            Trang @currentPage / @totalPages
+        </span>
+        @if (currentPage < totalPages)
+        {
+            <a asp-action="Index" asp-route-page="@(currentPage + 1)" asp-route-searchString="@searchString" class="btn btn-secondary btn-sm">Trang sau</a>
+        }
+    </div>
+}

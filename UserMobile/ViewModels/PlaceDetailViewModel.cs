@@ -30,11 +30,16 @@ public class PlaceDetailViewModel : BaseViewModel
     private readonly IAuthService _authService;
     private readonly IApiService _apiService;
     private readonly IAchievementService _achievementService;
+    private readonly IReviewService _reviewService;
     private Stream? _audioStream;
     private bool _playbackLogged;
     private bool _isUpdatingProgress;
     private bool _isCheckingIn;
     private string _checkInText = "Check-in khám phá • +10 điểm";
+    private int _reviewRating = 5;
+    private string _reviewComment = string.Empty;
+    private bool _isSubmittingReview;
+    private string _reviewSummaryText = "Chưa có đánh giá";
 
     public ICommand PlayNarrationCommand { get; }
     public ICommand TogglePlaybackCommand { get; }
@@ -46,6 +51,7 @@ public class PlaceDetailViewModel : BaseViewModel
     public ICommand ToggleFavoriteCommand { get; }
     public ICommand WatchVideoCommand { get; }
     public ICommand CheckInCommand { get; }
+    public ICommand SubmitReviewCommand { get; }
 
     public PlaceItem? Place
     {
@@ -192,6 +198,36 @@ public class PlaceDetailViewModel : BaseViewModel
         set => SetProperty(ref _checkInText, value);
     }
 
+    public int ReviewRating
+    {
+        get => _reviewRating;
+        set => SetProperty(ref _reviewRating, value);
+    }
+
+    public string ReviewComment
+    {
+        get => _reviewComment;
+        set => SetProperty(ref _reviewComment, value);
+    }
+
+    public bool IsSubmittingReview
+    {
+        get => _isSubmittingReview;
+        set => SetProperty(ref _isSubmittingReview, value);
+    }
+
+    public string ReviewSummaryText
+    {
+        get => _reviewSummaryText;
+        set => SetProperty(ref _reviewSummaryText, value);
+    }
+
+    public bool HasReviews => Reviews.Count > 0;
+    public bool HasNoReviews => !HasReviews;
+
+    public ObservableCollection<int> RatingOptions { get; } = new() { 1, 2, 3, 4, 5 };
+    public ObservableCollection<ReviewDto> Reviews { get; } = new();
+
     public List<NarrationLanguage> NarrationLanguages => Place?.NarrationLanguages ?? new();
 
     public ObservableCollection<double> SpeedOptions { get; } = new() { 0.5, 1.0, 1.5, 2.0 };
@@ -202,7 +238,8 @@ public class PlaceDetailViewModel : BaseViewModel
         IUserPoiStateService stateService,
         IAuthService authService,
         IApiService apiService,
-        IAchievementService achievementService)
+        IAchievementService achievementService,
+        IReviewService reviewService)
     {
         _audioManager = audioManager;
         _httpClientFactory = httpClientFactory;
@@ -210,6 +247,7 @@ public class PlaceDetailViewModel : BaseViewModel
         _authService = authService;
         _apiService = apiService;
         _achievementService = achievementService;
+        _reviewService = reviewService;
         PlayNarrationCommand = new Command(async () => await PlayNarrationAsync());
         TogglePlaybackCommand = new Command(async () =>
         {
@@ -226,6 +264,7 @@ public class PlaceDetailViewModel : BaseViewModel
         ToggleFavoriteCommand = new Command(async () => await ToggleFavoriteAsync());
         WatchVideoCommand = new Command(async () => await WatchVideoAsync());
         CheckInCommand = new Command(async () => await CheckInAsync());
+        SubmitReviewCommand = new Command(async () => await SubmitReviewAsync());
     }
 
     private void OnLanguageSelected(NarrationLanguage? language)
@@ -248,6 +287,9 @@ public class PlaceDetailViewModel : BaseViewModel
         Message = string.Empty;
         CheckInText = "Check-in khám phá • +10 điểm";
         _playbackLogged = false;
+        ReviewRating = 5;
+        ReviewComment = string.Empty;
+        ApplyReviewSummary(place.AverageRating, place.RatingCount, place.Reviews);
         OnPropertyChanged(nameof(NarrationLanguages));
         OnPropertyChanged(nameof(HasNarrationLanguages));
         OnPropertyChanged(nameof(HasNoNarrationLanguages));
@@ -266,6 +308,8 @@ public class PlaceDetailViewModel : BaseViewModel
         {
             Message = exception.Message;
         }
+
+        await LoadReviewsAsync(place.Id);
 
         try
         {
@@ -472,7 +516,6 @@ public class PlaceDetailViewModel : BaseViewModel
             return;
 
         _playbackLogged = true;
-        var profile = await _authService.GetProfileAsync();
         var deviceId = Preferences.Get("device_id", string.Empty);
         if (string.IsNullOrWhiteSpace(deviceId))
         {
@@ -483,7 +526,6 @@ public class PlaceDetailViewModel : BaseViewModel
         await _apiService.PostAsync<object>("api/log", new
         {
             PoiId = poiId,
-            TouristId = profile?.Id,
             DeviceId = deviceId,
             LanguageCode = SelectedLanguage?.Code ?? "vi",
             ListenDuration = 0,
@@ -533,4 +575,97 @@ public class PlaceDetailViewModel : BaseViewModel
             IsCheckingIn = false;
         }
     }
+
+    private async Task LoadReviewsAsync(string poiId)
+    {
+        try
+        {
+            var response = await _reviewService.GetPoiReviewsAsync(poiId);
+            if (!response.Success || response.Data is null)
+                return;
+
+            ApplyReviewSummary(response.Data.AverageRating, response.Data.RatingCount, response.Data.Reviews);
+
+            if (response.Data.MyReview is not null)
+            {
+                ReviewRating = response.Data.MyReview.Rating;
+                ReviewComment = response.Data.MyReview.Comment;
+            }
+        }
+        catch (Exception exception)
+        {
+            System.Diagnostics.Debug.WriteLine($"Could not load reviews: {exception.Message}");
+        }
+    }
+
+    private void ApplyReviewSummary(double averageRating, int ratingCount, IEnumerable<ReviewDto>? reviews)
+    {
+        ReviewSummaryText = ratingCount > 0
+            ? $"{averageRating:F1}/5 · {ratingCount} đánh giá"
+            : "Chưa có đánh giá";
+
+        Reviews.Clear();
+        if (reviews is not null)
+        {
+            foreach (var review in reviews)
+            {
+                Reviews.Add(review);
+            }
+        }
+
+        OnPropertyChanged(nameof(HasReviews));
+        OnPropertyChanged(nameof(HasNoReviews));
+    }
+
+    private async Task SubmitReviewAsync()
+    {
+        if (Place is null || IsSubmittingReview)
+            return;
+
+        if (!await _authService.IsLoggedInAsync())
+        {
+            Message = "Vui lòng đăng nhập để đánh giá POI.";
+            await Shell.Current.GoToAsync(nameof(UserMobile.Views.LoginPage));
+            return;
+        }
+
+        if (ReviewRating < 1 || ReviewRating > 5)
+        {
+            Message = "Vui lòng chọn số sao từ 1 đến 5.";
+            return;
+        }
+
+        if (ReviewComment.Length > 600)
+        {
+            Message = "Bình luận tối đa 600 ký tự.";
+            return;
+        }
+
+        try
+        {
+            IsSubmittingReview = true;
+            Message = string.Empty;
+
+            var response = await _reviewService.SubmitPoiReviewAsync(
+                Place.Id,
+                ReviewRating,
+                ReviewComment);
+
+            if (!response.Success || response.Data is null)
+            {
+                Message = response.Message;
+                return;
+            }
+
+            ApplyReviewSummary(response.Data.AverageRating, response.Data.RatingCount, response.Data.Reviews);
+            Message = string.IsNullOrWhiteSpace(response.Message)
+                ? "Đã gửi đánh giá."
+                : response.Message;
+        }
+        finally
+        {
+            IsSubmittingReview = false;
+        }
+    }
+
 }

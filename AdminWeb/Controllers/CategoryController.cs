@@ -1,5 +1,6 @@
 using AdminWeb.Data;
 using AdminWeb.Models;
+using AdminWeb.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -10,10 +11,14 @@ namespace AdminWeb.Controllers;
 public class CategoryController : Controller
 {
     private readonly AppDbContext _context;
+    private readonly ContentTranslationService _translationService;
 
-    public CategoryController(AppDbContext context)
+    public CategoryController(
+        AppDbContext context,
+        ContentTranslationService translationService)
     {
         _context = context;
+        _translationService = translationService;
     }
 
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
@@ -24,6 +29,25 @@ public class CategoryController : Controller
             .OrderBy(category => category.Id)
             .ToListAsync(cancellationToken);
         return View(categories);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> GenerateMissingTranslations(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var count = await _translationService.TranslateMissingCategoriesAsync(null, cancellationToken);
+            TempData["SuccessMessage"] = count > 0
+                ? $"AI đã dịch thêm {count} bản dịch danh mục còn thiếu."
+                : "Danh mục đã đủ bản dịch cho các ngôn ngữ đang bật.";
+        }
+        catch (Exception ex)
+        {
+            TempData["ErrorMessage"] = "Không thể AI dịch danh mục: " + ex.Message;
+        }
+
+        return RedirectToAction(nameof(Index));
     }
 
     public IActionResult Create()

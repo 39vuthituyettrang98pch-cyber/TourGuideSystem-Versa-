@@ -33,8 +33,8 @@ dotnet run --project ../AdminWeb --launch-profile http
 Build app:
 
 ```powershell
-dotnet build UserMobile.csproj -f net10.0-windows10.0.19041.0
-dotnet build UserMobile.csproj -f net10.0-android
+dotnet build UserMobile.csproj -f net8.0-windows10.0.19041.0
+dotnet build UserMobile.csproj -f net8.0-android
 ```
 
 URL debug được cấu hình tại `MauiProgram.cs`:
@@ -47,7 +47,7 @@ máy chạy `AdminWeb` khi build:
 
 ```powershell
 dotnet run --project ../AdminWeb --urls http://0.0.0.0:5297
-dotnet build UserMobile.csproj -f net10.0-android -p:ApiBaseUrl=http://192.168.1.10:5297/
+dotnet build UserMobile.csproj -f net8.0-android -p:ApiBaseUrl=http://192.168.1.10:5297/
 ```
 
 Production phải truyền URL HTTPS thật bằng `-p:ApiBaseUrl=https://.../`.

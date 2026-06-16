@@ -20,20 +20,12 @@ public partial class StartupPage : ContentPage
 
         _initialized = true;
         var localizationService = App.Services.GetRequiredService<ILocalizationService>();
-        var authService = App.Services.GetRequiredService<IAuthService>();
-
         if (await localizationService.GetSavedLanguageAsync() is null)
         {
-            App.ShowLanguageSelectionPage(continueToAuthentication: true);
+            App.ShowLanguageSelectionPage(continueToAuthentication: false);
             return;
         }
 
-        if (await authService.IsLoggedInAsync())
-        {
-            App.ShowMainPage();
-            return;
-        }
-
-        App.ShowLoginPage();
+        App.ShowMainPage();
     }
 }

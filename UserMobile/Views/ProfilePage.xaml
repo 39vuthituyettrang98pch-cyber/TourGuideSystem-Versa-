@@ -46,6 +46,11 @@
                 </Grid>
             </Border>
 
+            <Label Text="{Binding Message}"
+                   TextColor="#D94A64"
+                   IsVisible="{Binding HasMessage}"
+                   HorizontalTextAlignment="Center" />
+
             <Border Padding="18"
                     IsVisible="{Binding IsLoggedIn}"
                     BackgroundColor="#F0EDFF"
@@ -109,6 +114,23 @@
                     </VerticalStackLayout>
                 </Border>
             </Grid>
+
+
+            <Label Text="TÀI KHOẢN" Style="{StaticResource Eyebrow}" Margin="2,4,0,0" IsVisible="{Binding IsLoggedIn}" />
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="10" IsVisible="{Binding IsLoggedIn}">
+                <Button Text="Sửa hồ sơ"
+                        Clicked="OnEditProfileClicked"
+                        Style="{StaticResource SecondaryButton}" />
+                <Button Grid.Column="1"
+                        Text="Đổi mật khẩu"
+                        Clicked="OnChangePasswordClicked"
+                        Style="{StaticResource SecondaryButton}" />
+            </Grid>
+
+            <Button Text="Quên mật khẩu"
+                    Clicked="OnForgotPasswordClicked"
+                    Style="{StaticResource SecondaryButton}"
+                    IsVisible="{Binding IsLoggedOut}" />
 
             <Label Text="THIẾT LẬP" Style="{StaticResource Eyebrow}" Margin="2,4,0,0" />
             <Border Style="{StaticResource Card}">

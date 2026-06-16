@@ -1,5 +1,6 @@
 using AdminWeb.Data;
 using AdminWeb.Models;
+using AdminWeb.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -11,10 +12,14 @@ namespace AdminWeb.Controllers;
 public class TourController : Controller
 {
     private readonly AppDbContext _context;
+    private readonly ContentTranslationService _translationService;
 
-    public TourController(AppDbContext context)
+    public TourController(
+        AppDbContext context,
+        ContentTranslationService translationService)
     {
         _context = context;
+        _translationService = translationService;
     }
 
     public async Task<IActionResult> Index(string? searchString, int page = 1)
@@ -42,6 +47,25 @@ public class TourController : Controller
         ViewBag.TotalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
 
         return View(tours);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> GenerateMissingTranslations(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var count = await _translationService.TranslateMissingToursAsync(null, cancellationToken);
+            TempData["SuccessMessage"] = count > 0
+                ? $"AI đã dịch thêm {count} bản dịch tour còn thiếu."
+                : "Tour đã đủ bản dịch cho các ngôn ngữ đang bật.";
+        }
+        catch (Exception ex)
+        {
+            TempData["ErrorMessage"] = "Không thể AI dịch tour: " + ex.Message;
+        }
+
+        return RedirectToAction(nameof(Index));
     }
 
     public IActionResult Create()

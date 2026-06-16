@@ -10,6 +10,8 @@ public sealed class ApiService : IApiService
     private readonly HttpClient _httpClient;
     private readonly IAccessTokenStore _tokenStore;
 
+    public Uri? BaseAddress => _httpClient.BaseAddress;
+
     public ApiService(HttpClient httpClient, IAccessTokenStore tokenStore)
     {
         _httpClient = httpClient;
@@ -31,6 +33,14 @@ public sealed class ApiService : IApiService
         CancellationToken cancellationToken = default)
     {
         return SendAsync<T>(HttpMethod.Post, route, body, cancellationToken);
+    }
+
+    public Task<ApiResponse<T>> PutAsync<T>(
+        string route,
+        object body,
+        CancellationToken cancellationToken = default)
+    {
+        return SendAsync<T>(HttpMethod.Put, route, body, cancellationToken);
     }
 
     private async Task<ApiResponse<T>> SendAsync<T>(

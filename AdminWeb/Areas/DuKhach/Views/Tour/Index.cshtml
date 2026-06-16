@@ -1,0 +1,55 @@
+@model IEnumerable<DuKhachTourListViewModel>
+@{
+    ViewData["Title"] = "Tour gợi ý";
+    var tours = Model?.ToList() ?? new List<DuKhachTourListViewModel>();
+}
+
+@section Styles {
+    <style>
+        .tour-hero{position:relative;overflow:hidden;border:1px solid var(--border);border-radius:36px;padding:38px;background:radial-gradient(circle at 16% 20%,rgba(52,211,153,.22),transparent 28%),radial-gradient(circle at 84% 34%,rgba(56,189,248,.18),transparent 30%),linear-gradient(135deg,rgba(15,29,52,.94),rgba(7,18,34,.8)),url("https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1600&q=80");background-size:cover;background-position:center;box-shadow:var(--shadow);margin-bottom:24px}
+        html[data-theme="light"] .tour-hero{background:radial-gradient(circle at 16% 20%,rgba(52,211,153,.18),transparent 28%),radial-gradient(circle at 84% 34%,rgba(56,189,248,.18),transparent 30%),linear-gradient(135deg,rgba(255,255,255,.94),rgba(238,248,255,.78)),url("https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1600&q=80");background-size:cover;background-position:center}
+        .tour-eyebrow{width:fit-content;display:inline-flex;align-items:center;gap:8px;padding:8px 13px;border:1px solid rgba(52,211,153,.3);border-radius:999px;color:var(--accent);background:rgba(52,211,153,.12);font-size:13px;font-weight:900}
+        .tour-hero h1{max-width:760px;margin:18px 0 12px;font-size:clamp(42px,6vw,76px);line-height:.94;letter-spacing:-.075em;font-weight:950}.tour-hero h1 span{background:linear-gradient(135deg,var(--accent),var(--accent-2));-webkit-background-clip:text;background-clip:text;color:transparent}.tour-hero p{max-width:720px;margin:0;color:var(--muted);font-size:17px;line-height:1.75}
+        .tour-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}.tour-card{position:relative;overflow:hidden;border:1px solid var(--border);border-radius:30px;background:var(--card);box-shadow:0 18px 50px rgba(0,0,0,.12);transition:.2s ease}.tour-card:hover{transform:translateY(-4px);box-shadow:var(--shadow);border-color:rgba(56,189,248,.42)}.tour-card-top{min-height:160px;padding:24px;background:radial-gradient(circle at 20% 20%,rgba(52,211,153,.26),transparent 28%),radial-gradient(circle at 80% 60%,rgba(56,189,248,.2),transparent 30%),linear-gradient(135deg,rgba(15,29,52,.92),rgba(6,17,31,.72));display:flex;align-items:flex-start;justify-content:space-between;gap:14px}.tour-icon{width:56px;height:56px;border-radius:20px;display:grid;place-items:center;color:#03131d;background:linear-gradient(135deg,var(--accent),var(--accent-2));font-size:22px}.tour-chip{padding:8px 11px;border-radius:999px;background:rgba(255,255,255,.1);border:1px solid var(--border);color:var(--text);font-size:12px;font-weight:900}.tour-card-body{padding:24px}.tour-card-body h3{margin:0 0 10px;font-size:24px;line-height:1.05;letter-spacing:-.045em;font-weight:950}.tour-card-body p{min-height:74px;margin:0 0 18px;color:var(--muted);line-height:1.65}.tour-meta{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}.tour-meta span{display:inline-flex;align-items:center;gap:6px;padding:7px 10px;border-radius:999px;border:1px solid var(--border);background:rgba(148,163,184,.08);color:var(--muted);font-size:12px;font-weight:900}.tour-btn{width:100%;min-height:48px;border:0;border-radius:18px;color:#03131d;background:linear-gradient(135deg,var(--accent),var(--accent-2));font-weight:950;display:inline-flex;align-items:center;justify-content:center;gap:9px;text-decoration:none;transition:.2s ease}.tour-btn:hover{color:#03131d;transform:translateY(-2px)}.empty-tour{border:1px solid var(--border);border-radius:34px;background:var(--card);box-shadow:var(--shadow);padding:44px;text-align:center}.empty-tour i{font-size:56px;color:var(--accent);margin-bottom:18px}.empty-tour h2{margin:0 0 10px;font-size:34px;font-weight:950;letter-spacing:-.05em}.empty-tour p{max-width:620px;margin:0 auto 22px;color:var(--muted);line-height:1.75}
+        @@media(max-width:1050px){.tour-grid{grid-template-columns:1fr 1fr}}@@media(max-width:680px){.tour-hero{padding:24px}.tour-grid{grid-template-columns:1fr}}
+    </style>
+}
+
+<section class="tour-hero">
+    <div class="tour-eyebrow"><i class="fa-solid fa-route"></i> Tour gợi ý</div>
+    <h1>Chọn lộ trình <span>khám phá phù hợp.</span></h1>
+    <p>Các tour giúp du khách đi theo thứ tự POI hợp lý, xem điểm dừng trên bản đồ và bắt đầu điều hướng nhanh.</p>
+</section>
+
+@if (tours.Count == 0)
+{
+    <section class="empty-tour">
+        <i class="fa-solid fa-route"></i>
+        <h2>Chưa có tour đang mở</h2>
+        <p>Hãy tạo tour trong khu vực quản trị và đặt trạng thái active để du khách có thể xem lộ trình tại đây.</p>
+        <a class="dk-btn dk-btn-primary" asp-area="DuKhach" asp-controller="Map" asp-action="Index"><i class="fa-solid fa-map-location-dot"></i> Xem bản đồ POI</a>
+    </section>
+}
+else
+{
+    <div class="tour-grid">
+        @foreach (var tour in tours)
+        {
+            <article class="tour-card">
+                <div class="tour-card-top">
+                    <div class="tour-icon"><i class="fa-solid fa-map-location-dot"></i></div>
+                    <div class="tour-chip">@tour.PoiCount điểm</div>
+                </div>
+                <div class="tour-card-body">
+                    <h3>@tour.Name</h3>
+                    <p>@(string.IsNullOrWhiteSpace(tour.Description) ? "Lộ trình gợi ý dành cho du khách." : tour.Description)</p>
+                    <div class="tour-meta">
+                        <span><i class="fa-solid fa-clock"></i> @tour.EstimatedTime phút</span>
+                        <span><i class="fa-solid fa-location-dot"></i> @tour.PoiCount POI</span>
+                    </div>
+                    <a class="tour-btn" asp-area="DuKhach" asp-controller="Tour" asp-action="Details" asp-route-id="@tour.Id"><i class="fa-solid fa-play"></i> Xem lộ trình</a>
+                </div>
+            </article>
+        }
+    </div>
+}

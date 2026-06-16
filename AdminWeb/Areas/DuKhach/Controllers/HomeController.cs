@@ -12,6 +12,8 @@ namespace AdminWeb.Areas.DuKhach.Controllers;
 [AllowAnonymous]
 public sealed class HomeController : Controller
 {
+    private const string FallbackLanguageCode = "vi";
+
     private readonly AppDbContext _context;
     private readonly VisitorAchievementService _achievementService;
 
@@ -23,6 +25,9 @@ public sealed class HomeController : Controller
 
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
     {
+        var selectedLanguageCode = GetSelectedLanguageCode();
+        ViewBag.SelectedLanguageCode = selectedLanguageCode;
+
         var approvedPoiCount = await _context.Pois
             .CountAsync(item => item.Status == "Approved", cancellationToken);
         var activeTourCount = await _context.Tours
@@ -75,7 +80,9 @@ public sealed class HomeController : Controller
             RecentDiscoveries = recentDiscoveries,
             FeaturedPois = featuredPois.Select(item =>
             {
-                var translation = item.Translations.FirstOrDefault(t => t.LanguageCode == "vi")
+                var translation = item.Translations.FirstOrDefault(t => t.LanguageCode == selectedLanguageCode)
+                    ?? item.Translations.FirstOrDefault(t => t.LanguageCode == "vi")
+                    ?? item.Translations.FirstOrDefault(t => t.LanguageCode == "en")
                     ?? item.Translations.FirstOrDefault();
                 return new DuKhachPoiCardViewModel
                 {
@@ -94,4 +101,49 @@ public sealed class HomeController : Controller
 
     private int GetTouristId() =>
         int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+    private string GetSelectedLanguageCode()
+    {
+        var raw = Request.Query["lang"].FirstOrDefault()
+            ?? Request.Cookies["versa.dukhach.lang"]
+            ?? "vi";
+
+        var languageCode = NormalizeLanguageCode(raw);
+        Response.Cookies.Append("versa.dukhach.lang", languageCode, new CookieOptions
+        {
+            Expires = DateTimeOffset.UtcNow.AddYears(1),
+            IsEssential = true,
+            SameSite = SameSiteMode.Lax
+        });
+
+        return languageCode;
+    }
+
+    private static string NormalizeLanguageCode(string? languageCode)
+    {
+        var normalized = (languageCode ?? FallbackLanguageCode).Trim().ToLowerInvariant();
+        return normalized.Length is >= 2 and <= 10 &&
+            normalized.All(character => char.IsLetterOrDigit(character) || character is '-' or '_')
+                ? normalized
+                : FallbackLanguageCode;
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> AskAI([FromBody] DuKhachChatRequest request, [FromServices] IGeminiService geminiService)
+    {
+        if (string.IsNullOrWhiteSpace(request.Message))
+            return Json(new { success = false, message = "Vui lòng nhập câu hỏi." });
+
+        try
+        {
+            var prompt = $"Bạn là trợ lý ảo AI về du lịch của hệ thống VERSA. Hãy trả lời câu hỏi sau của du khách một cách ngắn gọn, thân thiện và hữu ích nhất: {request.Message}";
+            
+            var responseText = await geminiService.GenerateTextAsync(prompt);
+            return Json(new { success = true, reply = responseText });
+        }
+        catch (Exception)
+        {
+            return Json(new { success = false, message = "Xin lỗi, trợ lý AI đang quá tải. Vui lòng thử lại sau nhé." });
+        }
+    }
 }

@@ -53,3 +53,7 @@ _schema_history
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+
+## Runtime uploads / generated media
+AdminWeb/wwwroot/uploads/
+AdminWeb/wwwroot/audio/*.mp3

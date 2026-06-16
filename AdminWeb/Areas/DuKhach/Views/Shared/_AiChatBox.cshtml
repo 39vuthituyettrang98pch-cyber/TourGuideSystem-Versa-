@@ -1,0 +1,57 @@
+<div class="dk-ai-chat" id="dkAiChat" aria-live="polite">
+    <button type="button" class="dk-ai-chat-toggle" id="dkAiChatToggle" aria-label="Mở chat AI">
+        <i class="fa-solid fa-robot"></i>
+        <span>AI</span>
+    </button>
+
+    <section class="dk-ai-chat-panel" id="dkAiChatPanel" aria-label="Chatbox AI du khách">
+        <header class="dk-ai-chat-header">
+            <div class="dk-ai-chat-title">
+                <span class="dk-ai-chat-avatar">
+                    <i class="fa-solid fa-robot"></i>
+                </span>
+
+                <div>
+                    <strong>Trợ lý AI du lịch</strong>
+                    <small>Hỏi về POI, tour, bản đồ và thuyết minh</small>
+                </div>
+            </div>
+
+            <button type="button" class="dk-ai-chat-close" id="dkAiChatClose" aria-label="Đóng chat AI">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </header>
+
+        <div class="dk-ai-chat-messages" id="dkAiChatMessages">
+            <div class="dk-ai-message bot">
+                <div class="dk-ai-bubble">Xin chào! Mình là trợ lý AI của VERSA Travel. Bạn có thể hỏi: “Nên đi đâu ở Sài Gòn?”, “Tour nào phù hợp?”, hoặc “Cách nghe thuyết minh?”</div>
+            </div>
+        </div>
+
+        <div class="dk-ai-chat-suggestions">
+            <button type="button" data-ai-suggest="Gợi ý cho tôi 5 điểm tham quan nổi bật ở Sài Gòn">
+                Gợi ý POI
+            </button>
+
+            <button type="button" data-ai-suggest="Tôi nên chọn tour nào nếu chỉ có nửa ngày?">
+                Chọn tour
+            </button>
+
+            <button type="button" data-ai-suggest="Làm sao để chọn ngôn ngữ và nghe thuyết minh?">
+                Nghe thuyết minh
+            </button>
+        </div>
+
+        <form class="dk-ai-chat-form" id="dkAiChatForm">
+            <input type="text"
+                   id="dkAiChatInput"
+                   maxlength="700"
+                   autocomplete="off"
+                   placeholder="Nhập câu hỏi của bạn..." />
+
+            <button type="submit" aria-label="Gửi câu hỏi">
+                <i class="fa-solid fa-paper-plane"></i>
+            </button>
+        </form>
+    </section>
+</div>

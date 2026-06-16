@@ -12,8 +12,26 @@
     Theo dõi tiến độ dịch thuật, tạo audio và lồng tiếng video đa ngôn ngữ.
 </div>
 
-<div class="toolbar">
-    <div style="color: var(--text2);">Hiển thị tối đa 100 tác vụ gần nhất.</div>
+<div class="toolbar" style="gap:10px;align-items:center;flex-wrap:wrap;">
+    <div style="color: var(--text2);margin-right:auto;">
+        Hiển thị tối đa 100 tác vụ gần nhất. Bấm <strong>Tạo audio còn thiếu</strong> để hệ thống tạo task mới.
+    </div>
+
+    <form asp-action="QueueMissingTextToAudio" method="post" style="display:inline;">
+        @Html.AntiForgeryToken()
+        <button class="btn btn-primary btn-sm" type="submit">
+            <i class="fa-solid fa-wand-magic-sparkles"></i> Tạo audio còn thiếu
+        </button>
+    </form>
+
+    <form asp-action="RegenerateAllTextToAudio" method="post" style="display:inline;"
+          onsubmit="return confirm('Chạy lại toàn bộ audio sẽ tạo task mới cho tất cả POI. Bạn chắc chắn muốn chạy?');">
+        @Html.AntiForgeryToken()
+        <button class="btn btn-secondary btn-sm" type="submit">
+            <i class="fa-solid fa-arrows-rotate"></i> Chạy lại toàn bộ
+        </button>
+    </form>
+
     <a asp-action="Index" class="btn btn-secondary btn-sm">
         <i class="fa-solid fa-rotate"></i> Làm mới
     </a>

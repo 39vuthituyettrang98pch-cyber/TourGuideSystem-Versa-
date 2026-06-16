@@ -1,53 +1,778 @@
 @model DuKhachProfileViewModel
+
 @{
+    ArgumentNullException.ThrowIfNull(Model);
+
     ViewData["Title"] = "Hồ sơ du khách";
+
+    var displayName = string.IsNullOrWhiteSpace(Model.FullName)
+        ? "Du khách"
+        : Model.FullName.Trim();
+
+    var nameParts = displayName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+    var initials = nameParts.Length >= 2
+        ? $"{nameParts[0][0]}{nameParts[^1][0]}".ToUpperInvariant()
+        : displayName[..1].ToUpperInvariant();
+
+    var completion = Math.Clamp(Model.CompletionPercentage, 0, 100);
 }
 
-<section class="hero" style="padding:28px;">
-    <div class="eyebrow">Hồ sơ du khách</div>
-    <h1 style="font-size:clamp(30px,5vw,48px);">@Model.FullName</h1>
-    <p>Email này dùng chung cho web du khách và app mobile.</p>
-    <div class="actions">
-        <a class="btnx primary" asp-area="DuKhach" asp-controller="Map" asp-action="Index"><i class="fa-solid fa-map-location-dot"></i> Mở bản đồ</a>
-        <a class="btnx" asp-area="DuKhach" asp-controller="Account" asp-action="ChangePassword"><i class="fa-solid fa-key"></i> Đổi mật khẩu</a>
-    </div>
-</section>
+@section Styles {
+    <style>
+        .profile-page {
+            display: grid;
+            gap: 24px;
+        }
 
-<div class="grid cols-4" style="margin-top:18px;">
-    <div class="cardx"><span class="stat-value">@Model.TotalPoints</span><span class="stat-label">Tổng điểm</span></div>
-    <div class="cardx"><span class="stat-value">@Model.RankName</span><span class="stat-label">Hạng hiện tại</span></div>
-    <div class="cardx"><span class="stat-value">@Model.DiscoveredPoiCount/@Model.TotalPoiCount</span><span class="stat-label">POI đã khám phá</span></div>
-    <div class="cardx"><span class="stat-value">@Model.CompletionPercentage%</span><span class="stat-label">Tiến độ</span></div>
+        .profile-hero {
+            position: relative;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            border-radius: 36px;
+            padding: 38px;
+            background:
+                radial-gradient(circle at 16% 20%, rgba(52, 211, 153, 0.22), transparent 28%),
+                radial-gradient(circle at 84% 34%, rgba(56, 189, 248, 0.18), transparent 30%),
+                linear-gradient(135deg, rgba(15, 29, 52, 0.94), rgba(7, 18, 34, 0.80)),
+                url("https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=1600&q=80");
+            background-size: cover;
+            background-position: center;
+            box-shadow: var(--shadow);
+        }
+
+        html[data-theme="light"] .profile-hero {
+            background:
+                radial-gradient(circle at 16% 20%, rgba(52, 211, 153, 0.18), transparent 28%),
+                radial-gradient(circle at 84% 34%, rgba(56, 189, 248, 0.18), transparent 30%),
+                linear-gradient(135deg, rgba(255, 255, 255, 0.94), rgba(238, 248, 255, 0.78)),
+                url("https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=1600&q=80");
+            background-size: cover;
+            background-position: center;
+        }
+
+        .profile-hero-grid {
+            position: relative;
+            z-index: 2;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 340px;
+            gap: 28px;
+            align-items: center;
+        }
+
+        .profile-eyebrow {
+            width: fit-content;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 13px;
+            border: 1px solid rgba(52, 211, 153, 0.30);
+            border-radius: 999px;
+            color: var(--accent);
+            background: rgba(52, 211, 153, 0.12);
+            font-size: 13px;
+            font-weight: 900;
+        }
+
+        .profile-hero h1 {
+            margin: 18px 0 12px;
+            font-size: clamp(42px, 6vw, 76px);
+            line-height: 0.94;
+            letter-spacing: -0.075em;
+            font-weight: 950;
+        }
+
+        .profile-hero h1 span {
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .profile-hero p {
+            max-width: 660px;
+            margin: 0;
+            color: var(--muted);
+            font-size: 17px;
+            line-height: 1.75;
+        }
+
+        .profile-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 26px;
+        }
+
+        .profile-btn {
+            min-height: 46px;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            padding: 0 18px;
+            color: var(--text);
+            background: rgba(148, 163, 184, 0.10);
+            font-weight: 950;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 9px;
+            text-decoration: none;
+            transition: 0.2s ease;
+        }
+
+        .profile-btn:hover {
+            color: var(--text);
+            transform: translateY(-2px);
+            background: rgba(148, 163, 184, 0.16);
+        }
+
+        .profile-btn.primary {
+            color: #03131d;
+            border-color: transparent;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            box-shadow: 0 18px 46px rgba(52, 211, 153, 0.22);
+        }
+
+        .profile-btn.primary:hover {
+            color: #03131d;
+        }
+
+        .profile-id-card {
+            border: 1px solid var(--border);
+            border-radius: 30px;
+            padding: 24px;
+            background: rgba(6, 17, 31, 0.58);
+            backdrop-filter: blur(18px);
+        }
+
+        html[data-theme="light"] .profile-id-card {
+            background: rgba(255, 255, 255, 0.72);
+        }
+
+        .profile-avatar {
+            width: 94px;
+            height: 94px;
+            display: grid;
+            place-items: center;
+            border-radius: 32px;
+            color: #03131d;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            font-size: 34px;
+            font-weight: 950;
+            box-shadow: 0 22px 56px rgba(52, 211, 153, 0.24);
+            margin-bottom: 18px;
+        }
+
+        .profile-id-card strong {
+            display: block;
+            font-size: 24px;
+            line-height: 1.1;
+            letter-spacing: -0.04em;
+            font-weight: 950;
+        }
+
+        .profile-id-card span {
+            display: block;
+            margin-top: 8px;
+            color: var(--muted);
+            line-height: 1.5;
+        }
+
+        .profile-rank-pill {
+            width: fit-content;
+            margin-top: 16px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 9px 12px;
+            border-radius: 999px;
+            color: #03131d;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            font-size: 13px;
+            font-weight: 950;
+        }
+
+        .profile-stats {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 16px;
+        }
+
+        .profile-stat {
+            min-width: 0;
+            border: 1px solid var(--border);
+            border-radius: 26px;
+            padding: 24px;
+            background: var(--card);
+            box-shadow: 0 18px 50px rgba(0, 0, 0, 0.12);
+        }
+
+        .profile-stat-icon {
+            width: 46px;
+            height: 46px;
+            display: grid;
+            place-items: center;
+            border-radius: 17px;
+            color: #03131d;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            margin-bottom: 16px;
+        }
+
+        .profile-stat strong {
+            display: block;
+            font-size: 36px;
+            line-height: 1;
+            letter-spacing: -0.05em;
+            font-weight: 950;
+            word-break: break-word;
+        }
+
+        .profile-stat span {
+            display: block;
+            margin-top: 10px;
+            color: var(--muted);
+            font-weight: 800;
+            font-size: 13px;
+        }
+
+        .profile-body {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 360px;
+            gap: 24px;
+            align-items: start;
+        }
+
+        .profile-card {
+            position: relative;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            border-radius: 34px;
+            background: var(--card);
+            box-shadow: var(--shadow);
+        }
+
+        .profile-card::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(circle at 20% 0%, rgba(52, 211, 153, 0.13), transparent 28%),
+                radial-gradient(circle at 100% 20%, rgba(56, 189, 248, 0.12), transparent 30%);
+            pointer-events: none;
+        }
+
+        .profile-card-inner {
+            position: relative;
+            z-index: 2;
+            padding: 34px;
+        }
+
+        .profile-card-head {
+            margin-bottom: 26px;
+        }
+
+        .profile-card-head h2 {
+            margin: 0;
+            font-size: 34px;
+            font-weight: 950;
+            letter-spacing: -0.055em;
+        }
+
+        .profile-card-head p {
+            margin: 10px 0 0;
+            color: var(--muted);
+            line-height: 1.65;
+        }
+
+        .profile-alert {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            padding: 14px;
+            border-radius: 18px;
+            margin-bottom: 16px;
+            line-height: 1.55;
+            font-weight: 750;
+        }
+
+        .profile-alert-success {
+            border: 1px solid rgba(52, 211, 153, 0.30);
+            background: rgba(52, 211, 153, 0.10);
+            color: var(--accent);
+        }
+
+        .profile-form-grid {
+            display: grid;
+            gap: 16px;
+        }
+
+        .profile-field {
+            min-width: 0;
+        }
+
+        .profile-label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text);
+            font-weight: 900;
+            font-size: 13px;
+        }
+
+        .profile-input-wrap {
+            position: relative;
+        }
+
+        .profile-input-icon {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--muted);
+            pointer-events: none;
+        }
+
+        .profile-input {
+            width: 100%;
+            min-height: 52px;
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 0 16px 0 44px;
+            color: var(--text);
+            background: var(--surface);
+            outline: none;
+            font-weight: 700;
+            transition: 0.2s ease;
+        }
+
+        .profile-input:focus {
+            border-color: var(--accent-2);
+            box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.12);
+        }
+
+        .profile-created {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            padding: 14px;
+            border: 1px solid rgba(56, 189, 248, 0.22);
+            border-radius: 20px;
+            background: rgba(56, 189, 248, 0.08);
+            color: var(--muted);
+            line-height: 1.55;
+            font-size: 14px;
+        }
+
+        .profile-created i {
+            color: var(--accent-2);
+            margin-top: 3px;
+        }
+
+        .profile-submit {
+            width: fit-content;
+            min-height: 54px;
+            border: 0;
+            border-radius: 18px;
+            padding: 0 22px;
+            color: #03131d;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            font-weight: 950;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            box-shadow: 0 18px 46px rgba(52, 211, 153, 0.22);
+            transition: 0.2s ease;
+        }
+
+        .profile-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 22px 56px rgba(52, 211, 153, 0.28);
+        }
+
+        .profile-side {
+            display: grid;
+            gap: 18px;
+        }
+
+        .progress-card {
+            border: 1px solid var(--border);
+            border-radius: 34px;
+            background: var(--card);
+            box-shadow: var(--shadow);
+            padding: 28px;
+        }
+
+        .progress-ring {
+            width: 180px;
+            height: 180px;
+            margin: 0 auto 22px;
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            background:
+                conic-gradient(var(--accent) @completion%, rgba(148, 163, 184, 0.16) 0);
+            position: relative;
+        }
+
+        .progress-ring::before {
+            content: "";
+            position: absolute;
+            width: 132px;
+            height: 132px;
+            border-radius: 50%;
+            background: var(--card);
+            border: 1px solid var(--border);
+        }
+
+        .progress-ring strong {
+            position: relative;
+            z-index: 2;
+            font-size: 34px;
+            font-weight: 950;
+            letter-spacing: -0.05em;
+        }
+
+        .progress-card h3,
+        .quick-card h3 {
+            margin: 0 0 10px;
+            font-size: 22px;
+            font-weight: 950;
+            letter-spacing: -0.04em;
+        }
+
+        .progress-card p,
+        .quick-card p {
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.65;
+            font-size: 14px;
+        }
+
+        .quick-card {
+            border: 1px solid var(--border);
+            border-radius: 34px;
+            background: var(--card);
+            box-shadow: var(--shadow);
+            padding: 28px;
+        }
+
+        .quick-links {
+            display: grid;
+            gap: 10px;
+            margin-top: 18px;
+        }
+
+        .quick-link {
+            min-height: 52px;
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 0 16px;
+            color: var(--text);
+            background: rgba(148, 163, 184, 0.08);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            text-decoration: none;
+            font-weight: 900;
+            transition: 0.2s ease;
+        }
+
+        .quick-link:hover {
+            color: var(--text);
+            transform: translateY(-2px);
+            border-color: var(--accent-2);
+            background: rgba(56, 189, 248, 0.10);
+        }
+
+        .quick-link span {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .text-danger {
+            display: block;
+            margin-top: 6px;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .validation-summary-errors {
+            padding: 13px 14px;
+            border-radius: 18px;
+            border: 1px solid rgba(251, 113, 133, 0.28);
+            background: rgba(251, 113, 133, 0.10);
+            color: var(--danger);
+            font-weight: 800;
+            margin-bottom: 16px;
+        }
+
+        .validation-summary-errors ul {
+            margin: 0;
+            padding-left: 18px;
+        }
+
+        @@media (max-width: 1120px) {
+            .profile-hero-grid,
+            .profile-body {
+                grid-template-columns: 1fr;
+            }
+
+            .profile-stats {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @@media (max-width: 680px) {
+            .profile-hero,
+            .profile-card-inner {
+                padding: 24px;
+            }
+
+            .profile-stats {
+                grid-template-columns: 1fr;
+            }
+
+            .profile-submit {
+                width: 100%;
+            }
+
+            .profile-actions .profile-btn {
+                width: 100%;
+            }
+        }
+    </style>
+}
+
+<div class="profile-page">
+    <section class="profile-hero">
+        <div class="profile-hero-grid">
+            <div>
+                <div class="profile-eyebrow">
+                    <i class="fa-solid fa-user"></i>
+                    Hồ sơ du khách
+                </div>
+
+                <h1>
+                    Xin chào, <span>@displayName</span>
+                </h1>
+
+                <p>
+                    Email này dùng chung cho web du khách và app mobile.
+                    Bạn có thể cập nhật thông tin, xem tiến độ khám phá và đổi mật khẩu tài khoản.
+                </p>
+
+                <div class="profile-actions">
+                    <a class="profile-btn primary"
+                       asp-area="DuKhach"
+                       asp-controller="Map"
+                       asp-action="Index">
+                        <i class="fa-solid fa-map-location-dot"></i>
+                        Mở bản đồ
+                    </a>
+
+                    <a class="profile-btn"
+                       asp-area="DuKhach"
+                       asp-controller="Account"
+                       asp-action="ChangePassword">
+                        <i class="fa-solid fa-key"></i>
+                        Đổi mật khẩu
+                    </a>
+                </div>
+            </div>
+
+            <div class="profile-id-card">
+                <div class="profile-avatar">@initials</div>
+
+                <strong>@displayName</strong>
+                <span>@Model.Email</span>
+
+                <div class="profile-rank-pill">
+                    <i class="fa-solid fa-crown"></i>
+                    @Model.RankName
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="profile-stats">
+        <div class="profile-stat">
+            <div class="profile-stat-icon">
+                <i class="fa-solid fa-star"></i>
+            </div>
+            <strong>@Model.TotalPoints</strong>
+            <span>Tổng điểm</span>
+        </div>
+
+        <div class="profile-stat">
+            <div class="profile-stat-icon">
+                <i class="fa-solid fa-crown"></i>
+            </div>
+            <strong>@Model.RankName</strong>
+            <span>Hạng hiện tại</span>
+        </div>
+
+        <div class="profile-stat">
+            <div class="profile-stat-icon">
+                <i class="fa-solid fa-map-pin"></i>
+            </div>
+            <strong>@Model.DiscoveredPoiCount/@Model.TotalPoiCount</strong>
+            <span>POI đã khám phá</span>
+        </div>
+
+        <div class="profile-stat">
+            <div class="profile-stat-icon">
+                <i class="fa-solid fa-chart-line"></i>
+            </div>
+            <strong>@completion%</strong>
+            <span>Tiến độ</span>
+        </div>
+    </section>
+
+    <section class="profile-body">
+        <div class="profile-card">
+            <div class="profile-card-inner">
+                <div class="profile-card-head">
+                    <h2>Cập nhật thông tin</h2>
+                    <p>
+                        Thay đổi họ tên hoặc email tài khoản du khách.
+                        Email này cũng là email đăng nhập trên app mobile.
+                    </p>
+                </div>
+
+                @if (TempData["DuKhachSuccessMessage"] != null)
+                {
+                    <div class="profile-alert profile-alert-success">
+                        <i class="fa-solid fa-circle-check"></i>
+                        <span>@TempData["DuKhachSuccessMessage"]</span>
+                    </div>
+                }
+
+                <form asp-area="DuKhach"
+                      asp-controller="Account"
+                      asp-action="Profile"
+                      method="post"
+                      novalidate>
+                    @Html.AntiForgeryToken()
+
+                    <input type="hidden" asp-for="Id" />
+                    <input type="hidden" asp-for="CreatedAt" />
+                    <input type="hidden" asp-for="TotalPoints" />
+                    <input type="hidden" asp-for="DiscoveredPoiCount" />
+                    <input type="hidden" asp-for="TotalPoiCount" />
+                    <input type="hidden" asp-for="CompletionPercentage" />
+                    <input type="hidden" asp-for="RankName" />
+
+                    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+                    <div class="profile-form-grid">
+                        <div class="profile-field">
+                            <label asp-for="FullName" class="profile-label">
+                                Họ và tên
+                            </label>
+
+                            <div class="profile-input-wrap">
+                                <i class="fa-solid fa-user profile-input-icon"></i>
+
+                                <input asp-for="FullName"
+                                       class="profile-input"
+                                       autocomplete="name"
+                                       placeholder="Nhập họ tên" />
+                            </div>
+
+                            <span asp-validation-for="FullName" class="text-danger"></span>
+                        </div>
+
+                        <div class="profile-field">
+                            <label asp-for="Email" class="profile-label">
+                                Email
+                            </label>
+
+                            <div class="profile-input-wrap">
+                                <i class="fa-solid fa-envelope profile-input-icon"></i>
+
+                                <input asp-for="Email"
+                                       class="profile-input"
+                                       type="email"
+                                       autocomplete="email"
+                                       placeholder="email@example.com" />
+                            </div>
+
+                            <span asp-validation-for="Email" class="text-danger"></span>
+                        </div>
+
+                        <div class="profile-created">
+                            <i class="fa-solid fa-calendar-days"></i>
+                            <span>
+                                Ngày tạo tài khoản:
+                                <strong>@Model.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</strong>
+                            </span>
+                        </div>
+
+                        <button class="profile-submit" type="submit">
+                            <i class="fa-solid fa-floppy-disk"></i>
+                            Lưu hồ sơ
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <aside class="profile-side">
+            <div class="progress-card">
+                <div class="progress-ring">
+                    <strong>@completion%</strong>
+                </div>
+
+                <h3>Tiến độ khám phá</h3>
+                <p>
+                    Bạn đã khám phá @Model.DiscoveredPoiCount trên tổng số @Model.TotalPoiCount POI.
+                    Tiếp tục check-in để tăng điểm và nâng hạng.
+                </p>
+            </div>
+
+            <div class="quick-card">
+                <h3>Truy cập nhanh</h3>
+                <p>Đi tới các chức năng quan trọng của tài khoản du khách.</p>
+
+                <div class="quick-links">
+                    <a class="quick-link"
+                       asp-area="DuKhach"
+                       asp-controller="Map"
+                       asp-action="Index">
+                        <span>
+                            <i class="fa-solid fa-map-location-dot"></i>
+                            Mở bản đồ
+                        </span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </a>
+
+                    <a class="quick-link"
+                       asp-area="DuKhach"
+                       asp-controller="Account"
+                       asp-action="ChangePassword">
+                        <span>
+                            <i class="fa-solid fa-key"></i>
+                            Đổi mật khẩu
+                        </span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </a>
+
+                    <a class="quick-link"
+                       asp-area="DuKhach"
+                       asp-controller="Home"
+                       asp-action="Index">
+                        <span>
+                            <i class="fa-solid fa-house"></i>
+                            Trang chủ
+                        </span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+        </aside>
+    </section>
 </div>
-
-<section class="cardx form-card" style="max-width:720px;">
-    <h2 style="font-weight:900;letter-spacing:-.04em;margin-bottom:14px;">Cập nhật thông tin</h2>
-    <form asp-area="DuKhach" asp-controller="Account" asp-action="Profile" method="post" novalidate>
-        @Html.AntiForgeryToken()
-        <input type="hidden" asp-for="Id" />
-        <input type="hidden" asp-for="CreatedAt" />
-        <input type="hidden" asp-for="TotalPoints" />
-        <input type="hidden" asp-for="DiscoveredPoiCount" />
-        <input type="hidden" asp-for="TotalPoiCount" />
-        <input type="hidden" asp-for="CompletionPercentage" />
-        <input type="hidden" asp-for="RankName" />
-        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
-        <div class="mb-3">
-            <label asp-for="FullName" class="form-label"></label>
-            <input asp-for="FullName" class="form-control" />
-            <span asp-validation-for="FullName" class="text-danger"></span>
-        </div>
-        <div class="mb-3">
-            <label asp-for="Email" class="form-label"></label>
-            <input asp-for="Email" class="form-control" />
-            <span asp-validation-for="Email" class="text-danger"></span>
-        </div>
-        <div class="mb-3" style="color:var(--muted);font-size:14px;">
-            Ngày tạo tài khoản: @Model.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
-        </div>
-        <button class="btnx primary" type="submit"><i class="fa-solid fa-floppy-disk"></i> Lưu hồ sơ</button>
-    </form>
-</section>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />

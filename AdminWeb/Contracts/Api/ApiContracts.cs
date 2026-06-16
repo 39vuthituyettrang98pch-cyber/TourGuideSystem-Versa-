@@ -13,6 +13,15 @@ public sealed class ApiResponse<T>
         new() { Success = false, Message = message };
 }
 
+
+public sealed class LanguageDto
+{
+    public string Code { get; init; } = "";
+    public string Name { get; init; } = "";
+    public string NativeName { get; init; } = "";
+    public string EdgeTtsVoice { get; init; } = "";
+}
+
 public sealed class PoiDto
 {
     public int Id { get; init; }
@@ -24,6 +33,9 @@ public sealed class PoiDto
     public double Latitude { get; init; }
     public double Longitude { get; init; }
     public double Radius { get; init; }
+    public double AverageRating { get; init; }
+    public int RatingCount { get; init; }
+    public IReadOnlyList<ReviewDto> RecentReviews { get; init; } = [];
     public IReadOnlyList<int> CategoryIds { get; init; } = [];
     public IReadOnlyList<PoiTranslationDto> Translations { get; init; } = [];
 }
@@ -37,6 +49,32 @@ public sealed class PoiTranslationDto
     public string FullDescription { get; init; } = "";
     public string? AudioUrl { get; init; }
     public string? VideoUrl { get; init; }
+}
+
+public sealed class ReviewDto
+{
+    public int Id { get; init; }
+    public int PoiId { get; init; }
+    public int TouristId { get; init; }
+    public string TouristName { get; init; } = "";
+    public int Rating { get; init; }
+    public string Comment { get; init; } = "";
+    public DateTime CreatedAt { get; init; }
+}
+
+public sealed class ReviewSummaryDto
+{
+    public int PoiId { get; init; }
+    public double AverageRating { get; init; }
+    public int RatingCount { get; init; }
+    public ReviewDto? MyReview { get; init; }
+    public IReadOnlyList<ReviewDto> Reviews { get; init; } = [];
+}
+
+public sealed class SubmitReviewRequest
+{
+    public int Rating { get; init; }
+    public string? Comment { get; init; }
 }
 
 public sealed class CategoryDto
@@ -149,4 +187,18 @@ public sealed class RecentDiscoveryDto
     public string Method { get; init; } = "";
     public int Points { get; init; }
     public DateTime DiscoveredAt { get; init; }
+}
+
+public sealed class AiChatRequestDto
+{
+    public string? Message { get; init; }
+    public string? LanguageCode { get; init; }
+    public string? CurrentScreen { get; init; }
+}
+
+public sealed class AiChatReplyDto
+{
+    public string Reply { get; init; } = "";
+    public string LanguageCode { get; init; } = "vi";
+    public string Source { get; init; } = "fallback";
 }

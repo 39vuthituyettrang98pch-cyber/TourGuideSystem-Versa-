@@ -230,6 +230,114 @@
                             BackgroundColor="#5B3FE4"
                             TextColor="White" />
 
+                    <!-- === REVIEW CARD === -->
+                    <Border BackgroundColor="White"
+                            StrokeShape="RoundRectangle 16"
+                            Stroke="#E8E8ED"
+                            StrokeThickness="1"
+                            Padding="20">
+                        <VerticalStackLayout Spacing="14">
+                            <HorizontalStackLayout Spacing="10">
+                                <Border BackgroundColor="#FFF7E6"
+                                        StrokeShape="RoundRectangle 12"
+                                        Stroke="Transparent"
+                                        StrokeThickness="0"
+                                        WidthRequest="40"
+                                        HeightRequest="40">
+                                    <Label Text="⭐"
+                                           FontSize="20"
+                                           HorizontalOptions="Center"
+                                           VerticalOptions="Center" />
+                                </Border>
+                                <VerticalStackLayout VerticalOptions="Center" Spacing="2">
+                                    <Label Text="Đánh giá & bình luận"
+                                           FontSize="19"
+                                           FontAttributes="Bold"
+                                           TextColor="#1C1C1E" />
+                                    <Label Text="{Binding ReviewSummaryText}"
+                                           FontSize="12"
+                                           TextColor="#8E8E93" />
+                                </VerticalStackLayout>
+                            </HorizontalStackLayout>
+
+                            <BoxView Color="#E8E8ED" HeightRequest="1" Margin="0,2" />
+
+                            <Label Text="Chọn số sao"
+                                   FontSize="13"
+                                   FontAttributes="Bold"
+                                   TextColor="#636366" />
+                            <Picker ItemsSource="{Binding RatingOptions}"
+                                    SelectedItem="{Binding ReviewRating}"
+                                    Title="Chọn số sao"
+                                    TextColor="#1C1C1E"
+                                    BackgroundColor="#F8F8FA" />
+
+                            <Editor Text="{Binding ReviewComment}"
+                                    Placeholder="Chia sẻ cảm nhận của bạn về POI này..."
+                                    AutoSize="TextChanges"
+                                    HeightRequest="96"
+                                    TextColor="#1C1C1E"
+                                    PlaceholderColor="#8E8E93"
+                                    BackgroundColor="#F8F8FA" />
+
+                            <Button Text="Gửi đánh giá"
+                                    Command="{Binding SubmitReviewCommand}"
+                                    BackgroundColor="#FFB020"
+                                    TextColor="White" />
+
+                            <Label Text="Bạn cần đăng nhập để gửi đánh giá. Nếu chưa đăng nhập, app sẽ chuyển sang trang đăng nhập."
+                                   FontSize="12"
+                                   TextColor="#8E8E93" />
+
+                            <BoxView Color="#E8E8ED" HeightRequest="1" Margin="0,2" />
+
+                            <Label Text="Đánh giá gần đây"
+                                   FontSize="15"
+                                   FontAttributes="Bold"
+                                   TextColor="#1C1C1E" />
+
+                            <Label Text="Chưa có bình luận nào. Hãy là người đầu tiên đánh giá POI này."
+                                   IsVisible="{Binding HasNoReviews}"
+                                   FontSize="13"
+                                   TextColor="#8E8E93" />
+
+                            <CollectionView ItemsSource="{Binding Reviews}"
+                                            IsVisible="{Binding HasReviews}">
+                                <CollectionView.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Padding="12"
+                                                Margin="0,0,0,10"
+                                                StrokeShape="RoundRectangle 12"
+                                                Stroke="#ECECF0"
+                                                StrokeThickness="1"
+                                                BackgroundColor="#FAFAFC">
+                                            <VerticalStackLayout Spacing="5">
+                                                <Grid ColumnDefinitions="*, Auto">
+                                                    <Label Text="{Binding TouristName}"
+                                                           FontSize="13"
+                                                           FontAttributes="Bold"
+                                                           TextColor="#1C1C1E" />
+                                                    <Label Grid.Column="1"
+                                                           Text="{Binding RatingText}"
+                                                           FontSize="12"
+                                                           FontAttributes="Bold"
+                                                           TextColor="#FFB020" />
+                                                </Grid>
+                                                <Label Text="{Binding Comment}"
+                                                       FontSize="13"
+                                                       TextColor="#636366"
+                                                       LineBreakMode="WordWrap" />
+                                                <Label Text="{Binding CreatedAtText}"
+                                                       FontSize="11"
+                                                       TextColor="#8E8E93" />
+                                            </VerticalStackLayout>
+                                        </Border>
+                                    </DataTemplate>
+                                </CollectionView.ItemTemplate>
+                            </CollectionView>
+                        </VerticalStackLayout>
+                    </Border>
+
                     <!-- === PLAY NARRATION BUTTON === -->
                     <Border IsVisible="{Binding CanPlay}"
                             BackgroundColor="#4A90D9"

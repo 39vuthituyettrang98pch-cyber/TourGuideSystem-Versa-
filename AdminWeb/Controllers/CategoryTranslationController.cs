@@ -33,6 +33,7 @@ public class CategoryTranslationController : Controller
         if (!await _context.Categories.AnyAsync(item => item.Id == categoryId, cancellationToken))
             return NotFound();
 
+        await LoadLanguagesAsync(cancellationToken);
         return View(new CategoryTranslation { CategoryId = categoryId });
     }
 
@@ -55,7 +56,10 @@ public class CategoryTranslationController : Controller
         }
 
         if (!ModelState.IsValid)
+        {
+            await LoadLanguagesAsync(cancellationToken);
             return View(translation);
+        }
 
         translation.Name = translation.Name.Trim();
         _context.CategoryTranslations.Add(translation);
@@ -124,6 +128,15 @@ public class CategoryTranslationController : Controller
         await _context.SaveChangesAsync(cancellationToken);
         TempData["SuccessMessage"] = "Đã xóa bản dịch danh mục.";
         return RedirectToAction(nameof(Index), new { categoryId });
+    }
+
+    private async Task LoadLanguagesAsync(CancellationToken cancellationToken)
+    {
+        ViewBag.Languages = await _context.SupportedLanguages
+            .AsNoTracking()
+            .Where(language => language.IsActive)
+            .OrderBy(language => language.LanguageCode)
+            .ToListAsync(cancellationToken);
     }
 
     private Task<bool> TranslationExistsAsync(

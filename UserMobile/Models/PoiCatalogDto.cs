@@ -11,6 +11,9 @@ public sealed class PoiCatalogDto
     public double Latitude { get; set; }
     public double Longitude { get; set; }
     public double Radius { get; set; }
+    public double AverageRating { get; set; }
+    public int RatingCount { get; set; }
+    public List<ReviewDto> RecentReviews { get; set; } = [];
     public List<int> CategoryIds { get; set; } = [];
     public List<PoiTranslationDto> Translations { get; set; } = [];
 }

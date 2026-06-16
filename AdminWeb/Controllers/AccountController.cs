@@ -61,11 +61,11 @@ namespace AdminWeb.Controllers
                         new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Role, user.Role?.RoleName ?? "User")
                     };
 
-                    var identity = new System.Security.Claims.ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+                    var identity = new System.Security.Claims.ClaimsIdentity(claims, "AdminScheme");
                     var principal = new System.Security.Claims.ClaimsPrincipal(identity);
 
                     // Ghi Cookie phiên đăng nhập
-                    await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
+                    await HttpContext.SignInAsync("AdminScheme", principal);
                     return RedirectToWorkspace(user.Role?.RoleName);
                 }
             }
@@ -153,7 +153,7 @@ namespace AdminWeb.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Logout()
         {
-            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            await HttpContext.SignOutAsync("AdminScheme");
             return RedirectToAction("Login", "Account", new { area = "" });
         }
 

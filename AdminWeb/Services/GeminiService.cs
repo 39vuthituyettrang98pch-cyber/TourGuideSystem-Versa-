@@ -9,6 +9,7 @@ namespace AdminWeb.Services;
 public interface IGeminiService
 {
     Task<string> OptimizePoiContentAsync(string rawText, CancellationToken cancellationToken = default);
+    Task<string> GenerateTextAsync(string prompt, CancellationToken cancellationToken = default);
 }
 
 public sealed class GeminiService : IGeminiService
@@ -23,6 +24,52 @@ public sealed class GeminiService : IGeminiService
     {
         _httpClient = httpClient;
         _configuration = configuration;
+    }
+
+    public async Task<string> GenerateTextAsync(
+        string prompt,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(prompt))
+            throw new ArgumentException("Prompt đang trống.", nameof(prompt));
+
+        var apiKey = _configuration["Gemini:ApiKey"];
+        if (string.IsNullOrWhiteSpace(apiKey))
+            throw new InvalidOperationException("Chưa cấu hình Gemini:ApiKey.");
+
+        var model = await PickModelForGenerateContentAsync(apiKey, cancellationToken);
+        var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={apiKey}";
+
+        var payload = new
+        {
+            contents = new[]
+            {
+                new
+                {
+                    role = "user",
+                    parts = new[] { new { text = prompt } }
+                }
+            },
+            generationConfig = new
+            {
+                temperature = 0.5,
+                topP = 0.9,
+                maxOutputTokens = 900
+            }
+        };
+
+        using var content = new StringContent(
+            JsonSerializer.Serialize(payload),
+            Encoding.UTF8,
+            "application/json");
+
+        using var response = await _httpClient.PostAsync(url, content, cancellationToken);
+        var body = await response.Content.ReadAsStringAsync(cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+            throw new InvalidOperationException($"Gemini API error: {(int)response.StatusCode}. Chi tiết: {GetShortErrorMessage(body)}");
+
+        return ExtractGeminiText(body).Trim();
     }
 
     public async Task<string> OptimizePoiContentAsync(

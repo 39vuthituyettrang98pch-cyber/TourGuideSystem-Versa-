@@ -9,4 +9,7 @@ public interface IAuthService
     Task LogoutAsync();
     Task<bool> IsLoggedInAsync();
     Task<UserProfile?> GetProfileAsync();
+    Task<ApiResponse<UserProfile>> UpdateProfileAsync(string fullName, string email);
+    Task<ApiResponse<object>> ChangePasswordAsync(string currentPassword, string newPassword, string confirmPassword);
+    Task<ApiResponse<object>> RequestPasswordResetAsync(string email);
 }

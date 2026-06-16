@@ -57,8 +57,8 @@ dotnet ef database update --project AdminWeb --startup-project AdminWeb --contex
 
 ```powershell
 dotnet run --project AdminWeb --launch-profile http
-dotnet build UserMobile/UserMobile.csproj -f net10.0-windows10.0.19041.0
-dotnet build UserMobile/UserMobile.csproj -f net10.0-android
+dotnet build UserMobile/UserMobile.csproj -f net8.0-windows10.0.19041.0
+dotnet build UserMobile/UserMobile.csproj -f net8.0-android
 ```
 
 URL debug của MAUI:
@@ -71,7 +71,7 @@ nghe trên mạng LAN và mở firewall tương ứng. Có thể ghi đè URL kh
 
 ```powershell
 dotnet run --project AdminWeb --urls http://0.0.0.0:5297
-dotnet build UserMobile/UserMobile.csproj -f net10.0-android -p:ApiBaseUrl=http://192.168.1.10:5297/
+dotnet build UserMobile/UserMobile.csproj -f net8.0-android -p:ApiBaseUrl=http://192.168.1.10:5297/
 ```
 
 Production bắt buộc truyền một URL HTTPS thật bằng `-p:ApiBaseUrl=https://.../`.

@@ -124,9 +124,30 @@ public sealed class DuKhachRecentDiscoveryViewModel
 public sealed class DuKhachMapViewModel
 {
     public IReadOnlyList<DuKhachPoiMapItemViewModel> Pois { get; init; } = [];
+    public IReadOnlyList<DuKhachLanguageOptionViewModel> Languages { get; init; } = [];
+    public string SelectedLanguageCode { get; init; } = "vi";
+    public string SelectedLanguageName { get; init; } = "Tiếng Việt";
     public bool IsTouristSignedIn { get; init; }
     public int DiscoveredCount { get; init; }
     public int TotalPoiCount { get; init; }
+}
+
+public sealed class DuKhachLanguageOptionViewModel
+{
+    public string Code { get; init; } = "vi";
+    public string Name { get; init; } = "Tiếng Việt";
+}
+
+public sealed class DuKhachPoiNarrationViewModel
+{
+    public string LanguageCode { get; init; } = "vi";
+    public string LanguageName { get; init; } = "Tiếng Việt";
+    public string Name { get; init; } = "";
+    public string ShortDescription { get; init; } = "";
+    public string FullDescription { get; init; } = "";
+    public string NarrationText { get; init; } = "";
+    public string? AudioUrl { get; init; }
+    public string? VideoUrl { get; init; }
 }
 
 public sealed class DuKhachPoiMapItemViewModel
@@ -142,12 +163,76 @@ public sealed class DuKhachPoiMapItemViewModel
     public double Longitude { get; init; }
     public int Radius { get; init; }
     public bool IsDiscovered { get; init; }
+    public bool IsBookmarked { get; set; }
+    public double AverageRating { get; set; }
+    public int RatingCount { get; set; }
+    public string LanguageCode { get; init; } = "vi";
+    public string LanguageName { get; init; } = "Tiếng Việt";
+    public string NarrationText { get; init; } = "";
+    public List<DuKhachPoiNarrationViewModel> Narrations { get; init; } = [];
+    public List<DuKhachReviewViewModel> Reviews { get; init; } = [];
 }
 
 public sealed class DuKhachCheckInRequest
 {
     public int PoiId { get; set; }
+    public string? LanguageCode { get; set; }
     public double? Latitude { get; set; }
     public double? Longitude { get; set; }
     public double? AccuracyMeters { get; set; }
+}
+
+public sealed class DuKhachReviewViewModel
+{
+    public string TouristName { get; init; } = "";
+    public int Rating { get; init; }
+    public string? Comment { get; init; }
+    public DateTime CreatedAt { get; init; }
+}
+
+public sealed class DuKhachChatRequest
+{
+    public string Message { get; set; } = "";
+}
+
+public sealed class DuKhachTourListViewModel
+{
+    public int Id { get; init; }
+    public string Name { get; init; } = "";
+    public string Description { get; init; } = "";
+    public int EstimatedTime { get; init; }
+    public int PoiCount { get; init; }
+}
+
+public sealed class DuKhachTourDetailViewModel
+{
+    public int Id { get; init; }
+    public string Name { get; init; } = "";
+    public string Description { get; init; } = "";
+    public int EstimatedTime { get; init; }
+    public string TravelMode { get; init; } = "";
+    public List<DuKhachPoiMapItemViewModel> Pois { get; init; } = [];
+}
+
+public sealed class DuKhachLeaderboardItemViewModel
+{
+    public int Rank { get; init; }
+    public string FullName { get; init; } = "";
+    public int TotalPoints { get; init; }
+    public int DiscoveredCount { get; init; }
+    public string RankName { get; init; } = "Tân binh";
+}
+
+public sealed class DuKhachSubmitReviewRequest
+{
+    public int PoiId { get; set; }
+    [Range(1, 5)]
+    public int Rating { get; set; }
+    public string? Comment { get; set; }
+}
+
+public sealed class DuKhachLogAudioRequest
+{
+    public int PoiId { get; set; }
+    public string? LanguageCode { get; set; }
 }

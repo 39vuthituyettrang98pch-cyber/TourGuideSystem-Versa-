@@ -94,11 +94,6 @@ public sealed class MultilingualMediaProcessor : IMultilingualMediaProcessor
 
             try
             {
-                var translatedContent = await TranslateWithGeminiAsync(
-                    sourceTranslation,
-                    language,
-                    cancellationToken);
-
                 using var scope = _scopeFactory.CreateScope();
                 var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
@@ -107,6 +102,37 @@ public sealed class MultilingualMediaProcessor : IMultilingualMediaProcessor
                         item => item.PoiId == request.PoiId &&
                                 item.LanguageCode == language.LanguageCode,
                         cancellationToken);
+
+                var isVietnamese = string.Equals(
+                    language.LanguageCode,
+                    "vi",
+                    StringComparison.OrdinalIgnoreCase);
+
+                TranslatedContent translatedContent;
+
+                if (isVietnamese)
+                {
+                    translatedContent = new TranslatedContent(
+                        sourceTranslation.Name,
+                        sourceTranslation.ShortDescription,
+                        sourceTranslation.FullDescription);
+                }
+                else if (translation != null &&
+                         !string.IsNullOrWhiteSpace(translation.Name) &&
+                         !string.IsNullOrWhiteSpace(translation.FullDescription))
+                {
+                    translatedContent = new TranslatedContent(
+                        translation.Name,
+                        translation.ShortDescription ?? string.Empty,
+                        translation.FullDescription);
+                }
+                else
+                {
+                    translatedContent = await TranslateWithGeminiAsync(
+                        sourceTranslation,
+                        language,
+                        cancellationToken);
+                }
 
                 if (translation == null)
                 {
@@ -412,11 +438,6 @@ public sealed class MultilingualMediaProcessor : IMultilingualMediaProcessor
             .Where(language => language.IsActive)
             .OrderBy(language => language.LanguageCode)
             .ToListAsync(cancellationToken);
-
-        languages = languages
-            .Where(language =>
-                !string.Equals(language.LanguageCode, "vi", StringComparison.OrdinalIgnoreCase))
-            .ToList();
 
         return (
             mediaTask.TaskType,

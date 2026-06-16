@@ -1,6 +1,45 @@
+@using Microsoft.EntityFrameworkCore
+@inject AdminWeb.Data.AppDbContext LayoutDbContext
 @{
     var title = ViewData["Title"] as string ?? "Du khách";
-    var isLoggedIn = User?.Identity?.IsAuthenticated == true;
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
+    var currentAction = ViewContext.RouteData.Values["action"]?.ToString() ?? "";
+    var isTourist = User?.Identity?.IsAuthenticated == true && User.IsInRole("Tourist");
+
+    var isHome = currentController == "Home";
+    var isMap = currentController == "Map";
+    var isTour = currentController == "Tour";
+    var isLeaderboard = currentController == "Leaderboard";
+    var isAccount = currentController == "Account";
+
+    var selectedLanguageCode = (ViewBag.SelectedLanguageCode as string
+        ?? Context.Request.Query["lang"].FirstOrDefault()
+        ?? Context.Request.Cookies["versa.dukhach.lang"]
+        ?? "vi").ToLowerInvariant();
+
+    var languageOptions = await LayoutDbContext.SupportedLanguages
+        .AsNoTracking()
+        .Where(language => language.IsActive)
+        .OrderBy(language => language.LanguageCode == "vi" ? 0 : language.LanguageCode == "en" ? 1 : 2)
+        .ThenBy(language => language.LanguageName)
+        .Select(language => new
+        {
+            Code = language.LanguageCode.Trim().ToLower(),
+            Name = language.LanguageName
+        })
+        .ToListAsync();
+
+    if (languageOptions.Count == 0)
+    {
+        languageOptions = new[]
+        {
+            new { Code = "vi", Name = "Tiếng Việt" },
+            new { Code = "en", Name = "English" },
+            new { Code = "zh", Name = "中文" },
+            new { Code = "ja", Name = "日本語" },
+            new { Code = "ko", Name = "한국어" }
+        }.ToList();
+    }
 }
 
 <!DOCTYPE html>
@@ -8,10 +47,13 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
     <title>@title - VERSA Travel</title>
 
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+
+    <link rel="stylesheet" href="~/css/dukhach-ai-chat.css" asp-append-version="true" />
 
     @RenderSection("Styles", required: false)
 
@@ -84,7 +126,7 @@
         }
 
         .dk-shell {
-            width: min(1180px, calc(100% - 32px));
+            width: min(1240px, calc(100% - 32px));
             margin: 0 auto;
         }
 
@@ -102,7 +144,7 @@
         }
 
         .dk-navbar {
-            height: 82px;
+            min-height: 82px;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -164,10 +206,51 @@
             font-size: 14px;
         }
 
-        .dk-nav-link:hover {
+        .dk-nav-link:hover,
+        .dk-nav-link.active {
             color: var(--text);
             background: rgba(148, 163, 184, 0.12);
             border-color: var(--border);
+        }
+
+        .dk-nav-link.active {
+            color: #03131d;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            border-color: transparent;
+            box-shadow: 0 14px 34px rgba(52, 211, 153, 0.18);
+        }
+
+        .dk-language-form {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .dk-language-form i {
+            position: absolute;
+            left: 13px;
+            color: var(--accent-2);
+            pointer-events: none;
+            font-size: 13px;
+        }
+
+        .dk-language-select {
+            min-height: 42px;
+            max-width: 150px;
+            padding: 0 34px 0 36px;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            color: var(--text);
+            background: rgba(148, 163, 184, 0.10);
+            font-size: 13px;
+            font-weight: 900;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .dk-language-select option {
+            color: #0f172a;
+            background: #ffffff;
         }
 
         .dk-icon-btn {
@@ -218,6 +301,72 @@
             padding: 34px 0 58px;
         }
 
+        .dk-alert-stack {
+            display: grid;
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+
+        .dk-alert {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 15px 18px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            color: var(--text);
+            background: var(--surface);
+            box-shadow: 0 14px 40px rgba(0, 0, 0, 0.14);
+        }
+
+        .dk-alert i {
+            width: 22px;
+            text-align: center;
+        }
+
+        .dk-alert.success {
+            border-color: rgba(52, 211, 153, 0.28);
+            background: rgba(52, 211, 153, 0.12);
+        }
+
+        .dk-alert.success i {
+            color: var(--accent);
+        }
+
+        .dk-alert.error {
+            border-color: rgba(251, 113, 133, 0.28);
+            background: rgba(251, 113, 133, 0.12);
+        }
+
+        .dk-alert.error i {
+            color: var(--danger);
+        }
+
+        .dk-alert.debug {
+            border-color: rgba(251, 191, 36, 0.32);
+            background: rgba(251, 191, 36, 0.12);
+        }
+
+        .dk-alert.debug i {
+            color: var(--warning);
+        }
+
+        .dk-alert a {
+            color: var(--accent-2);
+            font-weight: 900;
+            word-break: break-all;
+        }
+
+        .dk-alert .btn-close {
+            margin-left: auto;
+            filter: invert(1);
+            opacity: .72;
+        }
+
+        html[data-theme="light"] .dk-alert .btn-close {
+            filter: none;
+        }
+
         .dk-footer {
             border-top: 1px solid var(--border);
             padding: 28px 0;
@@ -234,7 +383,7 @@
             color: var(--text);
         }
 
-        @@media (max-width: 860px) {
+        @@media (max-width: 960px) {
             .dk-navbar {
                 height: auto;
                 padding: 16px 0;
@@ -246,9 +395,19 @@
                 width: 100%;
                 justify-content: flex-start;
             }
+        }
+
+        @@media (max-width: 680px) {
+            .dk-shell {
+                width: min(100% - 22px, 1240px);
+            }
 
             .dk-nav-link span {
                 display: none;
+            }
+
+            .dk-btn {
+                padding: 11px 14px;
             }
         }
     </style>
@@ -261,6 +420,7 @@
                 <span class="dk-brand-icon">
                     <i class="fa-solid fa-location-dot"></i>
                 </span>
+
                 <span>
                     VERSA Travel
                     <small>Smart Tour Guide</small>
@@ -268,35 +428,70 @@
             </a>
 
             <nav class="dk-nav">
-                <a asp-area="DuKhach" asp-controller="Home" asp-action="Index" class="dk-nav-link">
+                <a asp-area="DuKhach" asp-controller="Home" asp-action="Index" class="dk-nav-link @(isHome ? "active" : "")">
                     <i class="fa-solid fa-house"></i>
                     <span>Trang chủ</span>
                 </a>
 
-                <a asp-area="DuKhach" asp-controller="Map" asp-action="Index" class="dk-nav-link">
+                <a asp-area="DuKhach" asp-controller="Map" asp-action="Index" class="dk-nav-link @(isMap ? "active" : "")">
                     <i class="fa-solid fa-map-location-dot"></i>
                     <span>Bản đồ</span>
                 </a>
+
+                <a asp-area="DuKhach" asp-controller="Tour" asp-action="Index" class="dk-nav-link @(isTour ? "active" : "")">
+                    <i class="fa-solid fa-route"></i>
+                    <span>Tour</span>
+                </a>
+
+                <a asp-area="DuKhach" asp-controller="Leaderboard" asp-action="Index" class="dk-nav-link @(isLeaderboard ? "active" : "")">
+                    <i class="fa-solid fa-ranking-star"></i>
+                    <span>Xếp hạng</span>
+                </a>
+
+                <label class="dk-language-form" title="Chọn ngôn ngữ thuyết minh">
+                    <i class="fa-solid fa-language"></i>
+                    <select id="dkLanguageSelect" class="dk-language-select" aria-label="Chọn ngôn ngữ thuyết minh">
+                        @foreach (var language in languageOptions)
+                        {
+                            if (string.Equals(language.Code, selectedLanguageCode, StringComparison.OrdinalIgnoreCase))
+                            {
+                                <option value="@language.Code" selected>
+                                    @language.Name
+                                </option>
+                            }
+                            else
+                            {
+                                <option value="@language.Code">
+                                    @language.Name
+                                </option>
+                            }
+                        }
+                    </select>
+                </label>
 
                 <button type="button" class="dk-icon-btn" id="dkThemeToggle" title="Đổi giao diện">
                     <i class="fa-solid fa-moon"></i>
                 </button>
 
-                @if (isLoggedIn)
+                @if (isTourist)
                 {
-                    <a asp-area="DuKhach" asp-controller="Account" asp-action="Profile" class="dk-nav-link">
+                    <a asp-area="DuKhach" asp-controller="Account" asp-action="Profile" class="dk-nav-link @(isAccount ? "active" : "")">
                         <i class="fa-solid fa-user"></i>
                         <span>Tài khoản</span>
                     </a>
 
-                    <a asp-area="DuKhach" asp-controller="Account" asp-action="Logout" class="dk-btn dk-btn-ghost">
-                        <i class="fa-solid fa-right-from-bracket"></i>
-                        Đăng xuất
-                    </a>
+                    <form asp-area="DuKhach" asp-controller="Account" asp-action="Logout" method="post" style="display:inline;">
+                        @Html.AntiForgeryToken()
+
+                        <button type="submit" class="dk-btn dk-btn-ghost">
+                            <i class="fa-solid fa-right-from-bracket"></i>
+                            Đăng xuất
+                        </button>
+                    </form>
                 }
                 else
                 {
-                    <a asp-area="DuKhach" asp-controller="Account" asp-action="Login" class="dk-nav-link">
+                    <a asp-area="DuKhach" asp-controller="Account" asp-action="Login" class="dk-nav-link @(isAccount && currentAction == "Login" ? "active" : "")">
                         <i class="fa-solid fa-right-to-bracket"></i>
                         <span>Đăng nhập</span>
                     </a>
@@ -312,6 +507,38 @@
 
     <main class="dk-main">
         <div class="dk-shell">
+            <div class="dk-alert-stack">
+                @if (TempData["DuKhachSuccessMessage"] is string successMessage)
+                {
+                    <div class="dk-alert success" role="alert">
+                        <i class="fa-solid fa-circle-check"></i>
+                        <span>@successMessage</span>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Đóng"></button>
+                    </div>
+                }
+
+                @if (TempData["DuKhachErrorMessage"] is string errorMessage)
+                {
+                    <div class="dk-alert error" role="alert">
+                        <i class="fa-solid fa-circle-exclamation"></i>
+                        <span>@errorMessage</span>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Đóng"></button>
+                    </div>
+                }
+
+                @if (TempData["DuKhachDebugResetLink"] is string debugResetLink)
+                {
+                    <div class="dk-alert debug" role="alert">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                        <span>
+                            Link reset local:
+                            <a href="@debugResetLink">@debugResetLink</a>
+                        </span>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Đóng"></button>
+                    </div>
+                }
+            </div>
+
             @RenderBody()
         </div>
     </main>
@@ -321,6 +548,8 @@
             <strong>VERSA Travel</strong> · Bản đồ tham quan, tài khoản du khách và trải nghiệm dùng chung với app mobile.
         </div>
     </footer>
+
+    @await Html.PartialAsync("_AiChatBox")
 
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
 
@@ -353,7 +582,23 @@
                 updateIcon();
             });
         })();
+
+        (function () {
+            const languageSelect = document.getElementById('dkLanguageSelect');
+            if (!languageSelect) return;
+
+            languageSelect.addEventListener('change', function () {
+                const lang = this.value || 'vi';
+                localStorage.setItem('versa-dukhach-lang', lang);
+
+                const url = new URL(window.location.href);
+                url.searchParams.set('lang', lang);
+                window.location.href = url.toString();
+            });
+        })();
     </script>
+
+    <script src="~/js/dukhach-ai-chat.js" asp-append-version="true"></script>
 
     @RenderSection("Scripts", required: false)
 </body>

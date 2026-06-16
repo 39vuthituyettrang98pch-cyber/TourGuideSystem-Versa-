@@ -13,6 +13,7 @@ public class AppDbContext : DbContext
     public DbSet<Role> Roles { get; set; }
     public DbSet<User> Users { get; set; }
     public DbSet<Tourist> Tourists { get; set; }
+    public DbSet<PasswordResetToken> PasswordResetTokens { get; set; }
 
     // Data
     public DbSet<SupportedLanguage> SupportedLanguages { get; set; }
@@ -44,6 +45,8 @@ public class AppDbContext : DbContext
     public DbSet<AdminActivityLog> AdminActivityLogs { get; set; }
     public DbSet<SystemSetting> SystemSettings { get; set; }
     public DbSet<SyncVersion> SyncVersions { get; set; }
+    public DbSet<PoiReview> PoiReviews { get; set; }
+    public DbSet<TouristBookmark> TouristBookmarks { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -53,6 +56,7 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Role>().ToTable("roles");
         modelBuilder.Entity<User>().ToTable("users");
         modelBuilder.Entity<Tourist>().ToTable("tourists");
+        modelBuilder.Entity<PasswordResetToken>().ToTable("password_reset_tokens");
         modelBuilder.Entity<Category>().ToTable("categories");
         modelBuilder.Entity<CategoryTranslation>().ToTable("category_translations");
         modelBuilder.Entity<Poi>().ToTable("pois");
@@ -73,6 +77,32 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<AdminActivityLog>().ToTable("admin_activity_logs");
         modelBuilder.Entity<SystemSetting>().ToTable("system_settings");
         modelBuilder.Entity<SyncVersion>().ToTable("sync_versions");
+        modelBuilder.Entity<PoiReview>().ToTable("poi_reviews");
+        modelBuilder.Entity<TouristBookmark>().ToTable("tourist_bookmarks");
+
+
+        modelBuilder.Entity<PasswordResetToken>(entity =>
+        {
+            entity.HasKey(item => item.Id);
+
+            entity.Property(item => item.Email)
+                .HasMaxLength(160)
+                .IsRequired();
+
+            entity.Property(item => item.TokenHash)
+                .HasMaxLength(128)
+                .IsRequired();
+
+            entity.HasIndex(item => item.TokenHash)
+                .IsUnique();
+
+            entity.HasIndex(item => new { item.TouristId, item.ExpiresAt });
+
+            entity.HasOne(item => item.Tourist)
+                .WithMany()
+                .HasForeignKey(item => item.TouristId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
 
         // Composite Keys
         modelBuilder.Entity<PoiCategory>()
@@ -249,4 +279,3 @@ public class AppDbContext : DbContext
         });
     }
 }
-

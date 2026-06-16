@@ -1,7 +1,8 @@
 @model AdminWeb.Models.TourTranslation
-
 @{
     ViewData["Title"] = "Thêm bản dịch Tour";
+    var languages = ViewBag.Languages as IEnumerable<AdminWeb.Models.SupportedLanguage>
+        ?? Enumerable.Empty<AdminWeb.Models.SupportedLanguage>();
 }
 
 <div class="page-title">Thêm bản dịch mới</div>
@@ -17,18 +18,21 @@
                 <label class="form-label">Mã ngôn ngữ <span style="color:var(--danger)">*</span></label>
                 <select class="form-control" asp-for="LanguageCode" required>
                     <option value="">-- Chọn ngôn ngữ --</option>
-                    <option value="vi">🇻🇳 Tiếng Việt (vi)</option>
-                    <option value="en">🇬🇧 English (en)</option>
-                    <option value="zh">🇨🇳 中文 (zh)</option>
-                    <option value="ko">🇰🇷 한국어 (ko)</option>
-                    <option value="ja">🇯🇵 日本語 (ja)</option>
-                    <option value="fr">🇫🇷 Français (fr)</option>
+                    @foreach (var language in languages)
+                    {
+                        <option value="@language.LanguageCode">@language.LanguageName (@language.LanguageCode)</option>
+                    }
                 </select>
+                <small style="color:var(--text2);font-size:12px;margin-top:6px;display:block;">
+                    Danh sách này lấy tự động từ Ngôn ngữ & giọng đọc.
+                </small>
             </div>
+
             <div class="form-group full">
                 <label class="form-label">Tên Tour <span style="color:var(--danger)">*</span></label>
                 <input class="form-control" asp-for="Title" type="text" placeholder="Nhập tên Tour..." required />
             </div>
+
             <div class="form-group full">
                 <label class="form-label">Mô tả Tour</label>
                 <textarea class="form-control" asp-for="Description" rows="5" placeholder="Nhập mô tả Tour..."></textarea>

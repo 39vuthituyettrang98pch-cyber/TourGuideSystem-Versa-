@@ -1,4 +1,5 @@
 using AdminWeb.Data;
+using AdminWeb.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -28,8 +29,10 @@ public sealed class PoiTranslationController : AdminWeb.Controllers.PoiTranslati
 [Authorize(Roles = "Editor")]
 public sealed class TourController : AdminWeb.Controllers.TourController
 {
-    public TourController(AppDbContext context)
-        : base(context)
+    public TourController(
+        AppDbContext context,
+        ContentTranslationService translationService)
+        : base(context, translationService)
     {
     }
 }
@@ -48,8 +51,10 @@ public sealed class TourTranslationController : AdminWeb.Controllers.TourTransla
 [Authorize(Roles = "Editor")]
 public sealed class CategoryController : AdminWeb.Controllers.CategoryController
 {
-    public CategoryController(AppDbContext context)
-        : base(context)
+    public CategoryController(
+        AppDbContext context,
+        ContentTranslationService translationService)
+        : base(context, translationService)
     {
     }
 }

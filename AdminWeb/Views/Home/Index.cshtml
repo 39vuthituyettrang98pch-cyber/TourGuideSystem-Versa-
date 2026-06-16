@@ -1,163 +1,1112 @@
 @using System.Text.Json
+@using Microsoft.EntityFrameworkCore
+@inject AdminWeb.Data.AppDbContext DbContext
+
 @{
     ViewData["Title"] = "Dashboard";
-    var topPois = ViewBag.TopPois as Dictionary<string, int> ?? [];
-    var recentActivities = ViewBag.RecentActivities as List<AdminWeb.Models.VisitorPlaybackLog> ?? [];
+
+    var topPois = ViewBag.TopPois as Dictionary<string, int> ?? new Dictionary<string, int>();
+    var recentActivities = ViewBag.RecentActivities as List<AdminWeb.Models.VisitorPlaybackLog> ?? new List<AdminWeb.Models.VisitorPlaybackLog>();
+
+    var totalPois = Convert.ToInt32(ViewBag.TotalPois ?? 0);
+    var totalTours = Convert.ToInt32(ViewBag.TotalTours ?? 0);
+    var totalListens = Convert.ToInt32(ViewBag.TotalListens ?? 0);
+    var totalAudioFiles = Convert.ToInt32(ViewBag.TotalAudioFiles ?? 0);
+
+    var approvedPois = DbContext.Pois.Count(p => p.Status == "Approved");
+    var pendingPois = DbContext.Pois.Count(p => p.Status == "Pending");
+    var rejectedPois = DbContext.Pois.Count(p => p.Status == "Rejected");
+
+    var approvalRate = totalPois > 0
+        ? Math.Round((double)approvedPois / totalPois * 100, 0)
+        : 0;
+
+    var topRatedStats = DbContext.Set<AdminWeb.Models.PoiReview>()
+        .GroupBy(r => r.PoiId)
+        .Select(g => new
+        {
+            PoiId = g.Key,
+            AverageRating = g.Average(r => (double)r.Rating),
+            ReviewCount = g.Count()
+        })
+        .OrderByDescending(x => x.AverageRating)
+        .ThenByDescending(x => x.ReviewCount)
+        .Take(5)
+        .ToList();
+
+    var topRatedPoiIds = topRatedStats.Select(x => x.PoiId).ToList();
+
+    var topRatedPoisData = DbContext.Pois
+        .Include(p => p.Translations)
+        .Where(p => topRatedPoiIds.Contains(p.Id))
+        .ToList();
+
+    var topRatedList = topRatedStats.Select(stat =>
+    {
+        var poi = topRatedPoisData.FirstOrDefault(p => p.Id == stat.PoiId);
+        var poiName = poi?.Translations?.FirstOrDefault(t => t.LanguageCode == "vi")?.Name
+            ?? poi?.Translations?.FirstOrDefault()?.Name
+            ?? $"POI #{stat.PoiId}";
+
+        return new
+        {
+            PoiName = poiName,
+            stat.AverageRating,
+            stat.ReviewCount
+        };
+    }).ToList();
 }
 
-<div class="page-heading">
-    <div>
-        <div class="page-title">Tổng quan hệ thống</div>
-        <div class="page-subtitle">Theo dõi nội dung, lượt phát và tình trạng vận hành của VERSA.</div>
-    </div>
-    <div class="page-actions">
-        <a asp-controller="Approval" asp-action="PoiPending" class="btn btn-secondary"><i class="fa-solid fa-circle-check"></i> Duyệt POI</a>
-        <a asp-controller="Poi" asp-action="Create" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Tạo POI</a>
-    </div>
-</div>
-
-<div class="stats-grid">
-    <a class="stat-card" asp-controller="Poi" asp-action="Index">
-        <span class="stat-icon"><i class="fa-solid fa-map-pin"></i></span>
-        <span><span class="stat-value">@ViewBag.TotalPois</span><span class="stat-label">Điểm tham quan</span></span>
-    </a>
-    <a class="stat-card" asp-controller="Tour" asp-action="Index">
-        <span class="stat-icon"><i class="fa-solid fa-route"></i></span>
-        <span><span class="stat-value">@ViewBag.TotalTours</span><span class="stat-label">Tour du lịch</span></span>
-    </a>
-    <a class="stat-card" asp-controller="ActivityLog" asp-action="Index">
-        <span class="stat-icon"><i class="fa-solid fa-headphones"></i></span>
-        <span><span class="stat-value">@ViewBag.TotalListens</span><span class="stat-label">Tổng lượt phát</span></span>
-    </a>
-    <a class="stat-card" asp-controller="AudioTasks" asp-action="Index">
-        <span class="stat-icon"><i class="fa-solid fa-file-audio"></i></span>
-        <span><span class="stat-value">@ViewBag.TotalAudioFiles</span><span class="stat-label">File audio đa ngôn ngữ</span></span>
-    </a>
-</div>
-
-<div class="detail-grid">
-    <section class="card">
-        <div class="card-header">
-            <div>
-                <div class="card-title"><i class="fa-solid fa-chart-line"></i> Lượt phát 7 ngày</div>
-                <div class="card-subtitle">Số lượt tương tác theo ngày.</div>
-            </div>
-        </div>
-        <div style="height:300px"><canvas id="lineChart"></canvas></div>
-    </section>
-    <section class="card">
-        <div class="card-header">
-            <div>
-                <div class="card-title"><i class="fa-solid fa-chart-pie"></i> Ngôn ngữ được chọn</div>
-                <div class="card-subtitle">Tỷ trọng ngôn ngữ trong lịch sử phát.</div>
-            </div>
-        </div>
-        <div style="height:300px"><canvas id="pieChart"></canvas></div>
-    </section>
-</div>
-
-<div class="detail-grid" style="margin-top:18px">
-    <section class="card">
-        <div class="card-header">
-            <div class="card-title"><i class="fa-solid fa-ranking-star"></i> POI nổi bật</div>
-            <a asp-controller="Analytics" asp-action="Index" class="btn btn-secondary btn-sm">Xem phân tích</a>
-        </div>
-        <div class="table-wrapper">
-            <table class="data-table">
-                <thead><tr><th>Hạng</th><th>Điểm tham quan</th><th>Lượt phát</th></tr></thead>
-                <tbody>
-                    @if (topPois.Count > 0)
-                    {
-                        var rank = 1;
-                        foreach (var poi in topPois)
-                        {
-                            <tr><td><span class="badge blue">#@rank</span></td><td><strong>@poi.Key</strong></td><td>@poi.Value</td></tr>
-                            rank++;
-                        }
-                    }
-                    else
-                    {
-                        <tr><td colspan="3"><div class="empty-state compact"><i class="fa-solid fa-chart-simple"></i><p>Chưa có dữ liệu lượt phát.</p></div></td></tr>
-                    }
-                </tbody>
-            </table>
-        </div>
-    </section>
-    <section class="card">
-        <div class="card-header">
-            <div class="card-title"><i class="fa-solid fa-clock-rotate-left"></i> Hoạt động gần đây</div>
-            <a asp-controller="ActivityLog" asp-action="Index" class="btn btn-secondary btn-sm">Xem tất cả</a>
-        </div>
-        <div class="table-wrapper">
-            <table class="data-table">
-                <thead><tr><th>Thời gian</th><th>Điểm tham quan</th><th>Ngôn ngữ</th></tr></thead>
-                <tbody>
-                    @if (recentActivities.Count > 0)
-                    {
-                        foreach (var log in recentActivities)
-                        {
-                            <tr><td>@log.CreatedAt.ToString("dd/MM HH:mm")</td><td>@log.PoiName</td><td><span class="badge blue">@log.LanguageCode.ToUpperInvariant()</span></td></tr>
-                        }
-                    }
-                    else
-                    {
-                        <tr><td colspan="3"><div class="empty-state compact"><i class="fa-solid fa-clock"></i><p>Chưa có hoạt động.</p></div></td></tr>
-                    }
-                </tbody>
-            </table>
-        </div>
-    </section>
-</div>
-
-<section class="card" style="margin-top:18px">
-    <div class="card-header">
-        <div>
-            <div class="card-title"><i class="fa-solid fa-map-location-dot"></i> Bản đồ điểm tham quan</div>
-            <div class="card-subtitle">@ViewBag.TotalPois POI đã thêm. Heatmap thể hiện vị trí tương tác của du khách.</div>
-        </div>
-        <button type="button" class="btn btn-secondary btn-sm" id="btnLocateDashboard">
-            <i class="fa-solid fa-location-crosshairs"></i> Vị trí của tôi
-        </button>
-    </div>
-    <div id="heatmap-container" style="height:380px;border-radius:12px;overflow:hidden"></div>
-</section>
-
-@section Scripts {
+@section Styles {
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+
     <style>
-        .custom-map-icon { background: transparent; border: none; }
-        .custom-marker {
-            display: flex; justify-content: center; align-items: center;
-            width: 32px; height: 32px; border-radius: 50% 50% 50% 0;
-            transform: rotate(-45deg); border: 2px solid #ffffff;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3); color: #ffffff; font-size: 14px;
+        .dashboard-page {
+            display: grid;
+            gap: 22px;
         }
-        .custom-marker i { transform: rotate(45deg); }
+
+        .dashboard-hero {
+            position: relative;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            border-radius: 30px;
+            padding: 30px;
+            background:
+                radial-gradient(circle at 12% 20%, rgba(91, 140, 255, 0.22), transparent 30%),
+                radial-gradient(circle at 82% 30%, rgba(58, 213, 139, 0.18), transparent 32%),
+                linear-gradient(135deg, rgba(16, 24, 42, 0.96), rgba(9, 14, 28, 0.88));
+            box-shadow: var(--shadow);
+        }
+
+        .dashboard-hero-inner {
+            position: relative;
+            z-index: 2;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .dashboard-kicker {
+            width: fit-content;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border: 1px solid rgba(91, 140, 255, 0.30);
+            border-radius: 999px;
+            color: #8fb0ff;
+            background: rgba(91, 140, 255, 0.12);
+            font-size: 12px;
+            font-weight: 900;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+        }
+
+        .dashboard-hero h1 {
+            margin: 14px 0 10px;
+            font-size: clamp(34px, 4vw, 56px);
+            line-height: 1;
+            font-weight: 950;
+            letter-spacing: -0.065em;
+        }
+
+        .dashboard-hero p {
+            margin: 0;
+            max-width: 720px;
+            color: var(--text-muted);
+            line-height: 1.75;
+            font-size: 15px;
+        }
+
+        .dashboard-actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .dashboard-section-title {
+            display: flex;
+            align-items: end;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: -4px;
+        }
+
+        .dashboard-section-title h2 {
+            margin: 0;
+            font-size: 22px;
+            font-weight: 950;
+            letter-spacing: -0.04em;
+        }
+
+        .dashboard-section-title p {
+            margin: 4px 0 0;
+            color: var(--text-muted);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .dashboard-stats {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 16px;
+        }
+
+        .dashboard-stat {
+            min-width: 0;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 22px;
+            background: var(--surface);
+            box-shadow: 0 18px 50px rgba(0, 0, 0, 0.12);
+            text-decoration: none;
+            color: var(--text);
+            transition: .2s ease;
+        }
+
+        .dashboard-stat:hover {
+            color: var(--text);
+            transform: translateY(-3px);
+            border-color: rgba(91, 140, 255, .48);
+            box-shadow: var(--shadow);
+        }
+
+        .dashboard-stat::after {
+            content: "";
+            position: absolute;
+            right: -34px;
+            top: -34px;
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: rgba(91, 140, 255, 0.10);
+        }
+
+        .dashboard-stat-icon {
+            position: relative;
+            z-index: 2;
+            width: 48px;
+            height: 48px;
+            display: grid;
+            place-items: center;
+            border-radius: 18px;
+            color: #fff;
+            background: linear-gradient(135deg, #5b8cff, #3ad58b);
+            box-shadow: 0 14px 34px rgba(91, 140, 255, .24);
+        }
+
+        .dashboard-stat-value {
+            position: relative;
+            z-index: 2;
+            display: block;
+            margin-top: 18px;
+            font-size: 38px;
+            line-height: 1;
+            font-weight: 950;
+            letter-spacing: -0.06em;
+        }
+
+        .dashboard-stat-label {
+            position: relative;
+            z-index: 2;
+            display: block;
+            margin-top: 8px;
+            color: var(--text-muted);
+            font-size: 13px;
+            font-weight: 800;
+        }
+
+        .operation-grid {
+            display: grid;
+            grid-template-columns: 1.2fr .8fr;
+            gap: 18px;
+            align-items: stretch;
+        }
+
+        .operation-card {
+            border: 1px solid var(--border);
+            border-radius: 26px;
+            background: var(--surface);
+            box-shadow: 0 18px 50px rgba(0, 0, 0, 0.10);
+            overflow: hidden;
+        }
+
+        .operation-card-inner {
+            padding: 22px;
+        }
+
+        .operation-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 18px;
+        }
+
+        .operation-title {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 950;
+            letter-spacing: -0.03em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .operation-title i {
+            color: #5b8cff;
+        }
+
+        .operation-subtitle {
+            margin: 6px 0 0;
+            color: var(--text-muted);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .todo-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .todo-item {
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 16px;
+            background: rgba(148, 163, 184, 0.06);
+            text-decoration: none;
+            color: var(--text);
+            transition: .18s ease;
+        }
+
+        .todo-item:hover {
+            color: var(--text);
+            transform: translateY(-2px);
+            border-color: rgba(91, 140, 255, .45);
+            background: rgba(91, 140, 255, .09);
+        }
+
+        .todo-item strong {
+            display: block;
+            font-size: 28px;
+            line-height: 1;
+            font-weight: 950;
+            letter-spacing: -0.05em;
+        }
+
+        .todo-item span {
+            display: block;
+            margin-top: 8px;
+            color: var(--text-muted);
+            font-size: 13px;
+            font-weight: 800;
+        }
+
+        .health-meter {
+            margin-top: 18px;
+        }
+
+        .health-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            color: var(--text-muted);
+            font-size: 13px;
+            font-weight: 800;
+            margin-bottom: 8px;
+        }
+
+        .health-bar {
+            height: 12px;
+            border-radius: 999px;
+            background: rgba(148, 163, 184, 0.14);
+            overflow: hidden;
+        }
+
+        .health-bar span {
+            display: block;
+            width: @approvalRate%;
+            height: 100%;
+            border-radius: inherit;
+            background: linear-gradient(135deg, #5b8cff, #3ad58b);
+        }
+
+        .quick-grid {
+            display: grid;
+            gap: 10px;
+        }
+
+        .quick-link {
+            min-height: 54px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 0 16px;
+            color: var(--text);
+            background: rgba(148, 163, 184, 0.06);
+            text-decoration: none;
+            font-weight: 900;
+            transition: .18s ease;
+        }
+
+        .quick-link:hover {
+            color: var(--text);
+            transform: translateY(-2px);
+            border-color: rgba(91, 140, 255, .45);
+            background: rgba(91, 140, 255, .09);
+        }
+
+        .quick-link span {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .main-analytics-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1.4fr) minmax(360px, .6fr);
+            gap: 18px;
+            align-items: stretch;
+        }
+
+        .content-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1.25fr) minmax(380px, .75fr);
+            gap: 18px;
+            align-items: start;
+        }
+
+        .side-stack {
+            display: grid;
+            gap: 18px;
+        }
+
+        .dashboard-card {
+            min-width: 0;
+            border: 1px solid var(--border);
+            border-radius: 26px;
+            background: var(--surface);
+            box-shadow: 0 18px 50px rgba(0, 0, 0, 0.10);
+            overflow: hidden;
+        }
+
+        .dashboard-card-header {
+            min-height: 72px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            padding: 20px 22px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .dashboard-card-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 0;
+            font-size: 17px;
+            font-weight: 950;
+            letter-spacing: -0.025em;
+        }
+
+        .dashboard-card-title i {
+            color: #5b8cff;
+        }
+
+        .dashboard-card-subtitle {
+            margin-top: 5px;
+            color: var(--text-muted);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .dashboard-card-body {
+            padding: 20px 22px 22px;
+        }
+
+        .chart-box {
+            height: 330px;
+            position: relative;
+        }
+
+        .chart-box.small {
+            height: 300px;
+        }
+
+        .dashboard-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .dashboard-table th {
+            padding: 13px 12px;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border);
+            font-size: 12px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: .07em;
+            white-space: nowrap;
+        }
+
+        .dashboard-table td {
+            padding: 14px 12px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: middle;
+        }
+
+        .dashboard-table tr:last-child td {
+            border-bottom: 0;
+        }
+
+        .rank-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 38px;
+            height: 30px;
+            border-radius: 999px;
+            color: #dce7ff;
+            background: rgba(91, 140, 255, 0.18);
+            border: 1px solid rgba(91, 140, 255, 0.28);
+            font-size: 12px;
+            font-weight: 950;
+        }
+
+        .rating-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 10px;
+            border-radius: 999px;
+            color: #fbbf24;
+            background: rgba(251, 191, 36, 0.10);
+            font-size: 13px;
+            font-weight: 900;
+            white-space: nowrap;
+        }
+
+        .lang-pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 42px;
+            padding: 6px 9px;
+            border-radius: 999px;
+            color: #dce7ff;
+            background: rgba(91, 140, 255, 0.16);
+            border: 1px solid rgba(91, 140, 255, 0.24);
+            font-size: 12px;
+            font-weight: 950;
+        }
+
+        .dashboard-empty {
+            min-height: 150px;
+            display: grid;
+            place-items: center;
+            text-align: center;
+            color: var(--text-muted);
+            padding: 24px;
+        }
+
+        .dashboard-empty i {
+            display: block;
+            margin-bottom: 12px;
+            font-size: 38px;
+            color: rgba(143, 150, 176, .8);
+        }
+
+        .dashboard-empty p {
+            margin: 0;
+        }
+
+        .dashboard-map-card .dashboard-card-body {
+            padding: 0;
+        }
+
+        #heatmap-container {
+            width: 100%;
+            height: 520px;
+            background: #0f172a;
+        }
+
+        .map-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding: 14px 18px;
+            border-top: 1px solid var(--border);
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+
+        .legend-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            font-weight: 800;
+        }
+
+        .legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .dot-approved { background: #3ad58b; }
+        .dot-pending { background: #f5b942; }
+        .dot-rejected { background: #ff6577; }
+        .dot-heat { background: #5b8cff; }
+
+        .custom-map-icon {
+            background: transparent;
+            border: none;
+        }
+
+        .custom-marker {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg);
+            border: 2px solid #ffffff;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.32);
+            color: #ffffff;
+            font-size: 14px;
+        }
+
+        .custom-marker i {
+            transform: rotate(45deg);
+        }
+
         .custom-marker.approved { background: #3ad58b; }
         .custom-marker.pending { background: #f5b942; }
         .custom-marker.rejected { background: #ff6577; }
+        .custom-marker.admin { background: #5b8cff; }
+
+        .leaflet-container {
+            font-family: inherit;
+        }
+
+        .leaflet-popup-content-wrapper,
+        .leaflet-popup-tip {
+            background: var(--surface);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        @@media (max-width: 1280px) {
+            .operation-grid,
+            .main-analytics-grid,
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @@media (max-width: 1180px) {
+            .dashboard-hero-inner {
+                grid-template-columns: 1fr;
+            }
+
+            .dashboard-actions {
+                justify-content: flex-start;
+            }
+
+            .dashboard-stats {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @@media (max-width: 720px) {
+            .dashboard-hero {
+                padding: 24px;
+                border-radius: 24px;
+            }
+
+            .dashboard-stats,
+            .todo-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .dashboard-card-header,
+            .operation-head,
+            .dashboard-section-title {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .chart-box,
+            .chart-box.small {
+                height: 260px;
+            }
+
+            #heatmap-container {
+                height: 380px;
+            }
+        }
     </style>
+}
+
+<div class="dashboard-page">
+    <section class="dashboard-hero">
+        <div class="dashboard-hero-inner">
+            <div>
+                <div class="dashboard-kicker">
+                    <i class="fa-solid fa-chart-line"></i>
+                    VERSA Admin
+                </div>
+
+                <h1>Bảng điều khiển vận hành</h1>
+
+                <p>
+                    Tập trung vào những việc cần xử lý trước, sau đó theo dõi hiệu quả nội dung,
+                    bản đồ POI và hoạt động thực tế của du khách.
+                </p>
+            </div>
+
+            <div class="dashboard-actions">
+                <a asp-area="" asp-controller="Approval" asp-action="PoiPending" class="btn btn-secondary">
+                    <i class="fa-solid fa-circle-check"></i>
+                    Duyệt POI
+                </a>
+
+                <a asp-area="" asp-controller="Poi" asp-action="Create" class="btn btn-primary">
+                    <i class="fa-solid fa-plus"></i>
+                    Tạo POI
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <div class="dashboard-section-title">
+        <div>
+            <h2>1. Tổng quan nhanh</h2>
+            <p>Các chỉ số chính để biết hệ thống hiện có bao nhiêu nội dung và lượt tương tác.</p>
+        </div>
+    </div>
+
+    <section class="dashboard-stats">
+        <a class="dashboard-stat" asp-area="" asp-controller="Poi" asp-action="Index">
+            <span class="dashboard-stat-icon">
+                <i class="fa-solid fa-map-pin"></i>
+            </span>
+            <span class="dashboard-stat-value">@totalPois</span>
+            <span class="dashboard-stat-label">Điểm tham quan</span>
+        </a>
+
+        <a class="dashboard-stat" asp-area="" asp-controller="Tour" asp-action="Index">
+            <span class="dashboard-stat-icon">
+                <i class="fa-solid fa-route"></i>
+            </span>
+            <span class="dashboard-stat-value">@totalTours</span>
+            <span class="dashboard-stat-label">Tour du lịch</span>
+        </a>
+
+        <a class="dashboard-stat" asp-area="" asp-controller="ActivityLog" asp-action="Index">
+            <span class="dashboard-stat-icon">
+                <i class="fa-solid fa-headphones"></i>
+            </span>
+            <span class="dashboard-stat-value">@totalListens</span>
+            <span class="dashboard-stat-label">Tổng lượt phát</span>
+        </a>
+
+        <a class="dashboard-stat" asp-area="" asp-controller="AudioTasks" asp-action="Index">
+            <span class="dashboard-stat-icon">
+                <i class="fa-solid fa-file-audio"></i>
+            </span>
+            <span class="dashboard-stat-value">@totalAudioFiles</span>
+            <span class="dashboard-stat-label">File audio đa ngôn ngữ</span>
+        </a>
+    </section>
+
+    <div class="dashboard-section-title">
+        <div>
+            <h2>2. Việc cần xử lý</h2>
+            <p>Ưu tiên các tác vụ vận hành trước khi xem phân tích chi tiết.</p>
+        </div>
+    </div>
+
+    <section class="operation-grid">
+        <div class="operation-card">
+            <div class="operation-card-inner">
+                <div class="operation-head">
+                    <div>
+                        <h3 class="operation-title">
+                            <i class="fa-solid fa-list-check"></i>
+                            Trạng thái POI
+                        </h3>
+                        <p class="operation-subtitle">
+                            Theo dõi lượng POI đã duyệt, đang chờ duyệt và bị từ chối.
+                        </p>
+                    </div>
+
+                    <a asp-area="" asp-controller="Approval" asp-action="PoiPending" class="btn btn-secondary btn-sm">
+                        Xem duyệt POI
+                    </a>
+                </div>
+
+                <div class="todo-grid">
+                    <a class="todo-item" asp-area="" asp-controller="Poi" asp-action="Index">
+                        <strong>@approvedPois</strong>
+                        <span>POI đã duyệt</span>
+                    </a>
+
+                    <a class="todo-item" asp-area="" asp-controller="Approval" asp-action="PoiPending">
+                        <strong>@pendingPois</strong>
+                        <span>POI chờ duyệt</span>
+                    </a>
+
+                    <a class="todo-item" asp-area="" asp-controller="Poi" asp-action="Index">
+                        <strong>@rejectedPois</strong>
+                        <span>POI bị từ chối</span>
+                    </a>
+                </div>
+
+                <div class="health-meter">
+                    <div class="health-row">
+                        <span>Tỷ lệ POI đã duyệt</span>
+                        <strong>@approvalRate%</strong>
+                    </div>
+                    <div class="health-bar">
+                        <span></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="operation-card">
+            <div class="operation-card-inner">
+                <div class="operation-head">
+                    <div>
+                        <h3 class="operation-title">
+                            <i class="fa-solid fa-bolt"></i>
+                            Truy cập nhanh
+                        </h3>
+                        <p class="operation-subtitle">
+                            Những chức năng admin thường dùng nhất.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="quick-grid">
+                    <a class="quick-link" asp-area="" asp-controller="Poi" asp-action="Create">
+                        <span><i class="fa-solid fa-plus"></i> Tạo POI mới</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </a>
+
+                    <a class="quick-link" asp-area="" asp-controller="Tour" asp-action="Create">
+                        <span><i class="fa-solid fa-route"></i> Tạo tour mới</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </a>
+
+                    <a class="quick-link" asp-area="" asp-controller="AudioTasks" asp-action="Index">
+                        <span><i class="fa-solid fa-wand-magic-sparkles"></i> Tác vụ AI Media</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </a>
+
+                    <a class="quick-link" asp-area="DuKhach" asp-controller="Home" asp-action="Index" target="_blank" rel="noopener">
+                        <span><i class="fa-solid fa-globe"></i> Mở web du khách</span>
+                        <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div class="dashboard-section-title">
+        <div>
+            <h2>3. Phân tích tương tác</h2>
+            <p>Xem người dùng đang nghe nội dung như thế nào và chọn ngôn ngữ nào nhiều nhất.</p>
+        </div>
+    </div>
+
+    <section class="main-analytics-grid">
+        <div class="dashboard-card">
+            <div class="dashboard-card-header">
+                <div>
+                    <h3 class="dashboard-card-title">
+                        <i class="fa-solid fa-chart-line"></i>
+                        Lượt phát 7 ngày
+                    </h3>
+                    <div class="dashboard-card-subtitle">Số lượt tương tác/nghe audio theo ngày.</div>
+                </div>
+
+                <a asp-area="" asp-controller="ActivityLog" asp-action="Index" class="btn btn-secondary btn-sm">
+                    Xem lịch sử
+                </a>
+            </div>
+
+            <div class="dashboard-card-body">
+                <div class="chart-box">
+                    <canvas id="lineChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="dashboard-card">
+            <div class="dashboard-card-header">
+                <div>
+                    <h3 class="dashboard-card-title">
+                        <i class="fa-solid fa-chart-pie"></i>
+                        Ngôn ngữ được chọn
+                    </h3>
+                    <div class="dashboard-card-subtitle">Tỷ trọng ngôn ngữ trong lịch sử phát.</div>
+                </div>
+            </div>
+
+            <div class="dashboard-card-body">
+                <div class="chart-box small">
+                    <canvas id="pieChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div class="dashboard-section-title">
+        <div>
+            <h2>4. Bản đồ & chất lượng nội dung</h2>
+            <p>Kiểm tra vị trí POI, vùng tương tác và những địa điểm đang được đánh giá tốt.</p>
+        </div>
+    </div>
+
+    <section class="content-grid">
+        <div class="dashboard-card dashboard-map-card">
+            <div class="dashboard-card-header">
+                <div>
+                    <h3 class="dashboard-card-title">
+                        <i class="fa-solid fa-map-location-dot"></i>
+                        Bản đồ điểm tham quan
+                    </h3>
+                    <div class="dashboard-card-subtitle">
+                        @totalPois POI đã thêm. Heatmap thể hiện vị trí tương tác của du khách.
+                    </div>
+                </div>
+
+                <button type="button" class="btn btn-secondary btn-sm" id="btnLocateDashboard">
+                    <i class="fa-solid fa-location-crosshairs"></i>
+                    Vị trí của tôi
+                </button>
+            </div>
+
+            <div class="dashboard-card-body">
+                <div id="heatmap-container"></div>
+
+                <div class="map-legend">
+                    <span class="legend-item"><span class="legend-dot dot-approved"></span> Đã duyệt</span>
+                    <span class="legend-item"><span class="legend-dot dot-pending"></span> Chờ duyệt</span>
+                    <span class="legend-item"><span class="legend-dot dot-rejected"></span> Từ chối</span>
+                    <span class="legend-item"><span class="legend-dot dot-heat"></span> Heatmap lượt tương tác</span>
+                </div>
+            </div>
+        </div>
+
+        <aside class="side-stack">
+            <div class="dashboard-card">
+                <div class="dashboard-card-header">
+                    <div>
+                        <h3 class="dashboard-card-title">
+                            <i class="fa-solid fa-star" style="color:#f59e0b"></i>
+                            Top POI đánh giá cao
+                        </h3>
+                        <div class="dashboard-card-subtitle">Dựa trên điểm đánh giá trung bình.</div>
+                    </div>
+                </div>
+
+                <div class="dashboard-card-body">
+                    @if (topRatedList.Count > 0)
+                    {
+                        <table class="dashboard-table">
+                            <thead>
+                                <tr>
+                                    <th>Hạng</th>
+                                    <th>POI</th>
+                                    <th>Đánh giá</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                @{
+                                    var rank = 1;
+                                }
+
+                                @foreach (var poi in topRatedList)
+                                {
+                                    <tr>
+                                        <td><span class="rank-badge">#@rank</span></td>
+                                        <td><strong>@poi.PoiName</strong></td>
+                                        <td>
+                                            <span class="rating-pill">
+                                                <i class="fa-solid fa-star"></i>
+                                                @poi.AverageRating.ToString("0.0")
+                                            </span>
+                                        </td>
+                                    </tr>
+
+                                    rank++;
+                                }
+                            </tbody>
+                        </table>
+                    }
+                    else
+                    {
+                        <div class="dashboard-empty">
+                            <div>
+                                <i class="fa-solid fa-star"></i>
+                                <p>Chưa có đánh giá nào.</p>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="dashboard-card">
+                <div class="dashboard-card-header">
+                    <div>
+                        <h3 class="dashboard-card-title">
+                            <i class="fa-solid fa-ranking-star"></i>
+                            POI nổi bật
+                        </h3>
+                        <div class="dashboard-card-subtitle">Các POI có lượt phát cao.</div>
+                    </div>
+                </div>
+
+                <div class="dashboard-card-body">
+                    @if (topPois.Count > 0)
+                    {
+                        <table class="dashboard-table">
+                            <thead>
+                                <tr>
+                                    <th>Hạng</th>
+                                    <th>POI</th>
+                                    <th>Lượt</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                @{
+                                    var rank = 1;
+                                }
+
+                                @foreach (var poi in topPois)
+                                {
+                                    <tr>
+                                        <td><span class="rank-badge">#@rank</span></td>
+                                        <td><strong>@poi.Key</strong></td>
+                                        <td><strong>@poi.Value</strong></td>
+                                    </tr>
+
+                                    rank++;
+                                }
+                            </tbody>
+                        </table>
+                    }
+                    else
+                    {
+                        <div class="dashboard-empty">
+                            <div>
+                                <i class="fa-solid fa-chart-simple"></i>
+                                <p>Chưa có dữ liệu lượt phát.</p>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </aside>
+    </section>
+
+    <div class="dashboard-section-title">
+        <div>
+            <h2>5. Hoạt động gần đây</h2>
+            <p>Theo dõi các lượt tương tác mới nhất để biết hệ thống đang được sử dụng ra sao.</p>
+        </div>
+
+        <a asp-area="" asp-controller="ActivityLog" asp-action="Index" class="btn btn-secondary btn-sm">
+            Xem tất cả
+        </a>
+    </div>
+
+    <section class="dashboard-card">
+        <div class="dashboard-card-body">
+            @if (recentActivities.Count > 0)
+            {
+                <table class="dashboard-table">
+                    <thead>
+                        <tr>
+                            <th>Thời gian</th>
+                            <th>POI</th>
+                            <th>Ngôn ngữ</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        @foreach (var log in recentActivities)
+                        {
+                            <tr>
+                                <td>@log.CreatedAt.ToString("dd/MM HH:mm")</td>
+                                <td><strong>@log.PoiName</strong></td>
+                                <td><span class="lang-pill">@log.LanguageCode.ToUpperInvariant()</span></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <div class="dashboard-empty">
+                    <div>
+                        <i class="fa-solid fa-clock"></i>
+                        <p>Chưa có hoạt động.</p>
+                    </div>
+                </div>
+            }
+        </div>
+    </section>
+</div>
+
+@section Scripts {
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
     <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <script>
         const styles = getComputedStyle(document.documentElement);
-        const textMuted = styles.getPropertyValue('--text-muted').trim();
-        const border = styles.getPropertyValue('--border').trim();
-        const surface = styles.getPropertyValue('--surface').trim();
+        const textMuted = styles.getPropertyValue('--text-muted').trim() || '#8f96b0';
+        const border = styles.getPropertyValue('--border').trim() || 'rgba(143,150,176,.18)';
+        const surface = styles.getPropertyValue('--surface').trim() || '#10182a';
+
+        const chartLabels = @Html.Raw(JsonSerializer.Serialize(ViewBag.ChartLabels ?? Array.Empty<string>()));
+        const chartData = @Html.Raw(JsonSerializer.Serialize(ViewBag.ChartData ?? Array.Empty<int>()));
+        const pieLabels = @Html.Raw(JsonSerializer.Serialize(ViewBag.PieLabels ?? Array.Empty<string>()));
+        const pieData = @Html.Raw(JsonSerializer.Serialize(ViewBag.PieData ?? Array.Empty<int>()));
 
         new Chart(document.getElementById('lineChart'), {
             type: 'line',
             data: {
-                labels: @Html.Raw(JsonSerializer.Serialize(ViewBag.ChartLabels)),
+                labels: chartLabels,
                 datasets: [{
-                    data: @Html.Raw(JsonSerializer.Serialize(ViewBag.ChartData)),
+                    data: chartData,
                     borderColor: '#5b8cff',
-                    backgroundColor: 'rgba(91,140,255,.12)',
-                    borderWidth: 2,
+                    backgroundColor: 'rgba(91,140,255,.16)',
+                    borderWidth: 3,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    pointBackgroundColor: '#5b8cff',
                     tension: .35,
                     fill: true
                 }]
@@ -165,10 +1114,28 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
+                interaction: {
+                    intersect: false,
+                    mode: 'index'
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: '#111827',
+                        padding: 12,
+                        cornerRadius: 12
+                    }
+                },
                 scales: {
-                    y: { beginAtZero: true, ticks: { precision: 0, color: textMuted }, grid: { color: border } },
-                    x: { ticks: { color: textMuted }, grid: { display: false } }
+                    y: {
+                        beginAtZero: true,
+                        ticks: { precision: 0, color: textMuted },
+                        grid: { color: border }
+                    },
+                    x: {
+                        ticks: { color: textMuted },
+                        grid: { display: false }
+                    }
                 }
             }
         });
@@ -176,29 +1143,65 @@
         new Chart(document.getElementById('pieChart'), {
             type: 'doughnut',
             data: {
-                labels: @Html.Raw(JsonSerializer.Serialize(ViewBag.PieLabels)),
+                labels: pieLabels,
                 datasets: [{
-                    data: @Html.Raw(JsonSerializer.Serialize(ViewBag.PieData)),
-                    backgroundColor: ['#5b8cff', '#3ad58b', '#f5b942', '#ff6577', '#b184ff'],
+                    data: pieData,
+                    backgroundColor: ['#5b8cff', '#3ad58b', '#f5b942', '#ff6577', '#b184ff', '#38bdf8'],
                     borderColor: surface,
-                    borderWidth: 3
+                    borderWidth: 4,
+                    hoverOffset: 8
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 cutout: '68%',
-                plugins: { legend: { position: 'bottom', labels: { color: textMuted } } }
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            color: textMuted,
+                            usePointStyle: true,
+                            padding: 18
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: '#111827',
+                        padding: 12,
+                        cornerRadius: 12
+                    }
+                }
             }
         });
 
-        const map = L.map('heatmap-container').setView([10.762622, 106.660172], 13);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap contributors',
-            maxZoom: 19
+        const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap contributors'
+        });
+
+        const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 19,
+            attribution: '&copy; Esri'
+        });
+
+        const topo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+            maxZoom: 17,
+            attribution: '&copy; OpenTopoMap'
+        });
+
+        const map = L.map('heatmap-container', {
+            zoomControl: true,
+            layers: [osm]
+        }).setView([10.762622, 106.660172], 13);
+
+        L.control.layers({
+            'Bản đồ tiêu chuẩn': osm,
+            'Vệ tinh': satellite,
+            'Địa hình': topo
         }).addTo(map);
-        const rawData = @Html.Raw(JsonSerializer.Serialize(ViewBag.HeatmapData));
-        const poiData = @Html.Raw(JsonSerializer.Serialize(ViewBag.PoiMapData));
+
+        const rawData = @Html.Raw(JsonSerializer.Serialize(ViewBag.HeatmapData ?? Array.Empty<object>()));
+        const poiData = @Html.Raw(JsonSerializer.Serialize(ViewBag.PoiMapData ?? Array.Empty<object>()));
         const mapBounds = [];
 
         const markerClusterGroup = L.markerClusterGroup({
@@ -207,12 +1210,32 @@
             spiderfyOnMaxZoom: true
         });
 
+        const isValidLatLng = (lat, lng) => {
+            const nLat = Number(lat);
+            const nLng = Number(lng);
+
+            return Number.isFinite(nLat)
+                && Number.isFinite(nLng)
+                && nLat >= -90
+                && nLat <= 90
+                && nLng >= -180
+                && nLng <= 180;
+        };
+
         poiData?.forEach(poi => {
-            const position = [poi.latitude, poi.longitude];
-            
+            if (!isValidLatLng(poi.latitude, poi.longitude)) return;
+
+            const lat = Number(poi.latitude);
+            const lng = Number(poi.longitude);
+            const radius = Number(poi.radius) > 0 ? Number(poi.radius) : 50;
+
             let statusClass = 'pending';
-            if (poi.status === 'Approved') statusClass = 'approved';
-            else if (poi.status === 'Rejected') statusClass = 'rejected';
+
+            if (poi.status === 'Approved') {
+                statusClass = 'approved';
+            } else if (poi.status === 'Rejected') {
+                statusClass = 'rejected';
+            }
 
             const customIcon = L.divIcon({
                 className: 'custom-map-icon',
@@ -222,53 +1245,78 @@
                 popupAnchor: [0, -32]
             });
 
-            const marker = L.marker(position, { icon: customIcon });
+            const marker = L.marker([lat, lng], { icon: customIcon });
 
             const popup = document.createElement('div');
+
             const title = document.createElement('strong');
-            title.textContent = poi.name;
+            title.textContent = poi.name ?? `POI #${poi.id}`;
+
             const details = document.createElement('div');
-            details.textContent = `POI #${poi.id} · ${poi.status} · bán kính ${poi.radius} m`;
-            details.style.margin = '5px 0 8px';
+            details.textContent = `POI #${poi.id} · ${poi.status ?? 'Pending'} · bán kính ${radius} m`;
+            details.style.margin = '6px 0 10px';
+            details.style.opacity = '.78';
+
             const editLink = document.createElement('a');
             editLink.href = `/Poi/Edit/${poi.id}`;
             editLink.textContent = 'Mở POI';
+            editLink.style.fontWeight = '800';
+
             popup.append(title, details, editLink);
             marker.bindPopup(popup);
-            
+
             markerClusterGroup.addLayer(marker);
 
-            const color = statusClass === 'approved' ? '#3ad58b' : (statusClass === 'rejected' ? '#ff6577' : '#f5b942');
-            L.circle(position, {
-                radius: poi.radius,
+            const color = statusClass === 'approved'
+                ? '#3ad58b'
+                : statusClass === 'rejected'
+                    ? '#ff6577'
+                    : '#f5b942';
+
+            L.circle([lat, lng], {
+                radius,
                 color,
                 weight: 1,
                 fillColor: color,
                 fillOpacity: .08
             }).addTo(map);
-            mapBounds.push(position);
+
+            mapBounds.push([lat, lng]);
         });
 
         map.addLayer(markerClusterGroup);
 
         if (rawData?.length) {
-            const heatData = rawData.map(point => [point.lat, point.lng, point.intensity]);
-            L.heatLayer(heatData, { radius: 25, blur: 15, maxZoom: 17 }).addTo(map);
-            mapBounds.push(...heatData.map(point => [point[0], point[1]]));
+            const heatData = rawData
+                .filter(point => isValidLatLng(point.lat, point.lng))
+                .map(point => [Number(point.lat), Number(point.lng), Number(point.intensity) || 1]);
+
+            if (heatData.length) {
+                L.heatLayer(heatData, {
+                    radius: 25,
+                    blur: 16,
+                    maxZoom: 17
+                }).addTo(map);
+
+                mapBounds.push(...heatData.map(point => [point[0], point[1]]));
+            }
         }
 
         if (mapBounds.length === 1) {
             map.setView(mapBounds[0], 16);
         } else if (mapBounds.length > 1) {
-            map.fitBounds(new L.LatLngBounds(mapBounds), { padding: [35, 35], maxZoom: 16 });
+            map.fitBounds(new L.LatLngBounds(mapBounds), {
+                padding: [35, 35],
+                maxZoom: 16
+            });
         }
 
-        // Tính năng: Vị trí của tôi
         let adminMarker = null;
         let adminCircle = null;
-        
+
         document.getElementById('btnLocateDashboard')?.addEventListener('click', function () {
             const btn = this;
+
             if (!navigator.geolocation) {
                 alert('Trình duyệt không hỗ trợ định vị.');
                 return;
@@ -289,14 +1337,22 @@
                 } else {
                     const adminIcon = L.divIcon({
                         className: 'custom-map-icon',
-                        html: `<div class="custom-marker" style="background:#3b82f6; border-color:#ffffff;"><i class="fa-solid fa-user-tie"></i></div>`,
+                        html: `<div class="custom-marker admin"><i class="fa-solid fa-user-tie"></i></div>`,
                         iconSize: [32, 32],
                         iconAnchor: [16, 32],
                         popupAnchor: [0, -32]
                     });
-                    
-                    adminMarker = L.marker([lat, lng], { icon: adminIcon }).addTo(map).bindPopup('Vị trí hiện tại của bạn');
-                    adminCircle = L.circle([lat, lng], { radius: acc, color: '#3b82f6', weight: 1, fillOpacity: 0.1 }).addTo(map);
+
+                    adminMarker = L.marker([lat, lng], {
+                        icon: adminIcon
+                    }).addTo(map).bindPopup('Vị trí hiện tại của bạn');
+
+                    adminCircle = L.circle([lat, lng], {
+                        radius: acc,
+                        color: '#5b8cff',
+                        weight: 1,
+                        fillOpacity: 0.1
+                    }).addTo(map);
                 }
 
                 map.setView([lat, lng], 16);
@@ -308,7 +1364,19 @@
                 alert('Lỗi định vị: ' + error.message);
                 btn.innerHTML = '<i class="fa-solid fa-location-crosshairs"></i> Vị trí của tôi';
                 btn.disabled = false;
-            }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 });
+            }, {
+                enableHighAccuracy: true,
+                timeout: 12000,
+                maximumAge: 0
+            });
+        });
+
+        setTimeout(() => {
+            map.invalidateSize();
+        }, 350);
+
+        window.addEventListener('resize', () => {
+            setTimeout(() => map.invalidateSize(), 150);
         });
     </script>
 }

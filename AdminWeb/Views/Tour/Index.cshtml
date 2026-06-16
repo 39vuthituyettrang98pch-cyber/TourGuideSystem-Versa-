@@ -9,6 +9,12 @@
         <div class="page-subtitle">Xây dựng lộ trình, sắp xếp POI và quản lý nội dung đa ngôn ngữ.</div>
     </div>
     <div class="page-actions">
+        <form asp-action="GenerateMissingTranslations" method="post" onsubmit="return confirm('AI sẽ dịch các tour còn thiếu sang toàn bộ ngôn ngữ đang bật. Tiếp tục?');">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-secondary">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> AI dịch còn thiếu
+            </button>
+        </form>
         <a asp-action="ExportExcel" class="btn btn-secondary"><i class="fa-solid fa-file-export"></i> Xuất CSV</a>
         <a asp-action="Create" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Tạo tour</a>
     </div>

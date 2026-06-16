@@ -566,6 +566,30 @@
             align-items: flex-start;
         }
     }
+
+        /* AI Chat Widget Styles */
+        .ai-chat-widget { position: fixed; bottom: 30px; right: 30px; z-index: 9999; }
+        .ai-chat-btn { width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #03131d; border: none; font-size: 26px; cursor: pointer; box-shadow: 0 10px 25px rgba(52, 211, 153, 0.4); transition: 0.3s ease; display: grid; place-items: center; }
+        .ai-chat-btn:hover { transform: scale(1.05); }
+        .ai-chat-window { position: absolute; bottom: 80px; right: 0; width: 360px; height: 500px; background: var(--card); border: 1px solid var(--border); border-radius: 28px; box-shadow: 0 20px 50px rgba(0,0,0,0.3); display: flex; flex-direction: column; overflow: hidden; transition: 0.3s ease; opacity: 1; transform: translateY(0); }
+        .ai-chat-window.hidden { opacity: 0; transform: translateY(20px); pointer-events: none; }
+        .ai-chat-header { padding: 18px 22px; background: linear-gradient(135deg, rgba(52, 211, 153, 0.12), rgba(56, 189, 248, 0.12)); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; font-weight: 900; color: var(--text); }
+        .ai-chat-header button { background: transparent; border: none; color: var(--text); cursor: pointer; font-size: 20px; padding: 4px; }
+        .ai-chat-messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+        .ai-chat-messages::-webkit-scrollbar { width: 6px; }
+        .ai-chat-messages::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.3); border-radius: 10px; }
+        .chat-msg { max-width: 85%; padding: 12px 16px; border-radius: 20px; font-size: 14px; line-height: 1.5; word-wrap: break-word; }
+        .chat-msg.ai { background: rgba(148, 163, 184, 0.1); border: 1px solid var(--border); color: var(--text); align-self: flex-start; border-bottom-left-radius: 4px; }
+        .chat-msg.user { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #03131d; align-self: flex-end; border-bottom-right-radius: 4px; font-weight: 600; }
+        .ai-chat-input { padding: 16px; border-top: 1px solid var(--border); background: var(--surface); display: flex; gap: 10px; align-items: center; }
+        .ai-chat-input input { flex: 1; padding: 12px 16px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); outline: none; font-size: 14px; }
+        .ai-chat-input input:focus { border-color: var(--accent); background: var(--card); }
+        .ai-chat-input button { width: 44px; height: 44px; border-radius: 50%; border: none; background: var(--accent); color: #03131d; cursor: pointer; display: grid; place-items: center; transition: 0.2s; font-size: 16px; flex-shrink: 0; }
+        .ai-chat-input button:hover { background: var(--accent-2); }
+        .chat-typing { font-size: 13px; color: var(--muted); align-self: flex-start; padding: 0 16px; display: none; }
+        .chat-typing.active { display: block; animation: pulse 1.5s infinite; }
+        @@keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
+        @@media (max-width: 480px) { .ai-chat-window { position: fixed; inset: 0; width: 100%; height: 100%; bottom: 0; border-radius: 0; z-index: 10000; border: none; } }
 </style>
 
 <section class="tourist-hero">
@@ -573,7 +597,7 @@
         <div>
             <div class="tourist-eyebrow">
                 <i class="fa-solid fa-sparkles"></i>
-                Web du khách riêng trong Area
+                Web cho du khách 
             </div>
 
             <h1>
@@ -589,6 +613,16 @@
                 <a class="dk-btn dk-btn-primary" asp-area="DuKhach" asp-controller="Map" asp-action="Index">
                     <i class="fa-solid fa-map-location-dot"></i>
                     Mở bản đồ
+                </a>
+
+                <a class="dk-btn dk-btn-ghost" style="background: rgba(148, 163, 184, 0.12); border-color: transparent;" asp-area="DuKhach" asp-controller="Tour" asp-action="Index">
+                    <i class="fa-solid fa-route"></i>
+                    Danh sách Tour
+                </a>
+
+                <a class="dk-btn dk-btn-ghost" style="background: rgba(245, 158, 11, 0.12); color: #d97706; border-color: transparent;" asp-area="DuKhach" asp-controller="Leaderboard" asp-action="Index">
+                    <i class="fa-solid fa-trophy"></i>
+                    Bảng xếp hạng
                 </a>
 
                 @if (!isTourist)
@@ -639,6 +673,92 @@
         </div>
     </div>
 </section>
+
+<!-- Khối Giao Diện AI Chatbox -->
+<div id="aiChatWidget" class="ai-chat-widget">
+    <button id="aiChatBtn" class="ai-chat-btn" aria-label="Mở trợ lý ảo">
+        <i class="fa-solid fa-robot"></i>
+    </button>
+    <div id="aiChatWindow" class="ai-chat-window hidden">
+        <div class="ai-chat-header">
+            <div><i class="fa-solid fa-sparkles" style="color:var(--accent);margin-right:6px;"></i> VERSA AI Guide</div>
+            <button id="aiChatClose"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div id="aiChatMessages" class="ai-chat-messages">
+            <div class="chat-msg ai">Chào bạn! 👋 Mình là trợ lý AI thông minh. Bạn cần gợi ý điểm tham quan hay thắc mắc về chuyến đi nào không?</div>
+            <div id="chatTyping" class="chat-typing">AI đang phản hồi...</div>
+        </div>
+        <div class="ai-chat-input">
+            <input type="text" id="aiChatInputText" placeholder="Nhập câu hỏi..." autocomplete="off" />
+            <button id="aiChatSendBtn"><i class="fa-solid fa-paper-plane"></i></button>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const chatBtn = document.getElementById('aiChatBtn');
+        const chatWindow = document.getElementById('aiChatWindow');
+        const chatClose = document.getElementById('aiChatClose');
+        const chatMessages = document.getElementById('aiChatMessages');
+        const chatInput = document.getElementById('aiChatInputText');
+        const chatSendBtn = document.getElementById('aiChatSendBtn');
+        const chatTyping = document.getElementById('chatTyping');
+
+        chatBtn.addEventListener('click', () => {
+            chatWindow.classList.toggle('hidden');
+            if (!chatWindow.classList.contains('hidden')) {
+                chatInput.focus();
+            }
+        });
+
+        chatClose.addEventListener('click', () => {
+            chatWindow.classList.add('hidden');
+        });
+
+        const addMessage = (text, sender) => {
+            const msg = document.createElement('div');
+            msg.className = `chat-msg ${sender}`;
+            msg.textContent = text;
+            chatMessages.insertBefore(msg, chatTyping);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        };
+
+        const sendMessage = async () => {
+            const text = chatInput.value.trim();
+            if (!text) return;
+
+            addMessage(text, 'user');
+            chatInput.value = '';
+            chatInput.disabled = true;
+            chatSendBtn.disabled = true;
+            chatTyping.classList.add('active');
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            try {
+                const res = await fetch('/DuKhach/Home/AskAI', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: text })
+                });
+                const data = await res.json();
+                addMessage(data.reply || data.message || 'Lỗi kết nối AI.', data.success ? 'ai' : 'ai');
+            } catch (err) {
+                addMessage('Mạng có vấn đề. Vui lòng thử lại sau!', 'ai');
+            } finally {
+                chatTyping.classList.remove('active');
+                chatInput.disabled = false;
+                chatSendBtn.disabled = false;
+                chatInput.focus();
+            }
+        };
+
+        chatSendBtn.addEventListener('click', sendMessage);
+        chatInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+    });
+</script>
 
 <div class="tourist-stats">
     <div class="tourist-stat">

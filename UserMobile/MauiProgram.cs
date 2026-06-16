@@ -35,6 +35,8 @@ public static class MauiProgram
         });
         builder.Services.AddSingleton<IPoiCatalogService, PoiCatalogService>();
         builder.Services.AddSingleton<IExploreCatalogService, ExploreCatalogService>();
+        builder.Services.AddSingleton<IReviewService, ReviewService>();
+        builder.Services.AddSingleton<IAiChatService, AiChatService>();
 
         // Audio
         builder.Services.AddSingleton(AudioManager.Current);
@@ -51,6 +53,7 @@ public static class MauiProgram
         builder.Services.AddTransient<ViewModels.LoginViewModel>();
         builder.Services.AddTransient<ViewModels.RegisterViewModel>();
         builder.Services.AddTransient<ViewModels.PlaceDetailViewModel>();
+        builder.Services.AddSingleton<ViewModels.AiChatViewModel>();
 
         // Pages
         builder.Services.AddTransient<PlaceDetailPage>();
@@ -59,6 +62,7 @@ public static class MauiProgram
         builder.Services.AddTransient<RegisterPage>();
         builder.Services.AddTransient<TourDetailPage>();
         builder.Services.AddTransient<AchievementPage>();
+        builder.Services.AddTransient<AiChatPage>();
 
 #if DEBUG
         builder.Logging.AddDebug();

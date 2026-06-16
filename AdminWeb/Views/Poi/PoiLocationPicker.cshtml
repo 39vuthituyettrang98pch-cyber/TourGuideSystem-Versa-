@@ -1,4 +1,5 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
 
 <style>
     .poi-map-picker {
@@ -123,6 +124,10 @@
         font-size: 10px;
     }
 
+    .leaflet-routing-container {
+        display: none !important;
+    }
+
     /* Style cho Custom Marker Pins */
     .custom-map-icon {
         background: transparent;
@@ -213,6 +218,7 @@
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
 
 <script>
     (function () {
@@ -267,6 +273,7 @@
 
         let adminMarker = null;
         let adminCircle = null;
+        let routingControl = null;
 
         const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
@@ -535,12 +542,47 @@
         });
 
         directionButton?.addEventListener('click', function () {
-            let originUrl = '';
-            if (adminMarker) {
-                const pos = adminMarker.getLatLng();
-                originUrl = `&origin=${pos.lat},${pos.lng}`;
+            if (!adminMarker) {
+                alert('Vui lòng bấm nút "Vị trí hiện tại" trước khi chỉ đường.');
+                locateButton.click();
+                return;
             }
-            window.open(`https://www.google.com/maps/dir/?api=1&destination=${currentLat},${currentLng}${originUrl}`, '_blank');
+
+            if (routingControl) {
+                map.removeControl(routingControl);
+            }
+
+            const startLatLng = adminMarker.getLatLng();
+
+            routingControl = L.Routing.control({
+                waypoints: [
+                    L.latLng(startLatLng.lat, startLatLng.lng),
+                    L.latLng(currentLat, currentLng)
+                ],
+                routeWhileDragging: false,
+                addWaypoints: false,
+                show: false,
+                lineOptions: {
+                    styles: [
+                        { color: '#3b82f6', opacity: 0.9, weight: 6, dashArray: '10, 8' }
+                    ]
+                },
+                createMarker: function () { return null; }
+            }).addTo(map);
+
+            routingControl.on('routesfound', function (e) {
+                const summary = e.routes[0].summary;
+                const distance = summary.totalDistance > 1000
+                    ? (summary.totalDistance / 1000).toFixed(2) + ' km'
+                    : Math.round(summary.totalDistance) + ' m';
+                const totalMinutes = Math.round(summary.totalTime / 60);
+                
+                alert(`📍 Khoảng cách: ${distance}\n⏱ Thời gian dự kiến: ${totalMinutes} phút`);
+            });
+
+            routingControl.on('routingerror', function () {
+                alert('⚠️ Không thể tìm thấy tuyến đường.');
+            });
         });
 
         resetButton?.addEventListener('click', function () {

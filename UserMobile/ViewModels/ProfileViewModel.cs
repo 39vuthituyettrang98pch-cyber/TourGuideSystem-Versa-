@@ -13,6 +13,8 @@ public class ProfileViewModel : BaseViewModel
     private UserProfile? _profile;
     private string _currentLanguage = "Tiếng Việt";
     private AchievementSummary? _achievementSummary;
+    private string _message = string.Empty;
+    private bool _hasMessage;
 
     public string WelcomeText
     {
@@ -50,6 +52,22 @@ public class ProfileViewModel : BaseViewModel
         set => SetProperty(ref _achievementSummary, value);
     }
 
+    public string Message
+    {
+        get => _message;
+        set
+        {
+            SetProperty(ref _message, value);
+            HasMessage = !string.IsNullOrWhiteSpace(value);
+        }
+    }
+
+    public bool HasMessage
+    {
+        get => _hasMessage;
+        set => SetProperty(ref _hasMessage, value);
+    }
+
     public ProfileViewModel(
         ILocalizationService localizationService,
         IAuthService authService,
@@ -81,6 +99,29 @@ public class ProfileViewModel : BaseViewModel
         {
             AchievementSummary = null;
         }
+    }
+
+    public async Task<string> UpdateProfileAsync(string fullName, string email)
+    {
+        var response = await _authService.UpdateProfileAsync(fullName, email);
+        Message = response.Message;
+        if (response.Success)
+            await LoadAsync();
+        return Message;
+    }
+
+    public async Task<string> ChangePasswordAsync(string currentPassword, string newPassword, string confirmPassword)
+    {
+        var response = await _authService.ChangePasswordAsync(currentPassword, newPassword, confirmPassword);
+        Message = response.Message;
+        return Message;
+    }
+
+    public async Task<string> RequestPasswordResetAsync(string email)
+    {
+        var response = await _authService.RequestPasswordResetAsync(email);
+        Message = response.Message;
+        return Message;
     }
 
     public async Task LogoutAsync()

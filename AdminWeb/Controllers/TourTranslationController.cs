@@ -33,6 +33,7 @@ public class TourTranslationController : Controller
         if (!await _context.Tours.AnyAsync(item => item.Id == tourId, cancellationToken))
             return NotFound();
 
+        await LoadLanguagesAsync(cancellationToken);
         return View(new TourTranslation { TourId = tourId });
     }
 
@@ -55,7 +56,10 @@ public class TourTranslationController : Controller
         }
 
         if (!ModelState.IsValid)
+        {
+            await LoadLanguagesAsync(cancellationToken);
             return View(translation);
+        }
 
         translation.Title = translation.Title.Trim();
         _context.TourTranslations.Add(translation);
@@ -125,6 +129,15 @@ public class TourTranslationController : Controller
         await _context.SaveChangesAsync(cancellationToken);
         TempData["SuccessMessage"] = "Đã xóa bản dịch tour.";
         return RedirectToAction(nameof(Index), new { tourId });
+    }
+
+    private async Task LoadLanguagesAsync(CancellationToken cancellationToken)
+    {
+        ViewBag.Languages = await _context.SupportedLanguages
+            .AsNoTracking()
+            .Where(language => language.IsActive)
+            .OrderBy(language => language.LanguageCode)
+            .ToListAsync(cancellationToken);
     }
 
     private Task<bool> TranslationExistsAsync(

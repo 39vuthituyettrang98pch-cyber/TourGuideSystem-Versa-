@@ -7,13 +7,11 @@ namespace UserMobile;
 public partial class AppShell : Shell
 {
     private readonly ILocalizationService _localizationService;
-    private readonly IAuthService _authService;
 
     public AppShell()
     {
         InitializeComponent();
         _localizationService = App.Services?.GetRequiredService<ILocalizationService>() ?? throw new InvalidOperationException("Services not initialized.");
-        _authService = App.Services.GetRequiredService<IAuthService>();
         Routing.RegisterRoute(nameof(LanguageSelectionPage), typeof(LanguageSelectionPage));
         Routing.RegisterRoute(nameof(PlaceDetailPage), typeof(PlaceDetailPage));
         Routing.RegisterRoute(nameof(LoginPage), typeof(LoginPage));
@@ -28,11 +26,8 @@ public partial class AppShell : Shell
         var savedLanguage = await _localizationService.GetSavedLanguageAsync();
         if (savedLanguage is null)
         {
-            App.ShowLanguageSelectionPage(continueToAuthentication: true);
+            App.ShowLanguageSelectionPage(continueToAuthentication: false);
             return;
         }
-
-        if (!await _authService.IsLoggedInAsync())
-            App.ShowLoginPage();
     }
 }
