@@ -32,13 +32,14 @@
             </tr>
         </thead>
         <tbody>
-            @foreach (var category in Model.OrderBy(c => c.Id)) {
+            @foreach (var category in Model.OrderBy(c => c.Id))
+            {
                 var vi = category.Translations.FirstOrDefault(t => t.LanguageCode == "vi");
                 var langCount = category.Translations.Count;
                 var poiCount = category.PoiCategories?.Count ?? 0;
                 <tr>
                     <td>@category.Id</td>
-                    <td>@vi?.Name ?? $"Danh mục #{category.Id}"</td>
+                    <td>@vi?.Name</td>
                     <td>@langCount</td>
                     <td><span class="badge @(category.Status == "active" ? "green" : "red")">@category.Status</span></td>
                     <td>@poiCount</td>
