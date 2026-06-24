@@ -1,7 +1,11 @@
 @model AdminWeb.ViewModels.PoiQrViewModel
 
 @{
-    ViewData["Title"] = $"Mã QR POI #{Model.PoiId}";
+    
+    var currentArea = ViewContext.RouteData.Values["area"]?.ToString() ?? "";
+    var isEditorArea = string.Equals(currentArea, "Editor", StringComparison.OrdinalIgnoreCase);
+    var isAdmin = User.IsInRole("Admin") && !isEditorArea;
+ViewData["Title"] = $"Mã QR POI #{Model.PoiId}";
 }
 
 <div class="qr-page">
@@ -10,12 +14,12 @@
         <div>
             <div class="page-title">Mã QR điểm tham quan</div>
             <div class="page-subtitle">
-                In hoặc tải mã QR để du khách mở POI và ghi nhận lần khám phá.
+                In hoặc tải mã QR để du khách mở trang chi tiết POI trên web.
             </div>
         </div>
 
         <div class="page-actions qr-actions">
-            <a asp-action="QrImage"
+            <a asp-area="@currentArea" asp-action="QrImage"
                asp-route-id="@Model.PoiId"
                asp-route-download="true"
                class="btn btn-primary">
@@ -38,7 +42,7 @@
         <h2 class="qr-title">@Model.PoiName</h2>
 
         <p class="qr-desc">
-            Quét mã để mở nội dung POI và nhận 10 điểm ở lần khám phá đầu tiên.
+            Quét mã để mở trang chi tiết POI trên web. QR không cộng điểm; điểm chỉ được tính khi du khách check-in bằng GPS tại địa điểm.
         </p>
 
         <div class="qr-image-frame">
@@ -56,14 +60,14 @@
     </div>
 
     <div class="qr-page-footer">
-        <a asp-action="Index" class="btn btn-secondary">
+        <a asp-area="@currentArea" asp-action="Index" class="btn btn-secondary">
             <i class="fa-solid fa-arrow-left"></i>
             Quay lại POI
         </a>
 
-        @if (User.IsInRole("Admin"))
+        @if (isAdmin)
         {
-            <form asp-action="RegenerateQr"
+            <form asp-area="@currentArea" asp-action="RegenerateQr"
                   asp-route-id="@Model.PoiId"
                   method="post"
                   onsubmit="return confirm('Tạo lại QR sẽ làm mã đã in trước đó hết hiệu lực. Tiếp tục?');">

@@ -1,6 +1,9 @@
 @model AdminWeb.Models.Poi
 
 @{
+    
+    var currentArea = ViewContext.RouteData.Values["area"]?.ToString() ?? "";
+var isAdmin = User.IsInRole("Admin");
     ViewData["Title"] = "Xóa POI";
 }
 
@@ -12,11 +15,11 @@
         <i class="fa-solid fa-triangle-exclamation"></i> <strong>Cảnh báo:</strong> Bạn có chắc chắn muốn xóa POI có ID <strong>@Model.Id</strong> không? Hành động này sẽ xóa luôn tất cả các bản dịch liên kết và không thể hoàn tác!
     </div>
     
-    <form asp-action="Delete" method="post">
+    <form asp-area="@currentArea" asp-action="Delete" method="post">
         @Html.AntiForgeryToken()
         <div style="display:flex;gap:12px;flex-wrap:wrap;">
             <button type="submit" class="btn btn-danger"><i class="fa-solid fa-trash"></i> Xác nhận xóa</button>
-            <a asp-action="Index" class="btn btn-secondary">Hủy bỏ</a>
+            <a asp-area="@currentArea" asp-action="Index" class="btn btn-secondary">Hủy bỏ</a>
         </div>
     </form>
 </div>

@@ -1,0 +1,7 @@
+@model IEnumerable<AdminWeb.Models.PoiReview>
+@{
+    ViewData["Title"] = "Đánh giá & bình luận";
+}
+<div class="owner-card"><table class="owner-table"><thead><tr><th>POI</th><th>Du khách</th><th>Sao</th><th>Bình luận</th><th>Ngày</th></tr></thead><tbody>
+@foreach (var review in Model){var poiName=review.Poi?.Translations.FirstOrDefault(t=>t.LanguageCode=="vi")?.Name ?? $"POI #{review.PoiId}";<tr><td>@poiName</td><td>@(review.Tourist?.FullName ?? review.Tourist?.Email)</td><td>@review.Rating ★</td><td>@review.Comment</td><td>@review.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td></tr>}
+</tbody></table></div>

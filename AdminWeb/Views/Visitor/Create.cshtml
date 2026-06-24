@@ -22,7 +22,7 @@
                 </p>
             </div>
 
-            <form asp-action="Create" method="post" autocomplete="off">
+            <form asp-area="" asp-action="Create" method="post" autocomplete="off">
                 <div class="form-grid">
                     
                     <!-- Bỏ class 'full' để Họ tên và Email chia làm 2 cột -->
@@ -63,7 +63,7 @@
 
                 <!-- Cụm nút căn phải -->
                 <div style="display: flex; gap: 12px; justify-content: flex-end;">
-                    <a asp-action="Index" class="btn btn-secondary">
+                    <a asp-area="" asp-action="Index" class="btn btn-secondary">
                         Hủy bỏ
                     </a>
                     <button type="submit" class="btn btn-primary">

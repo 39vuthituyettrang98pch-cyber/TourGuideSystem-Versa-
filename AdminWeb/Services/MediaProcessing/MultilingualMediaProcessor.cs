@@ -151,8 +151,18 @@ public sealed class MultilingualMediaProcessor : IMultilingualMediaProcessor
                 translation.AudioUrl = null;
                 translation.UpdatedAt = DateTime.UtcNow;
 
-                // Save translated text even if Edge-TTS fails afterward.
+                // Save translated text even if Edge-TTS is unavailable or fails afterward.
                 await dbContext.SaveChangesAsync(cancellationToken);
+
+                if (string.IsNullOrWhiteSpace(language.EdgeTtsVoice))
+                {
+                    successfulLanguages++;
+                    _logger.LogInformation(
+                        "Saved text translation for POI {PoiId}, language {LanguageCode}. Edge-TTS voice is empty, so audio generation was skipped.",
+                        request.PoiId,
+                        language.LanguageCode);
+                    continue;
+                }
 
                 var generatedAudio = await GenerateAudioAsync(
                     request.PoiId,
@@ -306,6 +316,16 @@ public sealed class MultilingualMediaProcessor : IMultilingualMediaProcessor
                     translation.VideoUrl = null;
                     translation.UpdatedAt = DateTime.UtcNow;
                     await dbContext.SaveChangesAsync(cancellationToken);
+
+                    if (string.IsNullOrWhiteSpace(language.EdgeTtsVoice))
+                    {
+                        successfulLanguages++;
+                        _logger.LogInformation(
+                            "Saved video text/narration translation for POI {PoiId}, language {LanguageCode}. Edge-TTS voice is empty, so audio/video dubbing was skipped.",
+                            request.PoiId,
+                            language.LanguageCode);
+                        continue;
+                    }
 
                     var generatedAudio = await GenerateAudioAsync(
                         request.PoiId,
@@ -479,6 +499,7 @@ public sealed class MultilingualMediaProcessor : IMultilingualMediaProcessor
              Rules:
              - Preserve the original meaning and factual information.
              - Use natural language suitable for a tourism audio guide.
+             - Translate the "name" field into the target language too. For well-known landmarks, use the common localized name in that language. Do not keep English/Vietnamese names for Chinese, Japanese or Korean unless it is a brand name with no localized form.
              - Do not add explanations or new facts.
              - Return only one JSON object with exactly these string fields:
                "name", "shortDescription", "fullDescription".
@@ -588,6 +609,7 @@ public sealed class MultilingualMediaProcessor : IMultilingualMediaProcessor
              Rules:
              - Preserve all factual information and the original meaning.
              - Write natural narration suitable for a tourism dubbed video.
+             - Translate the "name" field into the target language too. For well-known landmarks, use the common localized name in that language. Do not keep English/Vietnamese names for Chinese, Japanese or Korean unless it is a brand name with no localized form.
              - Do not add explanations or new facts.
              - Return only one JSON object with exactly these string fields:
                "name", "shortDescription", "fullDescription", "narration".

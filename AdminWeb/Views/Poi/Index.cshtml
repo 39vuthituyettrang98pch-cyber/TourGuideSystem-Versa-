@@ -1,25 +1,38 @@
 @model IEnumerable<AdminWeb.Models.Poi>
 @{
     ViewData["Title"] = "Điểm tham quan";
+    var currentArea = ViewContext.RouteData.Values["area"]?.ToString() ?? "";
+    var isEditorArea = string.Equals(currentArea, "Editor", StringComparison.OrdinalIgnoreCase);
+    var isAdmin = User.IsInRole("Admin") && !isEditorArea;
+    var poiRoutePrefix = string.Equals(currentArea, "Editor", StringComparison.OrdinalIgnoreCase)
+        ? "/Areas/Editor/Poi"
+        : "/Admin/Poi";
+    var poiMapDataUrl = string.Equals(currentArea, "Editor", StringComparison.OrdinalIgnoreCase)
+        ? "/Areas/Editor/Poi/MapData"
+        : "/Admin/Poi/MapData";
 }
 
 <div class="page-heading">
     <div>
         <div class="page-title">Điểm tham quan</div>
-        <div class="page-subtitle">Quản lý nội dung gốc, bản dịch, media, danh mục và trạng thái phê duyệt.</div>
+        <div class="page-subtitle">
+            @(isAdmin
+                ? "Quản lý nội dung gốc, bản dịch, media, danh mục và trạng thái phê duyệt."
+                : "Biên tập POI, chọn vị trí trên bản đồ và gửi nội dung sang quy trình kiểm duyệt.")
+        </div>
     </div>
     <div class="page-actions">
-        <a asp-action="ExportExcel" class="btn btn-secondary">
+        <a asp-area="@currentArea" asp-action="ExportExcel" class="btn btn-secondary">
             <i class="fa-solid fa-file-export"></i> Xuất CSV
         </a>
-        <a asp-action="Create" class="btn btn-primary">
+        <a asp-area="@currentArea" asp-action="Create" class="btn btn-primary">
             <i class="fa-solid fa-plus"></i> Tạo POI
         </a>
     </div>
 </div>
 
 <div class="toolbar">
-    <form asp-action="Index" method="get">
+    <form asp-area="@currentArea" asp-action="Index" method="get">
         <input type="search"
                name="searchString"
                value="@ViewBag.SearchString"
@@ -32,21 +45,21 @@
 
         @if (!string.IsNullOrWhiteSpace(ViewBag.SearchString as string))
         {
-            <a asp-action="Index" class="btn btn-secondary">
+            <a asp-area="@currentArea" asp-action="Index" class="btn btn-secondary">
                 <i class="fa-solid fa-xmark"></i>
             </a>
         }
     </form>
 
-    @if (User.IsInRole("Admin"))
+    @if (isAdmin)
     {
-        <a asp-controller="Approval" asp-action="PoiPending" class="btn btn-secondary">
+        <a asp-area="@currentArea" asp-controller="Approval" asp-action="PoiPending" class="btn btn-secondary">
             <i class="fa-solid fa-circle-check"></i> POI chờ duyệt
         </a>
     }
 </div>
 
-<div class="card admin-map-card">
+<div class="card admin-map-card" id="poi-map-overview">
     <div class="admin-map-header">
         <div>
             <div class="card-title">
@@ -67,7 +80,11 @@
                 <i class="fa-solid fa-location-crosshairs"></i> Vị trí của tôi
             </button>
 
-            <a asp-action="Create" class="btn btn-primary btn-sm">
+            <a href="/Areas/DuKhach/Map" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">
+                <i class="fa-solid fa-eye"></i> Xem như du khách
+            </a>
+
+            <a asp-area="@currentArea" asp-action="Create" class="btn btn-primary btn-sm">
                 <i class="fa-solid fa-plus"></i> Tạo POI mới
             </a>
         </div>
@@ -183,14 +200,14 @@
 
                         <td>
                             <div class="actions">
-                                <a asp-action="Edit"
+                                <a asp-area="@currentArea" asp-action="Edit"
                                    asp-route-id="@poi.Id"
                                    class="btn btn-secondary btn-sm"
                                    title="Thông số">
                                     <i class="fa-solid fa-pen"></i>
                                 </a>
 
-                                <a asp-controller="PoiTranslation"
+                                <a asp-area="@currentArea" asp-controller="PoiTranslation"
                                    asp-action="Index"
                                    asp-route-poiId="@poi.Id"
                                    class="btn btn-secondary btn-sm"
@@ -198,14 +215,14 @@
                                     <i class="fa-solid fa-language"></i>
                                 </a>
 
-                                <a asp-action="ManageCategories"
+                                <a asp-area="@currentArea" asp-action="ManageCategories"
                                    asp-route-id="@poi.Id"
                                    class="btn btn-secondary btn-sm"
                                    title="Danh mục">
                                     <i class="fa-solid fa-tags"></i>
                                 </a>
 
-                                <a asp-controller="Media"
+                                <a asp-area="@currentArea" asp-controller="Media"
                                    asp-action="Index"
                                    asp-route-poiId="@poi.Id"
                                    class="btn btn-secondary btn-sm"
@@ -213,22 +230,25 @@
                                     <i class="fa-solid fa-photo-film"></i>
                                 </a>
 
-                                <a asp-action="QrCode"
+                                <a asp-area="@currentArea" asp-action="QrCode"
                                    asp-route-id="@poi.Id"
                                    class="btn btn-secondary btn-sm"
                                    title="Mã QR">
                                     <i class="fa-solid fa-qrcode"></i>
                                 </a>
 
-                                <form asp-action="Delete"
-                                      method="post"
-                                      onsubmit="return confirm('Xóa POI này và toàn bộ dữ liệu liên quan?');">
-                                    @Html.AntiForgeryToken()
-                                    <input type="hidden" name="id" value="@poi.Id" />
-                                    <button type="submit" class="btn btn-danger btn-sm" title="Xóa">
-                                        <i class="fa-solid fa-trash"></i>
-                                    </button>
-                                </form>
+                                @if (isAdmin)
+                                {
+                                    <form asp-area="@currentArea" asp-action="Delete"
+                                          method="post"
+                                          onsubmit="return confirm('Xóa POI này và toàn bộ dữ liệu liên quan?');">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@poi.Id" />
+                                        <button type="submit" class="btn btn-danger btn-sm" title="Xóa">
+                                            <i class="fa-solid fa-trash"></i>
+                                        </button>
+                                    </form>
+                                }
                             </div>
                         </td>
                     </tr>
@@ -242,7 +262,7 @@
                             <i class="fa-solid fa-map-location-dot"></i>
                             <h2>Chưa có POI phù hợp</h2>
                             <p>Tạo POI đầu tiên hoặc thay đổi từ khóa tìm kiếm.</p>
-                            <a asp-action="Create" class="btn btn-primary">Tạo POI</a>
+                            <a asp-area="@currentArea" asp-action="Create" class="btn btn-primary">Tạo POI</a>
                         </div>
                     </td>
                 </tr>
@@ -256,7 +276,7 @@
     <nav style="margin-top:16px">
         <ul class="pagination justify-content-center">
             <li class="page-item @(ViewBag.CurrentPage == 1 ? "disabled" : "")">
-                <a class="page-link"
+                <a asp-area="@currentArea" class="page-link"
                    asp-action="Index"
                    asp-route-page="@(ViewBag.CurrentPage - 1)"
                    asp-route-searchString="@ViewBag.SearchString">
@@ -269,7 +289,7 @@
             </li>
 
             <li class="page-item @(ViewBag.CurrentPage == totalPages ? "disabled" : "")">
-                <a class="page-link"
+                <a asp-area="@currentArea" class="page-link"
                    asp-action="Index"
                    asp-route-page="@(ViewBag.CurrentPage + 1)"
                    asp-route-searchString="@ViewBag.SearchString">
@@ -585,6 +605,24 @@
         .custom-marker.pending { background: #f59e0b; }
         .custom-marker.rejected { background: #ef4444; }
 
+        .current-user-marker {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: linear-gradient(180deg, #4f8cff 0%, #2f6df6 100%);
+            border: 3px solid #ffffff;
+            box-shadow: 0 10px 24px rgba(47, 109, 246, 0.35);
+            color: #ffffff;
+            font-size: 15px;
+        }
+
+        .current-user-marker i {
+            transform: none;
+        }
+
         @@media (max-width: 1100px) {
             .admin-map-layout {
                 grid-template-columns: 1fr;
@@ -627,7 +665,11 @@
                 Rejected: '#ef4444'
             };
 
-            let allPois = [];
+            const embeddedPoiMapData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(ViewBag.PoiMapData ?? Array.Empty<object>()));
+            const poiRoutePrefix = '@poiRoutePrefix';
+            const poiMapDataUrl = '@poiMapDataUrl';
+
+            let allPois = Array.isArray(embeddedPoiMapData) ? embeddedPoiMapData : [];
             let currentStatus = 'all';
             let bounds = [];
             let markerItems = [];
@@ -885,8 +927,8 @@
                                     ${overlapWarning}
                                 </div>
                                 <div class="admin-popup-actions">
-                                    <a href="/Poi/Edit/${poi.id}">Sửa POI</a>
-                                    <a href="/Poi/QrCode/${poi.id}">Mã QR</a>
+                                    <a href="${poiRoutePrefix}/Edit/${poi.id}">Sửa POI</a>
+                                    <a href="${poiRoutePrefix}/QrCode/${poi.id}">Mã QR</a>
                                     <a href="#" onclick="showRouteToPoi(${lat}, ${lng}); return false;">Chỉ đường</a>
                                     <a href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}${directionOrigin}" target="_blank" title="Mở Google Maps"><i class="fa-brands fa-google"></i></a>
                                 </div>
@@ -939,8 +981,15 @@
             }
 
             async function loadPois() {
+                // Ưu tiên dữ liệu đã render sẵn từ server. Cách này tránh lỗi 404/redirect khi AJAX
+                // gọi /Admin/Poi/MapData trong lúc trình duyệt còn cookie cũ của portal khác.
+                if (Array.isArray(allPois) && allPois.length > 0) {
+                    renderMap();
+                    return;
+                }
+
                 try {
-                    const response = await fetch('@Url.Action("MapData", "Poi")');
+                    const response = await fetch(poiMapDataUrl, { credentials: 'same-origin' });
 
                     if (!response.ok) {
                         throw new Error('Không tải được dữ liệu bản đồ.');
@@ -952,11 +1001,13 @@
                 } catch (error) {
                     console.error(error);
 
+                    fitMap();
+
                     if (listEl) {
                         listEl.innerHTML = `
                             <div class="admin-map-loading">
                                 <i class="fa-solid fa-triangle-exclamation"></i>
-                                Không tải được dữ liệu map. Kiểm tra action /Poi/MapData trong PoiController.
+                                Chưa có dữ liệu POI để hiển thị trên bản đồ hoặc phiên đăng nhập đã cũ. Hãy tải lại trang bằng Ctrl + F5.
                             </div>
                         `;
                     }
@@ -1026,7 +1077,7 @@
                         } else {
                             const adminIcon = L.divIcon({
                                 className: 'custom-map-icon',
-                                html: `<div class="custom-marker" style="background:#3b82f6; border-color:#ffffff;"><i class="fa-solid fa-user-tie"></i></div>`,
+                                html: `<div class="current-user-marker"><i class="fa-solid fa-user"></i></div>`,
                                 iconSize: [32, 32],
                                 iconAnchor: [16, 32],
                                 popupAnchor: [0, -32]

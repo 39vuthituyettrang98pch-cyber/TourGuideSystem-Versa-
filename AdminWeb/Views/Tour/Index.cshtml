@@ -1,5 +1,7 @@
 @model IEnumerable<AdminWeb.Models.Tour>
 @{
+    var currentArea = ViewContext.RouteData.Values["area"]?.ToString() ?? "";
+    var isAdmin = User.IsInRole("Admin");
     ViewData["Title"] = "Tour du lịch";
 }
 
@@ -9,24 +11,24 @@
         <div class="page-subtitle">Xây dựng lộ trình, sắp xếp POI và quản lý nội dung đa ngôn ngữ.</div>
     </div>
     <div class="page-actions">
-        <form asp-action="GenerateMissingTranslations" method="post" onsubmit="return confirm('AI sẽ dịch các tour còn thiếu sang toàn bộ ngôn ngữ đang bật. Tiếp tục?');">
+        <form asp-area="@currentArea" asp-action="GenerateMissingTranslations" method="post" onsubmit="return confirm('AI sẽ dịch các tour còn thiếu sang toàn bộ ngôn ngữ đang bật. Tiếp tục?');">
             @Html.AntiForgeryToken()
             <button type="submit" class="btn btn-secondary">
                 <i class="fa-solid fa-wand-magic-sparkles"></i> AI dịch còn thiếu
             </button>
         </form>
-        <a asp-action="ExportExcel" class="btn btn-secondary"><i class="fa-solid fa-file-export"></i> Xuất CSV</a>
-        <a asp-action="Create" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Tạo tour</a>
+        <a asp-area="@currentArea" asp-action="ExportExcel" class="btn btn-secondary"><i class="fa-solid fa-file-export"></i> Xuất CSV</a>
+        <a asp-area="@currentArea" asp-action="Create" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Tạo tour</a>
     </div>
 </div>
 
 <div class="toolbar">
-    <form asp-action="Index" method="get">
+    <form asp-area="@currentArea" asp-action="Index" method="get">
         <input type="search" name="searchString" value="@ViewBag.SearchString" class="form-control" placeholder="Tìm theo tên tour..." />
         <button type="submit" class="btn btn-secondary"><i class="fa-solid fa-magnifying-glass"></i> Tìm</button>
         @if (!string.IsNullOrWhiteSpace(ViewBag.SearchString as string))
         {
-            <a asp-action="Index" class="btn btn-secondary"><i class="fa-solid fa-xmark"></i></a>
+            <a asp-area="@currentArea" asp-action="Index" class="btn btn-secondary"><i class="fa-solid fa-xmark"></i></a>
         }
     </form>
 </div>
@@ -38,7 +40,7 @@
             <i class="fa-solid fa-route"></i>
             <h2>Chưa có tour phù hợp</h2>
             <p>Tạo tour đầu tiên để tổ chức các điểm tham quan thành một lộ trình.</p>
-            <a asp-action="Create" class="btn btn-primary">Tạo tour</a>
+            <a asp-area="@currentArea" asp-action="Create" class="btn btn-primary">Tạo tour</a>
         </div>
     </div>
 }
@@ -66,14 +68,17 @@ else
                     <div class="tour-card-stats">
                         <span>@tour.CreatedAt.ToString("dd/MM/yyyy")</span>
                         <div class="actions" style="margin-left:auto">
-                            <a asp-action="Edit" asp-route-id="@tour.Id" class="btn btn-secondary btn-sm" title="Chỉnh sửa"><i class="fa-solid fa-pen"></i></a>
-                            <a asp-controller="TourTranslation" asp-action="Index" asp-route-tourId="@tour.Id" class="btn btn-secondary btn-sm" title="Bản dịch"><i class="fa-solid fa-language"></i></a>
-                            <a asp-action="ManagePois" asp-route-id="@tour.Id" class="btn btn-secondary btn-sm" title="Lộ trình"><i class="fa-solid fa-list-ol"></i></a>
-                            <form asp-action="Delete" method="post" onsubmit="return confirm('Xóa tour này?');">
+                            <a asp-area="@currentArea" asp-action="Edit" asp-route-id="@tour.Id" class="btn btn-secondary btn-sm" title="Chỉnh sửa"><i class="fa-solid fa-pen"></i></a>
+                            <a asp-area="@currentArea" asp-controller="TourTranslation" asp-action="Index" asp-route-tourId="@tour.Id" class="btn btn-secondary btn-sm" title="Bản dịch"><i class="fa-solid fa-language"></i></a>
+                            <a asp-area="@currentArea" asp-action="ManagePois" asp-route-id="@tour.Id" class="btn btn-secondary btn-sm" title="Lộ trình"><i class="fa-solid fa-list-ol"></i></a>
+                            @if (isAdmin)
+                            {
+                            <form asp-area="@currentArea" asp-action="Delete" method="post" onsubmit="return confirm('Xóa tour này?');">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="id" value="@tour.Id" />
                                 <button type="submit" class="btn btn-danger btn-sm" title="Xóa"><i class="fa-solid fa-trash"></i></button>
                             </form>
+                            }
                         </div>
                     </div>
                 </div>
@@ -86,9 +91,9 @@ else
 {
     <nav style="margin-top:18px">
         <ul class="pagination justify-content-center">
-            <li class="page-item @(ViewBag.CurrentPage == 1 ? "disabled" : "")"><a class="page-link" asp-action="Index" asp-route-page="@(ViewBag.CurrentPage - 1)" asp-route-searchString="@ViewBag.SearchString">Trước</a></li>
+            <li class="page-item @(ViewBag.CurrentPage == 1 ? "disabled" : "")"><a asp-area="@currentArea" class="page-link" asp-action="Index" asp-route-page="@(ViewBag.CurrentPage - 1)" asp-route-searchString="@ViewBag.SearchString">Trước</a></li>
             <li class="page-item disabled"><span class="page-link">Trang @ViewBag.CurrentPage / @totalPages</span></li>
-            <li class="page-item @(ViewBag.CurrentPage == totalPages ? "disabled" : "")"><a class="page-link" asp-action="Index" asp-route-page="@(ViewBag.CurrentPage + 1)" asp-route-searchString="@ViewBag.SearchString">Sau</a></li>
+            <li class="page-item @(ViewBag.CurrentPage == totalPages ? "disabled" : "")"><a asp-area="@currentArea" class="page-link" asp-action="Index" asp-route-page="@(ViewBag.CurrentPage + 1)" asp-route-searchString="@ViewBag.SearchString">Sau</a></li>
         </ul>
     </nav>
 }

@@ -1,5 +1,6 @@
 @model AdminWeb.Models.PoiTranslation
 @{
+    var currentArea = ViewContext.RouteData.Values["area"]?.ToString() ?? "";
     ViewData["Title"] = "Chi tiết bản dịch POI";
 }
 
@@ -9,10 +10,10 @@
         <div class="page-subtitle">@Model.Name</div>
     </div>
     <div class="page-actions">
-        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">
+        <a asp-area="@currentArea" asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">
             <i class="fa-solid fa-pen"></i> Chỉnh sửa
         </a>
-        <a asp-action="Index" asp-route-poiId="@Model.PoiId" class="btn btn-secondary">
+        <a asp-area="@currentArea" asp-action="Index" asp-route-poiId="@Model.PoiId" class="btn btn-secondary">
             <i class="fa-solid fa-arrow-left"></i> Quay lại
         </a>
     </div>

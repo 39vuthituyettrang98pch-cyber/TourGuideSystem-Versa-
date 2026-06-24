@@ -1,6 +1,8 @@
 using AdminWeb.Areas.DuKhach.Models;
 using AdminWeb.Data;
 using AdminWeb.Models;
+using AdminWeb.Services;
+using AdminWeb.Services.Payments;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -15,10 +17,12 @@ public sealed class MapController : Controller
     private const string FallbackLanguageCode = "vi";
 
     private readonly AppDbContext _context;
+    private readonly TouristAudioQuotaService _audioQuota;
 
-    public MapController(AppDbContext context)
+    public MapController(AppDbContext context, TouristAudioQuotaService audioQuota)
     {
         _context = context;
+        _audioQuota = audioQuota;
     }
 
     [AllowAnonymous]
@@ -54,6 +58,15 @@ public sealed class MapController : Controller
             : new List<int>();
         var bookmarkedSet = favoriteIds.ToHashSet();
 
+        var hasPremiumActive = touristId.HasValue
+            && await HasActivePremiumAsync(touristId.Value, cancellationToken);
+        var audioQuota = touristId.HasValue
+            ? await _audioQuota.GetStatusAsync(touristId.Value, cancellationToken)
+            : null;
+
+        var featuredOwnerIds = await GetFeaturedOwnerIdsAsync(cancellationToken);
+        var featuredPoiIds = await GetFeaturedPoiIdsAsync(featuredOwnerIds, cancellationToken);
+
         var allReviews = await _context.Set<PoiReview>()
             .AsNoTracking()
             .Include(review => review.Tourist)
@@ -67,19 +80,24 @@ public sealed class MapController : Controller
         var pois = await _context.Pois
             .AsNoTracking()
             .Include(item => item.Translations)
+            .Include(item => item.OwnerProfile)
             .Where(item =>
                 item.Status == "Approved" &&
                 item.Latitude >= -90 && item.Latitude <= 90 &&
                 item.Longitude >= -180 && item.Longitude <= 180)
             .OrderByDescending(item => item.CreatedAt)
-            .AsSplitQuery()
             .ToListAsync(cancellationToken);
 
         var model = new DuKhachMapViewModel
         {
             IsTouristSignedIn = touristId.HasValue,
+            HasPremiumActive = hasPremiumActive,
+            AudioDailyLimit = TouristAudioQuotaService.FreeDailyLimit,
+            AudioPlaysUsedToday = audioQuota?.UsedToday ?? 0,
+            AudioPlaysRemainingToday = audioQuota?.RemainingToday,
             DiscoveredCount = discoveredSet.Count,
             TotalPoiCount = pois.Count,
+            FeaturedPoiCount = pois.Count(item => IsFeaturedPoi(item, featuredOwnerIds, featuredPoiIds)),
             SelectedLanguageCode = selectedLanguageCode,
             SelectedLanguageName = selectedLanguageName,
             Languages = activeLanguages
@@ -134,6 +152,8 @@ public sealed class MapController : Controller
                     Longitude = (double)item.Longitude,
                     Radius = item.Radius,
                     IsDiscovered = discoveredSet.Contains(item.Id),
+                    IsFeatured = IsFeaturedPoi(item, featuredOwnerIds, featuredPoiIds),
+                    OwnerBusinessName = item.OwnerProfile?.BusinessName,
                     IsBookmarked = bookmarkedSet.Contains(item.Id),
                     AverageRating = reviewsByPoi.TryGetValue(item.Id, out var ratingReviews) && ratingReviews.Count > 0
                         ? ratingReviews.Average(review => review.Rating)
@@ -152,7 +172,143 @@ public sealed class MapController : Controller
                         }).ToList()
                         : new List<DuKhachReviewViewModel>()
                 };
-            }).ToList()
+            })
+            .OrderByDescending(item => item.IsFeatured)
+            .ThenByDescending(item => item.AverageRating)
+            .ThenBy(item => item.Name)
+            .ToList()
+        };
+
+        return View(model);
+    }
+
+    [AllowAnonymous]
+    [HttpGet]
+    public async Task<IActionResult> Details(int id, string? lang = null, CancellationToken cancellationToken = default)
+    {
+        var activeLanguages = await GetActiveLanguagesAsync(cancellationToken);
+        var selectedLanguageCode = GetSelectedLanguageCode(activeLanguages.Keys);
+        if (!string.IsNullOrWhiteSpace(lang))
+        {
+            var normalizedLang = NormalizeLanguageCode(lang);
+            if (activeLanguages.ContainsKey(normalizedLang))
+                selectedLanguageCode = normalizedLang;
+        }
+
+        var selectedLanguageName = activeLanguages.TryGetValue(selectedLanguageCode, out var languageName)
+            ? languageName
+            : activeLanguages.GetValueOrDefault("vi", "Tiếng Việt");
+
+        ViewBag.SelectedLanguageCode = selectedLanguageCode;
+        ViewBag.SelectedLanguageName = selectedLanguageName;
+
+        var touristId = TryGetTouristId();
+        var isDiscovered = touristId.HasValue && await _context.TouristPoiDiscoveries
+            .AsNoTracking()
+            .AnyAsync(item => item.TouristId == touristId.Value && item.PoiId == id, cancellationToken);
+        var isBookmarked = touristId.HasValue && await _context.TouristFavorites
+            .AsNoTracking()
+            .AnyAsync(item => item.TouristId == touristId.Value && item.TargetType == "POI" && item.TargetId == id, cancellationToken);
+        var hasPremiumActive = touristId.HasValue
+            && await HasActivePremiumAsync(touristId.Value, cancellationToken);
+        var audioQuota = touristId.HasValue
+            ? await _audioQuota.GetStatusAsync(touristId.Value, cancellationToken)
+            : null;
+
+        var featuredOwnerIds = await GetFeaturedOwnerIdsAsync(cancellationToken);
+        var featuredPoiIds = await GetFeaturedPoiIdsAsync(featuredOwnerIds, cancellationToken);
+
+        var poi = await _context.Pois
+            .AsNoTracking()
+            .Include(item => item.Translations)
+            .Include(item => item.OwnerProfile)
+            .FirstOrDefaultAsync(item =>
+                item.Id == id &&
+                item.Status == "Approved" &&
+                item.Latitude >= -90 && item.Latitude <= 90 &&
+                item.Longitude >= -180 && item.Longitude <= 180,
+                cancellationToken);
+
+        if (poi == null)
+            return NotFound();
+
+        var poiReviews = await _context.Set<PoiReview>()
+            .AsNoTracking()
+            .Include(review => review.Tourist)
+            .Where(review => review.PoiId == id)
+            .OrderByDescending(review => review.CreatedAt)
+            .ToListAsync(cancellationToken);
+
+        var narrations = poi.Translations
+            .Where(translation => !string.IsNullOrWhiteSpace(translation.LanguageCode))
+            .OrderBy(translation => translation.LanguageCode == selectedLanguageCode ? 0 : translation.LanguageCode == "vi" ? 1 : 2)
+            .ThenBy(translation => translation.LanguageCode)
+            .Select(translation => new DuKhachPoiNarrationViewModel
+            {
+                LanguageCode = NormalizeLanguageCode(translation.LanguageCode),
+                LanguageName = activeLanguages.GetValueOrDefault(NormalizeLanguageCode(translation.LanguageCode), translation.LanguageCode.ToUpperInvariant()),
+                Name = translation.Name,
+                ShortDescription = translation.ShortDescription ?? "",
+                FullDescription = translation.FullDescription ?? "",
+                NarrationText = !string.IsNullOrWhiteSpace(translation.TtsScript)
+                    ? translation.TtsScript!
+                    : translation.FullDescription ?? translation.ShortDescription ?? translation.Name,
+                AudioUrl = ToAbsoluteUrl(translation.AudioUrl),
+                VideoUrl = ToAbsoluteUrl(translation.VideoUrl)
+            })
+            .GroupBy(item => item.LanguageCode, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
+            .ToList();
+
+        narrations = EnsureNarrationsForAllActiveLanguages(narrations, activeLanguages);
+        var selectedNarration = SelectNarration(narrations, selectedLanguageCode);
+
+        var model = new DuKhachPoiDetailsPageViewModel
+        {
+            IsTouristSignedIn = touristId.HasValue,
+            HasPremiumActive = hasPremiumActive,
+            AudioDailyLimit = TouristAudioQuotaService.FreeDailyLimit,
+            AudioPlaysUsedToday = audioQuota?.UsedToday ?? 0,
+            AudioPlaysRemainingToday = audioQuota?.RemainingToday,
+            SelectedLanguageCode = selectedLanguageCode,
+            SelectedLanguageName = selectedLanguageName,
+            Languages = activeLanguages
+                .Select(item => new DuKhachLanguageOptionViewModel { Code = item.Key, Name = item.Value })
+                .OrderBy(item => item.Code == "vi" ? 0 : item.Code == "en" ? 1 : 2)
+                .ThenBy(item => item.Name)
+                .ToList(),
+            Poi = new DuKhachPoiMapItemViewModel
+            {
+                Id = poi.Id,
+                Name = selectedNarration?.Name ?? $"POI #{poi.Id}",
+                ShortDescription = selectedNarration?.ShortDescription ?? "",
+                FullDescription = selectedNarration?.FullDescription ?? "",
+                NarrationText = selectedNarration?.NarrationText ?? "",
+                LanguageCode = selectedNarration?.LanguageCode ?? selectedLanguageCode,
+                LanguageName = selectedNarration?.LanguageName ?? selectedLanguageName,
+                CoverImageUrl = ToAbsoluteUrl(poi.CoverImageUrl),
+                AudioUrl = selectedNarration?.AudioUrl,
+                VideoUrl = selectedNarration?.VideoUrl,
+                Latitude = (double)poi.Latitude,
+                Longitude = (double)poi.Longitude,
+                Radius = poi.Radius,
+                IsDiscovered = isDiscovered,
+                IsFeatured = IsFeaturedPoi(poi, featuredOwnerIds, featuredPoiIds),
+                OwnerBusinessName = poi.OwnerProfile?.BusinessName,
+                IsBookmarked = isBookmarked,
+                AverageRating = poiReviews.Count > 0 ? poiReviews.Average(review => review.Rating) : 0,
+                RatingCount = poiReviews.Count,
+                Narrations = narrations,
+                Reviews = poiReviews.Select(review => new DuKhachReviewViewModel
+                {
+                    TouristName = string.IsNullOrWhiteSpace(review.Tourist?.FullName)
+                        ? $"Du khách #{review.TouristId}"
+                        : review.Tourist.FullName,
+                    Rating = review.Rating,
+                    Comment = review.Comment,
+                    CreatedAt = review.CreatedAt
+                }).ToList()
+            }
         };
 
         return View(model);
@@ -174,7 +330,10 @@ public sealed class MapController : Controller
             return BadRequest(new { success = false, message = "POI không tồn tại hoặc chưa được duyệt." });
 
         if (!request.Latitude.HasValue || !request.Longitude.HasValue)
-            return BadRequest(new { success = false, message = "Cần bật vị trí để check-in trên bản đồ." });
+            return BadRequest(new { success = false, message = "Vui lòng bật GPS và cấp quyền vị trí để check-in." });
+
+        if (request.Latitude.Value is < -90 or > 90 || request.Longitude.Value is < -180 or > 180)
+            return BadRequest(new { success = false, message = "Tọa độ GPS không hợp lệ." });
 
         var distance = CalculateDistanceMeters(
             request.Latitude.Value,
@@ -189,7 +348,7 @@ public sealed class MapController : Controller
             return BadRequest(new
             {
                 success = false,
-                message = $"Bạn đang cách POI khoảng {Math.Round(distance)}m. Cần vào trong bán kính {Math.Round(allowedDistance)}m để check-in."
+                message = $"Bạn chưa ở gần địa điểm này nên không thể check-in. Hiện còn cách khoảng {Math.Round(distance)} m."
             });
         }
 
@@ -345,20 +504,35 @@ public sealed class MapController : Controller
     public async Task<IActionResult> LogAudio([FromBody] DuKhachLogAudioRequest request, CancellationToken cancellationToken)
     {
         var touristId = GetTouristId();
-        var languageCode = NormalizeLanguageCode(request.LanguageCode);
+        var result = await _audioQuota.TryConsumeAsync(
+            touristId,
+            request.PoiId,
+            request.LanguageCode,
+            $"web-tourist-{touristId}",
+            request.IsTts ? "WebTtsPlay" : "WebAudioPlay",
+            cancellationToken: cancellationToken);
 
-        _context.VisitorPlaybackLogs.Add(new VisitorPlaybackLog
+        if (!result.Allowed)
         {
-            TouristId = touristId,
-            DeviceId = $"web-tourist-{touristId}",
-            PoiId = request.PoiId,
-            LanguageCode = languageCode,
-            TriggerType = "WebAudioPlay",
-            CreatedAt = DateTime.UtcNow
-        });
+            return StatusCode(StatusCodes.Status429TooManyRequests, new
+            {
+                success = false,
+                result.Message,
+                result.DailyLimit,
+                result.UsedToday,
+                result.RemainingToday
+            });
+        }
 
-        await _context.SaveChangesAsync(cancellationToken);
-        return Ok(new { success = true });
+        return Ok(new
+        {
+            success = true,
+            result.Message,
+            result.IsPremium,
+            result.DailyLimit,
+            result.UsedToday,
+            result.RemainingToday
+        });
     }
 
     private async Task<Dictionary<string, string>> GetActiveLanguagesAsync(CancellationToken cancellationToken)
@@ -375,7 +549,7 @@ public sealed class MapController : Controller
             .GroupBy(language => NormalizeLanguageCode(language.LanguageCode), StringComparer.OrdinalIgnoreCase)
             .ToDictionary(
                 group => group.Key,
-                group => group.First().LanguageName,
+                group => GetNativeLanguageDisplayName(group.Key, group.First().LanguageName),
                 StringComparer.OrdinalIgnoreCase);
 
         if (languages.Count == 0)
@@ -388,6 +562,7 @@ public sealed class MapController : Controller
     {
         languages.TryAdd("vi", "Tiếng Việt");
         languages.TryAdd("en", "English");
+        languages.TryAdd("fr", "Français");
         languages.TryAdd("zh", "中文");
         languages.TryAdd("ja", "日本語");
         languages.TryAdd("ko", "한국어");
@@ -459,6 +634,27 @@ public sealed class MapController : Controller
         };
     }
 
+    private static string GetNativeLanguageDisplayName(string? code, string? currentName)
+    {
+        var normalizedCode = NormalizeLanguageCode(code);
+        return normalizedCode switch
+        {
+            "vi" => "Tiếng Việt",
+            "en" => "English",
+            "fr" => "Français",
+            "zh" or "zh-cn" or "zh-tw" => "中文",
+            "ja" => "日本語",
+            "ko" => "한국어",
+            "th" => "ไทย",
+            "de" => "Deutsch",
+            "es" => "Español",
+            "it" => "Italiano",
+            "pt" => "Português",
+            "ru" => "Русский",
+            _ => string.IsNullOrWhiteSpace(currentName) ? normalizedCode.ToUpperInvariant() : currentName.Trim()
+        };
+    }
+
     private string GetSelectedLanguageCode(IEnumerable<string> activeLanguageCodes)
     {
         var activeSet = activeLanguageCodes.ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -515,6 +711,96 @@ public sealed class MapController : Controller
 
     private int GetTouristId() =>
         int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+    private async Task<HashSet<int>> GetFeaturedOwnerIdsAsync(CancellationToken cancellationToken)
+    {
+        var now = DateTime.UtcNow;
+
+        var activeSubscriptions = await _context.OwnerSubscriptions
+            .AsNoTracking()
+            .Include(item => item.PaymentPlan)
+            .Where(item =>
+                item.Status == "Active" &&
+                item.StartsAt <= now &&
+                item.ExpiresAt > now &&
+                item.PaymentPlan != null &&
+                (item.PaymentPlan.Audience == "Owner" || item.PaymentPlan.Audience == "Both"))
+            .ToListAsync(cancellationToken);
+
+        var ownerIds = activeSubscriptions
+            .Where(item => OwnerFeaturedPlanHelper.IsFeaturedMapPlan(item.PaymentPlan))
+            .Select(item => item.OwnerProfileId)
+            .ToHashSet();
+
+        // Fallback quan trọng: một số giao dịch đã Paid nhưng subscription chưa được tạo
+        // do trước đó code thanh toán/confirm còn lỗi. Vẫn tính nổi bật theo giao dịch đã trả tiền.
+        var paidTransactions = await _context.PaymentTransactions
+            .AsNoTracking()
+            .Include(item => item.PaymentPlan)
+            .Where(item =>
+                item.PayerType == "Owner" &&
+                item.OwnerProfileId.HasValue &&
+                item.Status == "Paid" &&
+                item.PaymentPlan != null &&
+                (item.PaymentPlan.Audience == "Owner" || item.PaymentPlan.Audience == "Both"))
+            .ToListAsync(cancellationToken);
+
+        foreach (var payment in paidTransactions.Where(payment =>
+            payment.OwnerProfileId.HasValue &&
+            OwnerFeaturedPlanHelper.IsFeaturedMapPlan(payment.PaymentPlan) &&
+            OwnerFeaturedPlanHelper.IsPaymentStillActive(payment)))
+        {
+            ownerIds.Add(payment.OwnerProfileId!.Value);
+        }
+
+        return ownerIds;
+    }
+
+    private async Task<HashSet<int>> GetFeaturedPoiIdsAsync(HashSet<int> featuredOwnerIds, CancellationToken cancellationToken)
+    {
+        if (featuredOwnerIds.Count == 0)
+            return [];
+
+        var fromMenuItems = await _context.OwnerMenuItems
+            .AsNoTracking()
+            .Where(item => featuredOwnerIds.Contains(item.OwnerProfileId) && item.Status != "Hidden")
+            .Select(item => item.PoiId)
+            .ToListAsync(cancellationToken);
+
+        var fromApprovedOwnerRequests = await _context.PoiOwnerRequests
+            .AsNoTracking()
+            .Where(item =>
+                item.PoiId.HasValue &&
+                featuredOwnerIds.Contains(item.OwnerProfileId) &&
+                item.Status == "Approved")
+            .Select(item => item.PoiId!.Value)
+            .ToListAsync(cancellationToken);
+
+        return fromMenuItems
+            .Concat(fromApprovedOwnerRequests)
+            .ToHashSet();
+    }
+
+    private static bool IsFeaturedPoi(Poi poi, HashSet<int> featuredOwnerIds, HashSet<int> featuredPoiIds)
+    {
+        return (poi.OwnerProfileId.HasValue && featuredOwnerIds.Contains(poi.OwnerProfileId.Value))
+            || featuredPoiIds.Contains(poi.Id);
+    }
+
+    private async Task<bool> HasActivePremiumAsync(int touristId, CancellationToken cancellationToken)
+    {
+        var now = DateTime.UtcNow;
+        return await _context.TouristSubscriptions
+            .AsNoTracking()
+            .Include(item => item.PaymentPlan)
+            .AnyAsync(item =>
+                item.TouristId == touristId &&
+                item.Status == "Active" &&
+                item.ExpiresAt > now &&
+                item.PaymentPlan != null &&
+                (item.PaymentPlan.PlanCode == "USER_PREMIUM" || item.PaymentPlan.Audience == "Tourist" || item.PaymentPlan.Audience == "Both"),
+                cancellationToken);
+    }
 
     private string? ToAbsoluteUrl(string? path)
     {

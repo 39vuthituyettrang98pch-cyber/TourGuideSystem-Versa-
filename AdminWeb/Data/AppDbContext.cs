@@ -48,6 +48,17 @@ public class AppDbContext : DbContext
     public DbSet<PoiReview> PoiReviews { get; set; }
     public DbSet<TouristBookmark> TouristBookmarks { get; set; }
 
+    // Owner / Business / Payments
+    public DbSet<OwnerProfile> OwnerProfiles { get; set; }
+    public DbSet<PaymentPlan> PaymentPlans { get; set; }
+    public DbSet<PaymentTransaction> PaymentTransactions { get; set; }
+    public DbSet<OwnerSubscription> OwnerSubscriptions { get; set; }
+    public DbSet<PoiOwnerRequest> PoiOwnerRequests { get; set; }
+    public DbSet<TouristSubscription> TouristSubscriptions { get; set; }
+    public DbSet<OwnerMenuItem> OwnerMenuItems { get; set; }
+    public DbSet<MenuOrder> MenuOrders { get; set; }
+    public DbSet<MenuOrderItem> MenuOrderItems { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -79,6 +90,15 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<SyncVersion>().ToTable("sync_versions");
         modelBuilder.Entity<PoiReview>().ToTable("poi_reviews");
         modelBuilder.Entity<TouristBookmark>().ToTable("tourist_bookmarks");
+        modelBuilder.Entity<OwnerProfile>().ToTable("owner_profiles");
+        modelBuilder.Entity<PaymentPlan>().ToTable("payment_plans");
+        modelBuilder.Entity<PaymentTransaction>().ToTable("payment_transactions");
+        modelBuilder.Entity<OwnerSubscription>().ToTable("owner_subscriptions");
+        modelBuilder.Entity<PoiOwnerRequest>().ToTable("poi_owner_requests");
+        modelBuilder.Entity<TouristSubscription>().ToTable("tourist_subscriptions");
+        modelBuilder.Entity<OwnerMenuItem>().ToTable("owner_menu_items");
+        modelBuilder.Entity<MenuOrder>().ToTable("menu_orders");
+        modelBuilder.Entity<MenuOrderItem>().ToTable("menu_order_items");
 
 
         modelBuilder.Entity<PasswordResetToken>(entity =>
@@ -102,6 +122,307 @@ public class AppDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(item => item.TouristId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+
+
+        modelBuilder.Entity<OwnerProfile>(entity =>
+        {
+            entity.HasKey(item => item.Id);
+
+            entity.Property(item => item.BusinessName)
+                .HasMaxLength(160)
+                .IsRequired();
+
+            entity.Property(item => item.Status)
+                .HasMaxLength(30)
+                .IsRequired();
+
+            entity.HasIndex(item => item.UserId)
+                .IsUnique();
+
+            entity.HasOne(item => item.User)
+                .WithOne(user => user.OwnerProfile)
+                .HasForeignKey<OwnerProfile>(item => item.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Poi>()
+            .HasOne(poi => poi.OwnerProfile)
+            .WithMany(owner => owner.Pois)
+            .HasForeignKey(poi => poi.OwnerProfileId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<PaymentPlan>(entity =>
+        {
+            entity.HasKey(item => item.Id);
+
+            entity.Property(item => item.PlanCode)
+                .HasMaxLength(40)
+                .IsRequired();
+
+            entity.Property(item => item.PlanName)
+                .HasMaxLength(160)
+                .IsRequired();
+
+            entity.Property(item => item.Audience)
+                .HasMaxLength(30)
+                .IsRequired();
+
+            entity.Property(item => item.Price)
+                .HasColumnType("decimal(18,2)");
+
+            entity.HasIndex(item => item.PlanCode)
+                .IsUnique();
+        });
+
+        modelBuilder.Entity<PaymentTransaction>(entity =>
+        {
+            entity.HasKey(item => item.Id);
+
+            entity.Property(item => item.TransactionCode)
+                .HasMaxLength(64)
+                .IsRequired();
+
+            entity.Property(item => item.PayerType)
+                .HasMaxLength(30)
+                .IsRequired();
+
+            entity.Property(item => item.Purpose)
+                .HasMaxLength(60)
+                .IsRequired();
+
+            entity.Property(item => item.Amount)
+                .HasColumnType("decimal(18,2)");
+
+            entity.Property(item => item.Currency)
+                .HasMaxLength(10)
+                .IsRequired();
+
+            entity.Property(item => item.PaymentMethod)
+                .HasMaxLength(40)
+                .IsRequired();
+
+            entity.Property(item => item.Status)
+                .HasMaxLength(30)
+                .IsRequired();
+
+            entity.HasIndex(item => item.TransactionCode)
+                .IsUnique();
+
+            entity.HasOne(item => item.OwnerProfile)
+                .WithMany()
+                .HasForeignKey(item => item.OwnerProfileId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(item => item.Tourist)
+                .WithMany()
+                .HasForeignKey(item => item.TouristId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(item => item.PaymentPlan)
+                .WithMany(plan => plan.Payments)
+                .HasForeignKey(item => item.PaymentPlanId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<OwnerSubscription>(entity =>
+        {
+            entity.HasKey(item => item.Id);
+
+            entity.Property(item => item.Status)
+                .HasMaxLength(30)
+                .IsRequired();
+
+            entity.HasIndex(item => new { item.OwnerProfileId, item.Status });
+
+            entity.HasOne(item => item.OwnerProfile)
+                .WithMany(owner => owner.Subscriptions)
+                .HasForeignKey(item => item.OwnerProfileId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(item => item.PaymentPlan)
+                .WithMany(plan => plan.OwnerSubscriptions)
+                .HasForeignKey(item => item.PaymentPlanId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(item => item.PaymentTransaction)
+                .WithMany()
+                .HasForeignKey(item => item.PaymentTransactionId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<PoiOwnerRequest>(entity =>
+        {
+            entity.HasKey(item => item.Id);
+
+            entity.Property(item => item.RequestType)
+                .HasMaxLength(30)
+                .IsRequired();
+
+            entity.Property(item => item.Status)
+                .HasMaxLength(30)
+                .IsRequired();
+
+            entity.HasOne(item => item.OwnerProfile)
+                .WithMany()
+                .HasForeignKey(item => item.OwnerProfileId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(item => item.Poi)
+                .WithMany()
+                .HasForeignKey(item => item.PoiId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+
+        modelBuilder.Entity<TouristSubscription>(entity =>
+        {
+            entity.HasKey(item => item.Id);
+
+            entity.Property(item => item.Status)
+                .HasMaxLength(30)
+                .IsRequired();
+
+            entity.HasIndex(item => new { item.TouristId, item.Status });
+
+            entity.HasOne(item => item.Tourist)
+                .WithMany(tourist => tourist.Subscriptions)
+                .HasForeignKey(item => item.TouristId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(item => item.PaymentPlan)
+                .WithMany()
+                .HasForeignKey(item => item.PaymentPlanId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(item => item.PaymentTransaction)
+                .WithMany()
+                .HasForeignKey(item => item.PaymentTransactionId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<OwnerMenuItem>(entity =>
+        {
+            entity.HasKey(item => item.Id);
+
+            entity.Property(item => item.Name)
+                .HasMaxLength(180)
+                .IsRequired();
+
+            entity.Property(item => item.Price)
+                .HasColumnType("decimal(18,2)");
+
+            entity.Property(item => item.Currency)
+                .HasMaxLength(10)
+                .IsRequired();
+
+            entity.Property(item => item.Status)
+                .HasMaxLength(30)
+                .IsRequired();
+
+            entity.HasIndex(item => new { item.OwnerProfileId, item.PoiId });
+
+            entity.HasOne(item => item.OwnerProfile)
+                .WithMany(owner => owner.MenuItems)
+                .HasForeignKey(item => item.OwnerProfileId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(item => item.Poi)
+                .WithMany()
+                .HasForeignKey(item => item.PoiId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+
+        modelBuilder.Entity<MenuOrder>(entity =>
+        {
+            entity.HasKey(item => item.Id);
+
+            entity.Property(item => item.OrderCode)
+                .HasMaxLength(64)
+                .IsRequired();
+
+            entity.Property(item => item.CustomerName)
+                .HasMaxLength(160)
+                .IsRequired();
+
+            entity.Property(item => item.CustomerPhone)
+                .HasMaxLength(40)
+                .IsRequired();
+
+            entity.Property(item => item.Status)
+                .HasMaxLength(30)
+                .IsRequired();
+
+            entity.Property(item => item.PaymentMethod)
+                .HasMaxLength(40)
+                .IsRequired();
+
+            entity.Property(item => item.PaymentStatus)
+                .HasMaxLength(30)
+                .IsRequired();
+
+            entity.Property(item => item.Subtotal)
+                .HasColumnType("decimal(18,2)");
+
+            entity.Property(item => item.TotalAmount)
+                .HasColumnType("decimal(18,2)");
+
+            entity.Property(item => item.Currency)
+                .HasMaxLength(10)
+                .IsRequired();
+
+            entity.HasIndex(item => item.OrderCode)
+                .IsUnique();
+
+            entity.HasIndex(item => new { item.TouristId, item.CreatedAt });
+            entity.HasIndex(item => new { item.OwnerProfileId, item.Status });
+            entity.HasIndex(item => new { item.PoiId, item.CreatedAt });
+
+            entity.HasOne(item => item.Tourist)
+                .WithMany(tourist => tourist.MenuOrders)
+                .HasForeignKey(item => item.TouristId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(item => item.OwnerProfile)
+                .WithMany(owner => owner.MenuOrders)
+                .HasForeignKey(item => item.OwnerProfileId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(item => item.Poi)
+                .WithMany(poi => poi.MenuOrders)
+                .HasForeignKey(item => item.PoiId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<MenuOrderItem>(entity =>
+        {
+            entity.HasKey(item => item.Id);
+
+            entity.Property(item => item.ItemName)
+                .HasMaxLength(180)
+                .IsRequired();
+
+            entity.Property(item => item.UnitPrice)
+                .HasColumnType("decimal(18,2)");
+
+            entity.Property(item => item.LineTotal)
+                .HasColumnType("decimal(18,2)");
+
+            entity.Property(item => item.Currency)
+                .HasMaxLength(10)
+                .IsRequired();
+
+            entity.HasOne(item => item.MenuOrder)
+                .WithMany(order => order.Items)
+                .HasForeignKey(item => item.MenuOrderId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(item => item.OwnerMenuItem)
+                .WithMany(menu => menu.OrderItems)
+                .HasForeignKey(item => item.OwnerMenuItemId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         // Composite Keys

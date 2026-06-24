@@ -4,7 +4,7 @@
              xmlns:vm="clr-namespace:UserMobile.ViewModels"
              x:Class="UserMobile.Views.PlaceDetailPage"
              Title="{Binding Place.Title}"
-             BackgroundColor="#F2F2F7">
+             BackgroundColor="{StaticResource PageBackground}">
 
     <Grid>
         <!-- Main Content -->
@@ -14,7 +14,28 @@
                 <Grid HeightRequest="300">
                     <Image Source="{Binding Place.ImageUrl}"
                            Aspect="AspectFill"
-                           HeightRequest="300" />
+                           HeightRequest="300"
+                           IsVisible="{Binding Place.IsRasterImage}" />
+                    <WebView Source="{Binding Place.ImageUrl}"
+                             HeightRequest="300"
+                             IsVisible="{Binding Place.IsSvgImage}"
+                             InputTransparent="True" />
+                    <Grid HeightRequest="300"
+                          BackgroundColor="#5B3FE4"
+                          IsVisible="{Binding Place.HasNoImage}">
+                        <VerticalStackLayout Spacing="8"
+                                             HorizontalOptions="Center"
+                                             VerticalOptions="Center">
+                            <Label Text="🖼️"
+                                   FontSize="46"
+                                   HorizontalTextAlignment="Center" />
+                            <Label Text="{Binding Place.ImageFallbackText}"
+                                   FontSize="18"
+                                   FontAttributes="Bold"
+                                   TextColor="White"
+                                   HorizontalTextAlignment="Center" />
+                        </VerticalStackLayout>
+                    </Grid>
                     <BoxView Color="#CC000000"
                              VerticalOptions="End"
                              HeightRequest="180" />
@@ -66,6 +87,23 @@
                                            VerticalOptions="Center" />
                                 </HorizontalStackLayout>
                             </Border>
+
+                            <Border BackgroundColor="#F8D66D"
+                                    StrokeShape="RoundRectangle 20"
+                                    Stroke="Transparent"
+                                    StrokeThickness="0"
+                                    Padding="14,6"
+                                    Margin="0,0,8,6"
+                                    IsVisible="{Binding Place.IsFeatured}">
+                                <HorizontalStackLayout Spacing="6">
+                                    <Label Text="♛" FontSize="14" TextColor="#5A3B00" VerticalOptions="Center" />
+                                    <Label Text="{Binding Place.FeaturedBadgeText}"
+                                           FontSize="13"
+                                           FontAttributes="Bold"
+                                           TextColor="#5A3B00"
+                                           VerticalOptions="Center" />
+                                </HorizontalStackLayout>
+                            </Border>
                         </FlexLayout>
                     </VerticalStackLayout>
 
@@ -102,7 +140,7 @@
                     <!-- === INTRODUCTION CARD === -->
                     <Border BackgroundColor="White"
                             StrokeShape="RoundRectangle 16"
-                            Stroke="#E8E8ED"
+                            Stroke="{StaticResource Outline}"
                             StrokeThickness="1"
                             Padding="20">
                         <VerticalStackLayout Spacing="12">
@@ -121,7 +159,7 @@
                                 <Label Text="Giới thiệu"
                                        FontSize="19"
                                        FontAttributes="Bold"
-                                       TextColor="#1C1C1E"
+                                       TextColor="{StaticResource Ink}"
                                        VerticalOptions="Center" />
                             </HorizontalStackLayout>
                             <BoxView Color="#E8E8ED" HeightRequest="1" Margin="0,4" />
@@ -136,7 +174,7 @@
                     <!-- === LANGUAGE SELECTION CARD === -->
                     <Border BackgroundColor="White"
                             StrokeShape="RoundRectangle 16"
-                            Stroke="#E8E8ED"
+                            Stroke="{StaticResource Outline}"
                             StrokeThickness="1"
                             Padding="20">
                         <VerticalStackLayout Spacing="12">
@@ -155,7 +193,7 @@
                                 <Label Text="Ngôn ngữ thuyết minh"
                                        FontSize="19"
                                        FontAttributes="Bold"
-                                       TextColor="#1C1C1E"
+                                       TextColor="{StaticResource Ink}"
                                        VerticalOptions="Center" />
                             </HorizontalStackLayout>
                             <BoxView Color="#E8E8ED" HeightRequest="1" Margin="0,4" />
@@ -201,15 +239,15 @@
                                                     <Label Text="{Binding NativeName}"
                                                            FontAttributes="Bold"
                                                            FontSize="15"
-                                                           TextColor="#1C1C1E" />
+                                                           TextColor="{StaticResource Ink}" />
                                                     <Label Text="{Binding Name}"
                                                            FontSize="12"
-                                                           TextColor="#8E8E93" />
+                                                           TextColor="{StaticResource Muted2}" />
                                                 </VerticalStackLayout>
                                                 <Label Grid.Column="2"
                                                        Text="›"
                                                        FontSize="25"
-                                                       TextColor="#5B3FE4"
+                                                       TextColor="{StaticResource Primary}"
                                                        VerticalOptions="Center" />
                                             </Grid>
                                         </Border>
@@ -219,21 +257,49 @@
                             <Label Text="POI này chưa có file audio hoặc video thuyết minh."
                                    IsVisible="{Binding HasNoNarrationLanguages}"
                                    FontSize="13"
-                                   TextColor="#8E8E93"
+                                   TextColor="{StaticResource Muted2}"
                                    HorizontalTextAlignment="Center"
                                    Margin="0,8" />
                         </VerticalStackLayout>
                     </Border>
 
-                    <Button Text="{Binding CheckInText}"
-                            Command="{Binding CheckInCommand}"
-                            BackgroundColor="#5B3FE4"
+                    <Border BackgroundColor="#F0FDF4"
+                            Stroke="#BBF7D0"
+                            StrokeShape="RoundRectangle 16"
+                            StrokeThickness="1"
+                            Padding="16,14">
+                        <VerticalStackLayout Spacing="10">
+                            <Label Text="Bạn cần đứng gần địa điểm để check-in và nhận điểm. QR chỉ dùng để mở chi tiết POI, không cộng điểm."
+                                   FontSize="13"
+                                   TextColor="#166534"
+                                   LineBreakMode="WordWrap" />
+                            <Button Text="{Binding CheckInText}"
+                                    Command="{Binding CheckInCommand}"
+                                    BackgroundColor="{StaticResource Primary}"
+                                    TextColor="White" />
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <Button Text="Menu / đặt món"
+                            Command="{Binding OpenMenuCommand}"
+                            BackgroundColor="#0EA5E9"
                             TextColor="White" />
+
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                        <Button Text="Chỉ đường"
+                                Command="{Binding OpenDirectionsCommand}"
+                                Style="{StaticResource SecondaryButton}" />
+                        <Button Grid.Column="1"
+                                Text="Nghe đọc mô tả"
+                                Command="{Binding SpeakDescriptionCommand}"
+                                IsVisible="{Binding CanUseTts}"
+                                Style="{StaticResource SecondaryButton}" />
+                    </Grid>
 
                     <!-- === REVIEW CARD === -->
                     <Border BackgroundColor="White"
                             StrokeShape="RoundRectangle 16"
-                            Stroke="#E8E8ED"
+                            Stroke="{StaticResource Outline}"
                             StrokeThickness="1"
                             Padding="20">
                         <VerticalStackLayout Spacing="14">
@@ -250,13 +316,13 @@
                                            VerticalOptions="Center" />
                                 </Border>
                                 <VerticalStackLayout VerticalOptions="Center" Spacing="2">
-                                    <Label Text="Đánh giá & bình luận"
+                                    <Label Text="Đánh giá &amp; bình luận"
                                            FontSize="19"
                                            FontAttributes="Bold"
-                                           TextColor="#1C1C1E" />
+                                           TextColor="{StaticResource Ink}" />
                                     <Label Text="{Binding ReviewSummaryText}"
                                            FontSize="12"
-                                           TextColor="#8E8E93" />
+                                           TextColor="{StaticResource Muted2}" />
                                 </VerticalStackLayout>
                             </HorizontalStackLayout>
 
@@ -269,14 +335,14 @@
                             <Picker ItemsSource="{Binding RatingOptions}"
                                     SelectedItem="{Binding ReviewRating}"
                                     Title="Chọn số sao"
-                                    TextColor="#1C1C1E"
+                                    TextColor="{StaticResource Ink}"
                                     BackgroundColor="#F8F8FA" />
 
                             <Editor Text="{Binding ReviewComment}"
                                     Placeholder="Chia sẻ cảm nhận của bạn về POI này..."
                                     AutoSize="TextChanges"
                                     HeightRequest="96"
-                                    TextColor="#1C1C1E"
+                                    TextColor="{StaticResource Ink}"
                                     PlaceholderColor="#8E8E93"
                                     BackgroundColor="#F8F8FA" />
 
@@ -287,19 +353,19 @@
 
                             <Label Text="Bạn cần đăng nhập để gửi đánh giá. Nếu chưa đăng nhập, app sẽ chuyển sang trang đăng nhập."
                                    FontSize="12"
-                                   TextColor="#8E8E93" />
+                                   TextColor="{StaticResource Muted2}" />
 
                             <BoxView Color="#E8E8ED" HeightRequest="1" Margin="0,2" />
 
                             <Label Text="Đánh giá gần đây"
                                    FontSize="15"
                                    FontAttributes="Bold"
-                                   TextColor="#1C1C1E" />
+                                   TextColor="{StaticResource Ink}" />
 
                             <Label Text="Chưa có bình luận nào. Hãy là người đầu tiên đánh giá POI này."
                                    IsVisible="{Binding HasNoReviews}"
                                    FontSize="13"
-                                   TextColor="#8E8E93" />
+                                   TextColor="{StaticResource Muted2}" />
 
                             <CollectionView ItemsSource="{Binding Reviews}"
                                             IsVisible="{Binding HasReviews}">
@@ -316,7 +382,7 @@
                                                     <Label Text="{Binding TouristName}"
                                                            FontSize="13"
                                                            FontAttributes="Bold"
-                                                           TextColor="#1C1C1E" />
+                                                           TextColor="{StaticResource Ink}" />
                                                     <Label Grid.Column="1"
                                                            Text="{Binding RatingText}"
                                                            FontSize="12"
@@ -329,7 +395,7 @@
                                                        LineBreakMode="WordWrap" />
                                                 <Label Text="{Binding CreatedAtText}"
                                                        FontSize="11"
-                                                       TextColor="#8E8E93" />
+                                                       TextColor="{StaticResource Muted2}" />
                                             </VerticalStackLayout>
                                         </Border>
                                     </DataTemplate>
@@ -384,7 +450,7 @@
                             Command="{Binding WatchVideoCommand}"
                             IsVisible="{Binding CanWatchVideo}"
                             BackgroundColor="#EEEAFE"
-                            TextColor="#5B3FE4" />
+                            TextColor="{StaticResource Primary}" />
                 </VerticalStackLayout>
             </VerticalStackLayout>
         </ScrollView>
@@ -414,7 +480,7 @@
                             Padding="0"
                             Stroke="Transparent"
                             StrokeThickness="0"
-                            BackgroundColor="#F2F2F7"
+                            BackgroundColor="{StaticResource PageBackground}"
                             WidthRequest="56"
                             HeightRequest="56">
                         <Image Source="{Binding Place.ImageUrl}"
@@ -428,7 +494,7 @@
                         <Label Text="{Binding Place.Title}"
                                FontSize="15"
                                FontAttributes="Bold"
-                               TextColor="#1C1C1E"
+                               TextColor="{StaticResource Ink}"
                                LineBreakMode="TailTruncation"
                                MaxLines="1" />
                         <HorizontalStackLayout Spacing="6">
@@ -443,7 +509,7 @@
                             </Border>
                             <Label Text="{Binding PlaybackSpeed, StringFormat='{0:F1}x'}"
                                    FontSize="11"
-                                   TextColor="#8E8E93"
+                                   TextColor="{StaticResource Muted2}"
                                    VerticalOptions="Center" />
                         </HorizontalStackLayout>
                     </VerticalStackLayout>
@@ -453,7 +519,7 @@
                 <Grid ColumnDefinitions="Auto, *, Auto" ColumnSpacing="10">
                     <Label Text="{Binding CurrentTime}"
                            FontSize="11"
-                           TextColor="#8E8E93"
+                           TextColor="{StaticResource Muted2}"
                            VerticalOptions="Center" />
                     <Slider Grid.Column="1"
                             Value="{Binding AudioProgress}"
@@ -465,7 +531,7 @@
                     <Label Grid.Column="2"
                            Text="{Binding TotalTime}"
                            FontSize="11"
-                           TextColor="#8E8E93"
+                           TextColor="{StaticResource Muted2}"
                            VerticalOptions="Center" />
                 </Grid>
 
@@ -475,7 +541,7 @@
                       ColumnSpacing="8">
                     <!-- Speed Selector -->
                     <Border Grid.Column="0"
-                            BackgroundColor="#F2F2F7"
+                            BackgroundColor="{StaticResource PageBackground}"
                             StrokeShape="RoundRectangle 12"
                             Stroke="Transparent"
                             StrokeThickness="0"
@@ -497,7 +563,7 @@
                             Padding="0"
                             Stroke="Transparent"
                             StrokeThickness="0"
-                            BackgroundColor="#F2F2F7"
+                            BackgroundColor="{StaticResource PageBackground}"
                             VerticalOptions="Center">
                         <Label Text="⏪" FontSize="18"
                                HorizontalOptions="Center"
@@ -539,7 +605,7 @@
                             Padding="0"
                             Stroke="Transparent"
                             StrokeThickness="0"
-                            BackgroundColor="#F2F2F7"
+                            BackgroundColor="{StaticResource PageBackground}"
                             VerticalOptions="Center">
                         <Label Text="⏩" FontSize="18"
                                HorizontalOptions="Center"
@@ -557,9 +623,9 @@
                             Padding="0"
                             Stroke="Transparent"
                             StrokeThickness="0"
-                            BackgroundColor="#F2F2F7"
+                            BackgroundColor="{StaticResource PageBackground}"
                             VerticalOptions="Center">
-                        <Label Text="✕" FontSize="18" TextColor="#8E8E93"
+                        <Label Text="✕" FontSize="18" TextColor="{StaticResource Muted2}"
                                HorizontalOptions="Center" VerticalOptions="Center" />
                         <Border.GestureRecognizers>
                             <TapGestureRecognizer Command="{Binding StopNarrationCommand}" />

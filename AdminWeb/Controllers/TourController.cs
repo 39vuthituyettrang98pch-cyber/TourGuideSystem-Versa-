@@ -28,7 +28,6 @@ public class TourController : Controller
         var query = _context.Tours
             .Include(t => t.Translations)
             .Include(t => t.TourPois).ThenInclude(tp => tp.Poi).ThenInclude(p => p!.Translations)
-            .AsSplitQuery()
             .AsQueryable();
 
         if (!string.IsNullOrEmpty(searchString))
@@ -134,6 +133,7 @@ public class TourController : Controller
 
     [HttpPost, ActionName("Delete")]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> DeleteConfirmed(int id)
     {
         var tour = await _context.Tours.FindAsync(id);

@@ -1,0 +1,91 @@
+@model IEnumerable<AdminWeb.Models.OwnerProfile>
+@{
+    ViewData["Title"] = "Chủ gian hàng";
+}
+
+<div class="page-heading">
+    <div>
+        <div class="page-title">Chủ gian hàng</div>
+        <div class="page-subtitle">Quản lý tài khoản chủ POI, gian hàng và quyền sở hữu địa điểm.</div>
+    </div>
+    <div class="page-actions">
+        <a asp-area="" asp-action="Requests" class="btn btn-secondary"><i class="fa-solid fa-inbox"></i> Yêu cầu POI</a>
+        <a href="/Owner/Account/Register" target="_blank" class="btn btn-secondary"><i class="fa-solid fa-store"></i> Link đăng ký Owner</a>
+        <a asp-area="" asp-action="Create" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Thêm chủ gian hàng</a>
+    </div>
+</div>
+
+<div class="stats-grid" style="margin-bottom:18px;">
+    <div class="stat-card"><span>Tổng chủ gian hàng</span><strong>@Model.Count()</strong></div>
+    <div class="stat-card"><span>Đang hoạt động</span><strong>@Model.Count(x => x.Status == "Active")</strong></div>
+    <div class="stat-card"><span>Chờ duyệt</span><strong>@Model.Count(x => x.Status == "Pending")</strong></div>
+    <div class="stat-card"><span>POI đã gán</span><strong>@Model.Sum(x => x.Pois?.Count ?? 0)</strong></div>
+</div>
+
+<div class="data-table table-wrapper">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Gian hàng</th>
+                <th>Tài khoản</th>
+                <th>Liên hệ</th>
+                <th>POI</th>
+                <th>Gói hiện tại</th>
+                <th>Trạng thái</th>
+                <th>Hành động</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var owner in Model)
+            {
+                var activeSub = owner.Subscriptions?.Where(s => s.Status == "Active").OrderByDescending(s => s.ExpiresAt).FirstOrDefault();
+                <tr>
+                    <td>@owner.Id</td>
+                    <td><strong>@owner.BusinessName</strong><br /><small>@owner.RepresentativeName</small></td>
+                    <td>
+                        @owner.User?.Username<br />
+                        <small>@owner.User?.Email</small><br />
+                        <small>Login: <b>@owner.User?.Status</b></small>
+                    </td>
+                    <td>@owner.Phone<br /><small>@owner.Address</small></td>
+                    <td>@(owner.Pois?.Count ?? 0)</td>
+                    <td>
+                        @if (activeSub?.PaymentPlan != null)
+                        {
+                            <strong>@activeSub.PaymentPlan.PlanName</strong><br />
+                            <small>Hết hạn: @activeSub.ExpiresAt.ToLocalTime().ToString("dd/MM/yyyy")</small>
+                        }
+                        else
+                        {
+                            <span class="badge red">Chưa có gói</span>
+                        }
+                    </td>
+                    <td><span class="badge @(owner.Status == "Active" ? "green" : owner.Status == "Pending" ? "yellow" : "red")">@owner.Status</span></td>
+                    <td>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                            <a asp-area="" asp-action="Edit" asp-route-id="@owner.Id" class="btn btn-sm btn-secondary">Sửa</a>
+                            <a asp-area="" asp-action="AssignPoi" asp-route-id="@owner.Id" class="btn btn-sm btn-secondary">Gán POI</a>
+                            @if (owner.Status == "Pending" || owner.User?.Status == "pending")
+                            {
+                                <form asp-area="" asp-action="Approve" method="post" style="display:inline;">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@owner.Id" />
+                                    <button type="submit" class="btn btn-sm btn-primary">Duyệt</button>
+                                </form>
+                            }
+                            @if (owner.Status != "Locked")
+                            {
+                                <form asp-area="" asp-action="Lock" method="post" style="display:inline;" onsubmit="return confirm('Khóa tài khoản chủ gian hàng này?');">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@owner.Id" />
+                                    <button type="submit" class="btn btn-sm btn-danger">Khóa</button>
+                                </form>
+                            }
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

@@ -1,0 +1,69 @@
+@model IEnumerable<AdminWeb.Models.MenuOrder>
+@{
+    ViewData["Title"] = "Đơn mua menu";
+    var status = ViewBag.Status as string;
+    string IsActive(string? value) => string.Equals(value, status, StringComparison.OrdinalIgnoreCase) ? "active" : "";
+}
+
+<div class="owner-hero compact">
+    <div>
+        <div class="owner-kicker"><i class="fa-solid fa-bag-shopping"></i> Đơn hàng</div>
+        <h2>Đơn mua menu/sản phẩm</h2>
+        <p>Nhận đơn của du khách, xác nhận, chuẩn bị và hoàn tất đơn.</p>
+    </div>
+</div>
+
+<div class="owner-filter-bar" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;">
+    <a class="btn owner-btn-soft @IsActive(null)" asp-area="Owner" asp-controller="MenuOrders" asp-action="Index">Tất cả</a>
+    <a class="btn owner-btn-soft @IsActive("Pending")" asp-area="Owner" asp-controller="MenuOrders" asp-action="Index" asp-route-status="Pending">Chờ xác nhận</a>
+    <a class="btn owner-btn-soft @IsActive("Confirmed")" asp-area="Owner" asp-controller="MenuOrders" asp-action="Index" asp-route-status="Confirmed">Đã xác nhận</a>
+    <a class="btn owner-btn-soft @IsActive("Preparing")" asp-area="Owner" asp-controller="MenuOrders" asp-action="Index" asp-route-status="Preparing">Đang chuẩn bị</a>
+    <a class="btn owner-btn-soft @IsActive("Ready")" asp-area="Owner" asp-controller="MenuOrders" asp-action="Index" asp-route-status="Ready">Sẵn sàng</a>
+    <a class="btn owner-btn-soft @IsActive("Completed")" asp-area="Owner" asp-controller="MenuOrders" asp-action="Index" asp-route-status="Completed">Hoàn tất</a>
+</div>
+
+@if (!Model.Any())
+{
+    <div class="owner-empty">
+        <i class="fa-solid fa-receipt"></i>
+        <h3>Chưa có đơn hàng</h3>
+        <p>Khi du khách đặt món/sản phẩm, đơn sẽ xuất hiện tại đây.</p>
+    </div>
+}
+else
+{
+    <div class="owner-table-card">
+        <div class="table-responsive">
+            <table class="table align-middle owner-table">
+                <thead>
+                    <tr>
+                        <th>Mã đơn</th>
+                        <th>POI</th>
+                        <th>Khách</th>
+                        <th>Tổng tiền</th>
+                        <th>Trạng thái</th>
+                        <th>Thời gian</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var order in Model)
+                    {
+                        var poiName = order.Poi?.Translations.FirstOrDefault(t => t.LanguageCode == "vi")?.Name
+                            ?? order.Poi?.Translations.FirstOrDefault()?.Name
+                            ?? $"POI #{order.PoiId}";
+                        <tr>
+                            <td><strong>@order.OrderCode</strong><br /><small>@order.Items.Count món</small></td>
+                            <td>@poiName</td>
+                            <td>@order.CustomerName<br /><small>@order.CustomerPhone</small></td>
+                            <td><strong>@order.TotalAmount.ToString("N0") @order.Currency</strong></td>
+                            <td><span class="owner-status">@order.Status</span></td>
+                            <td>@order.CreatedAt.ToLocalTime().ToString("dd/MM HH:mm")</td>
+                            <td class="text-end"><a asp-area="Owner" asp-controller="MenuOrders" asp-action="Details" asp-route-id="@order.Id" class="btn owner-btn-primary btn-sm">Xem</a></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

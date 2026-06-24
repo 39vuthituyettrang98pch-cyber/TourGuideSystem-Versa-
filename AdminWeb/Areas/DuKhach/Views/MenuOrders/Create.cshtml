@@ -1,0 +1,645 @@
+@model IReadOnlyList<AdminWeb.Models.OwnerMenuItem>
+@{
+    var poi = ViewBag.Poi as AdminWeb.Models.Poi;
+    var tourist = ViewBag.Tourist as AdminWeb.Models.Tourist;
+    var preselectItemId = ViewBag.PreselectItemId as int? ?? 0;
+    var poiName = poi?.Translations.FirstOrDefault(t => t.LanguageCode == "vi")?.Name
+        ?? poi?.Translations.FirstOrDefault()?.Name
+        ?? "POI";
+    ViewData["Title"] = "Đặt món / mua sản phẩm";
+}
+
+@section Styles {
+<style>
+    .order-hero {
+        border: 1px solid var(--border);
+        border-radius: 34px;
+        padding: 26px 30px;
+        background: var(--surface);
+        box-shadow: var(--shadow);
+        margin-bottom: 20px;
+    }
+
+    .order-hero h1 {
+        font-weight: 950;
+        letter-spacing: -.04em;
+        margin: 8px 0;
+        line-height: 1.05;
+    }
+
+    .order-toolbar {
+        border: 1px solid rgba(148, 163, 184, .22);
+        border-radius: 26px;
+        background: rgba(15, 23, 42, .88);
+        box-shadow: 0 18px 48px rgba(0, 0, 0, .26);
+        padding: 12px;
+        margin-bottom: 16px;
+        position: sticky;
+        top: 88px;
+        z-index: 9;
+        backdrop-filter: blur(14px);
+    }
+
+    .order-search {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        gap: 10px;
+        align-items: center;
+        border: 1px solid rgba(148, 163, 184, .24);
+        border-radius: 18px;
+        background: rgba(2, 6, 23, .62);
+        color: #cbd5e1;
+        padding: 0 12px;
+        min-height: 48px;
+    }
+
+    .order-search input {
+        border: 0;
+        background: transparent;
+        outline: none;
+        color: #f8fafc;
+        font-weight: 800;
+        width: 100%;
+    }
+
+    .order-search input::placeholder {
+        color: rgba(203, 213, 225, .68);
+    }
+
+    .order-chip-row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 10px;
+    }
+
+    .order-chip {
+        border: 1px solid rgba(148, 163, 184, .24);
+        border-radius: 999px;
+        background: rgba(15, 23, 42, .78);
+        color: #cbd5e1;
+        font-weight: 900;
+        padding: 9px 12px;
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .order-chip.active {
+        border-color: rgba(34,211,238,.55);
+        background: linear-gradient(135deg, rgba(52,211,153,.18), rgba(34,211,238,.18));
+        color: var(--accent);
+    }
+
+    .order-layout {
+        display: grid;
+        grid-template-columns: minmax(0,1fr) 390px;
+        gap: 20px;
+        align-items: start;
+    }
+
+    .order-grid {
+        display: grid;
+        gap: 14px;
+    }
+
+    .order-item {
+        display: grid;
+        grid-template-columns: 92px minmax(0,1fr) auto;
+        gap: 15px;
+        align-items: center;
+        border: 1px solid rgba(148, 163, 184, .20);
+        border-radius: 24px;
+        background: linear-gradient(135deg, rgba(15, 23, 42, .96), rgba(30, 41, 59, .88));
+        color: #f8fafc;
+        padding: 14px;
+        box-shadow: 0 18px 48px rgba(0,0,0,.24);
+        transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease;
+    }
+
+    .order-item.is-selected {
+        border-color: rgba(34,211,238,.75);
+        box-shadow: 0 22px 56px rgba(34,211,238,.18);
+        transform: translateY(-2px);
+    }
+
+    .order-item.is-hidden {
+        display: none;
+    }
+
+    .order-thumb {
+        width: 92px;
+        height: 78px;
+        border-radius: 18px;
+        object-fit: cover;
+        display: block;
+        background: rgba(15, 23, 42, .75);
+        border: 1px solid rgba(148, 163, 184, .18);
+    }
+
+    .order-placeholder {
+        width: 92px;
+        height: 78px;
+        border-radius: 18px;
+        display: grid;
+        place-items: center;
+        background: linear-gradient(135deg, rgba(253,224,71,.22), rgba(251,146,60,.28));
+        color: #f8fafc;
+        border: 1px solid rgba(251, 191, 36, .22);
+        font-size: 26px;
+    }
+
+    .order-title {
+        font-weight: 950;
+        margin: 0 0 5px;
+        color: #f8fafc;
+        line-height: 1.12;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .order-desc {
+        color: #cbd5e1;
+        margin: 0;
+        line-height: 1.35;
+        font-size: 14px;
+        display: -webkit-box;
+        -webkit-line-clamp: 1;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .order-price {
+        color: #34d399;
+        font-weight: 950;
+        font-size: 18px;
+        margin-top: 5px;
+    }
+
+    .qty-wrap {
+        min-width: 150px;
+        display: grid;
+        justify-items: end;
+        gap: 8px;
+    }
+
+    .qty-stepper {
+        display: grid;
+        grid-template-columns: 42px 48px 42px;
+        align-items: center;
+        border: 1px solid rgba(148, 163, 184, .24);
+        border-radius: 999px;
+        background: rgba(2, 6, 23, .60);
+        overflow: hidden;
+        min-height: 42px;
+    }
+
+    .qty-btn {
+        width: 42px;
+        height: 42px;
+        border: 0;
+        background: transparent;
+        color: #f8fafc;
+        font-weight: 950;
+        font-size: 20px;
+        cursor: pointer;
+    }
+
+    .qty-btn.plus {
+        background: linear-gradient(135deg, #34d399, #22d3ee);
+        color: #07111f;
+    }
+
+    .qty-value {
+        text-align: center;
+        font-weight: 950;
+        color: #f8fafc;
+    }
+
+    .line-total {
+        font-weight: 950;
+        color: #f8fafc;
+        font-size: 13px;
+        min-height: 18px;
+    }
+
+    .order-card {
+        border: 1px solid rgba(148, 163, 184, .22);
+        border-radius: 28px;
+        background: linear-gradient(135deg, rgba(15, 23, 42, .96), rgba(30, 41, 59, .88));
+        color: #f8fafc;
+        box-shadow: 0 22px 60px rgba(0,0,0,.28);
+        padding: 22px;
+    }
+
+    .order-card h2,
+    .order-card strong {
+        color: #f8fafc;
+    }
+
+    .order-summary {
+        position: sticky;
+        top: 88px;
+    }
+
+    .order-card input,
+    .order-card textarea {
+        width: 100%;
+        border: 1px solid rgba(148, 163, 184, .24);
+        border-radius: 16px;
+        background: rgba(2, 6, 23, .58);
+        color: #f8fafc;
+        padding: 12px 14px;
+        outline: none;
+    }
+
+    .order-card input::placeholder,
+    .order-card textarea::placeholder {
+        color: rgba(203, 213, 225, .62);
+    }
+
+    .order-card input:focus,
+    .order-card textarea:focus {
+        border-color: rgba(34, 211, 238, .58);
+        box-shadow: 0 0 0 4px rgba(34, 211, 238, .10);
+    }
+
+    .order-field {
+        display: grid;
+        gap: 7px;
+        margin-bottom: 13px;
+    }
+
+    .order-field label {
+        font-weight: 900;
+        color: #cbd5e1;
+        font-size: 13px;
+    }
+
+    .summary-box {
+        border: 1px solid rgba(148, 163, 184, .22);
+        border-radius: 22px;
+        padding: 14px;
+        background: rgba(2, 6, 23, .50);
+        margin-bottom: 14px;
+    }
+
+    .summary-empty {
+        color: #cbd5e1;
+        font-size: 14px;
+        margin: 0;
+    }
+
+    .summary-line {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 10px;
+        padding: 8px 0;
+        border-bottom: 1px dashed rgba(148,163,184,.35);
+        font-size: 14px;
+    }
+
+    .summary-line:last-child {
+        border-bottom: 0;
+    }
+
+    .summary-name {
+        font-weight: 850;
+        color: #f8fafc;
+    }
+
+    .summary-total {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        padding-top: 12px;
+        margin-top: 10px;
+        border-top: 1px solid rgba(148, 163, 184, .22);
+        color: #f8fafc;
+        font-size: 18px;
+        font-weight: 950;
+    }
+
+    .submit-order[disabled] {
+        opacity: .55;
+        cursor: not-allowed;
+        filter: grayscale(.25);
+    }
+
+    .mini-help {
+        color: #cbd5e1;
+        font-size: 13px;
+        margin: 12px 0 0;
+        line-height: 1.45;
+    }
+
+    .order-card p[style],
+    .order-card div[style*="var(--muted)"] {
+        color: #cbd5e1 !important;
+    }
+
+    .summary-line strong {
+        color: #f8fafc;
+    }
+
+    @@media(max-width: 980px) {
+        .order-layout {
+            grid-template-columns: 1fr;
+        }
+
+        .order-toolbar,
+        .order-summary {
+            position: static;
+        }
+    }
+
+    @@media(max-width: 680px) {
+        .order-hero {
+            padding: 22px;
+        }
+
+        .order-item {
+            grid-template-columns: 76px 1fr;
+        }
+
+        .order-thumb,
+        .order-placeholder {
+            width: 76px;
+            height: 66px;
+        }
+
+        .qty-wrap {
+            grid-column: 1 / -1;
+            justify-items: stretch;
+        }
+
+        .qty-stepper {
+            grid-template-columns: 1fr 56px 1fr;
+        }
+    }
+</style>
+}
+
+<div class="order-hero">
+    <div class="dk-kicker"><i class="fa-solid fa-bag-shopping"></i> Đặt món / mua sản phẩm</div>
+    <h1>Đặt tại @poiName</h1>
+    <p style="color:var(--muted);max-width:760px;">Bấm dấu <strong>+</strong> để chọn món, kiểm tra tổng tiền rồi gửi đơn cho chủ gian hàng xác nhận. Thanh toán tại quầy / khi nhận hàng.</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;">
+        <a asp-area="DuKhach" asp-controller="PoiMenu" asp-action="Index" asp-route-poiId="@(poi?.Id ?? 0)" class="dk-btn dk-btn-ghost"><i class="fa-solid fa-store"></i> Xem menu</a>
+        <a asp-area="DuKhach" asp-controller="MenuOrders" asp-action="My" class="dk-btn dk-btn-ghost"><i class="fa-solid fa-receipt"></i> Đơn của tôi</a>
+    </div>
+</div>
+
+@if (!Model.Any())
+{
+    <div class="order-card"><strong>Chưa có món/sản phẩm để đặt.</strong></div>
+}
+else
+{
+    <form asp-area="DuKhach" asp-controller="MenuOrders" asp-action="Create" method="post" id="menuOrderForm">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="poiId" value="@(poi?.Id ?? 0)" />
+
+        <div class="order-layout">
+            <section>
+                <div class="order-toolbar">
+                    <div class="order-search">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input id="orderSearchInput" type="search" placeholder="Tìm nhanh món/sản phẩm..." autocomplete="off" />
+                        <span id="visibleCount" style="color:var(--muted);font-weight:900;font-size:13px;">@Model.Count món</span>
+                    </div>
+                    <div class="order-chip-row">
+                        <button type="button" class="order-chip active" data-filter="all"><i class="fa-solid fa-layer-group"></i> Tất cả</button>
+                        <button type="button" class="order-chip" data-filter="selected"><i class="fa-solid fa-basket-shopping"></i> Đã chọn</button>
+                        <button type="button" class="order-chip" data-filter="image"><i class="fa-solid fa-image"></i> Có hình</button>
+                    </div>
+                </div>
+
+                <div class="order-grid" id="orderItems">
+                    @foreach (var item in Model)
+                    {
+                        var imageUrl = item.ImageUrl;
+                        if (!string.IsNullOrWhiteSpace(imageUrl) && imageUrl.StartsWith("/uploads/demo/menu-items/", StringComparison.OrdinalIgnoreCase))
+                        {
+                            imageUrl = $"{imageUrl}?v=29";
+                        }
+
+                        var priceValue = item.Price.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                        var safeSearchText = $"{item.Name} {item.Description}".ToLowerInvariant();
+                        var isPreselected = item.Id == preselectItemId;
+
+                        <article class="order-item"
+                                 id="item-@item.Id"
+                                 data-id="@item.Id"
+                                 data-name="@item.Name"
+                                 data-price="@priceValue"
+                                 data-currency="@item.Currency"
+                                 data-search="@safeSearchText"
+                                 data-has-image="@(!string.IsNullOrWhiteSpace(imageUrl)).ToString().ToLowerInvariant()">
+                            @if (!string.IsNullOrWhiteSpace(imageUrl))
+                            {
+                                <img class="order-thumb" src="@imageUrl" alt="@item.Name" loading="lazy" />
+                            }
+                            else
+                            {
+                                <div class="order-placeholder" aria-label="Chưa có hình món ăn">🍽️</div>
+                            }
+
+                            <div>
+                                <h3 class="order-title">@item.Name</h3>
+                                <p class="order-desc">@item.Description</p>
+                                <div class="order-price">@item.Price.ToString("N0") @item.Currency</div>
+                            </div>
+
+                            <div class="qty-wrap">
+                                <input class="order-qty-input" type="hidden" name="quantities[@item.Id]" value="@(isPreselected ? 1 : 0)" />
+                                <div class="qty-stepper" aria-label="Chọn số lượng @item.Name">
+                                    <button type="button" class="qty-btn minus" data-action="minus">−</button>
+                                    <span class="qty-value">@(isPreselected ? 1 : 0)</span>
+                                    <button type="button" class="qty-btn plus" data-action="plus">+</button>
+                                </div>
+                                <div class="line-total"></div>
+                            </div>
+                        </article>
+                    }
+                </div>
+            </section>
+
+            <aside class="order-card order-summary">
+                <h2 style="font-weight:950;margin:0 0 8px;">Giỏ đặt món</h2>
+                <p style="color:var(--muted);font-size:13px;margin:0 0 14px;">Kiểm tra món đã chọn trước khi gửi đơn.</p>
+
+                <div class="summary-box">
+                    <div id="summaryList">
+                        <p class="summary-empty">Chưa chọn món nào. Bấm dấu + ở món muốn mua.</p>
+                    </div>
+                    <div class="summary-total">
+                        <span>Tổng tiền</span>
+                        <span id="summaryTotal">0 VND</span>
+                    </div>
+                </div>
+
+                <h2 style="font-weight:950;margin:16px 0 14px;">Thông tin nhận đơn</h2>
+                <div class="order-field">
+                    <label>Họ tên</label>
+                    <input type="text" name="customerName" value="@tourist?.FullName" maxlength="160" />
+                </div>
+                <div class="order-field">
+                    <label>Số điện thoại xác nhận đơn *</label>
+                    <input type="tel" name="customerPhone" maxlength="40" required placeholder="VD: 09xxxxxxxx" />
+                </div>
+                <div class="order-field">
+                    <label>Ghi chú</label>
+                    <textarea name="note" rows="4" maxlength="600" placeholder="VD: ít đá, lấy lúc 15:30..."></textarea>
+                </div>
+
+                <button type="submit" id="submitOrderButton" class="dk-btn dk-btn-primary submit-order" style="width:100%;" disabled>
+                    <i class="fa-solid fa-paper-plane"></i> Gửi đơn cho chủ gian hàng
+                </button>
+                <p class="mini-help">Chủ gian hàng sẽ xác nhận, chuẩn bị và cập nhật trạng thái đơn trong hệ thống.</p>
+            </aside>
+        </div>
+    </form>
+}
+
+@section Scripts {
+<script>
+(function () {
+    const form = document.getElementById("menuOrderForm");
+    if (!form) return;
+
+    const items = Array.from(document.querySelectorAll(".order-item"));
+    const summaryList = document.getElementById("summaryList");
+    const summaryTotal = document.getElementById("summaryTotal");
+    const submitButton = document.getElementById("submitOrderButton");
+    const searchInput = document.getElementById("orderSearchInput");
+    const visibleCount = document.getElementById("visibleCount");
+    const filterButtons = Array.from(document.querySelectorAll(".order-chip[data-filter]"));
+    let activeFilter = "all";
+
+    const money = (value, currency) => {
+        const rounded = Math.round(Number(value) || 0);
+        return rounded.toLocaleString("vi-VN") + " " + (currency || "VND");
+    };
+
+    const getQuantity = (item) => {
+        const input = item.querySelector(".order-qty-input");
+        return Math.max(0, Math.min(20, parseInt(input.value || "0", 10) || 0));
+    };
+
+    const setQuantity = (item, quantity) => {
+        quantity = Math.max(0, Math.min(20, quantity));
+        const input = item.querySelector(".order-qty-input");
+        const value = item.querySelector(".qty-value");
+        const lineTotal = item.querySelector(".line-total");
+        const price = Number(item.dataset.price || "0");
+        const currency = item.dataset.currency || "VND";
+
+        input.value = quantity;
+        value.textContent = quantity;
+        item.classList.toggle("is-selected", quantity > 0);
+        lineTotal.textContent = quantity > 0 ? money(price * quantity, currency) : "";
+
+        updateSummary();
+        applyFilter();
+    };
+
+    const updateSummary = () => {
+        const selected = items
+            .map(item => {
+                const quantity = getQuantity(item);
+                return {
+                    item,
+                    quantity,
+                    name: item.dataset.name || "Món",
+                    price: Number(item.dataset.price || "0"),
+                    currency: item.dataset.currency || "VND"
+                };
+            })
+            .filter(entry => entry.quantity > 0);
+
+        if (selected.length === 0) {
+            summaryList.innerHTML = '<p class="summary-empty">Chưa chọn món nào. Bấm dấu + ở món muốn mua.</p>';
+            summaryTotal.textContent = "0 VND";
+            submitButton.disabled = true;
+            return;
+        }
+
+        const currency = selected[0].currency || "VND";
+        const total = selected.reduce((sum, entry) => sum + entry.price * entry.quantity, 0);
+
+        summaryList.innerHTML = selected.map(entry => `
+            <div class="summary-line">
+                <div>
+                    <div class="summary-name">${entry.name}</div>
+                    <div style="color:var(--muted);font-size:12px;">${entry.quantity} × ${money(entry.price, entry.currency)}</div>
+                </div>
+                <strong>${money(entry.price * entry.quantity, entry.currency)}</strong>
+            </div>
+        `).join("");
+
+        summaryTotal.textContent = money(total, currency);
+        submitButton.disabled = false;
+    };
+
+    const applyFilter = () => {
+        const keyword = (searchInput?.value || "").trim().toLowerCase();
+        let shown = 0;
+
+        items.forEach(item => {
+            const matchesSearch = !keyword || (item.dataset.search || "").includes(keyword);
+            const matchesSelected = activeFilter !== "selected" || getQuantity(item) > 0;
+            const matchesImage = activeFilter !== "image" || item.dataset.hasImage === "true";
+            const visible = matchesSearch && matchesSelected && matchesImage;
+
+            item.classList.toggle("is-hidden", !visible);
+            if (visible) shown++;
+        });
+
+        if (visibleCount) visibleCount.textContent = shown + " món";
+    };
+
+    items.forEach(item => {
+        item.querySelectorAll(".qty-btn").forEach(button => {
+            button.addEventListener("click", () => {
+                const current = getQuantity(item);
+                const next = button.dataset.action === "plus" ? current + 1 : current - 1;
+                setQuantity(item, next);
+            });
+        });
+
+        setQuantity(item, getQuantity(item));
+    });
+
+    searchInput?.addEventListener("input", applyFilter);
+
+    filterButtons.forEach(button => {
+        button.addEventListener("click", () => {
+            activeFilter = button.dataset.filter || "all";
+            filterButtons.forEach(entry => entry.classList.toggle("active", entry === button));
+            applyFilter();
+        });
+    });
+
+    const preselected = document.querySelector(".order-item.is-selected");
+    if (preselected) {
+        setTimeout(() => {
+            preselected.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 250);
+    }
+
+    form.addEventListener("submit", (event) => {
+        const hasSelected = items.some(item => getQuantity(item) > 0);
+        if (!hasSelected) {
+            event.preventDefault();
+            alert("Vui lòng chọn ít nhất 1 món/sản phẩm.");
+        }
+    });
+
+    updateSummary();
+    applyFilter();
+})();
+</script>
+}

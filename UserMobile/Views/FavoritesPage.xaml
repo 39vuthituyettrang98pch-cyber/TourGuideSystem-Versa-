@@ -1,37 +1,40 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:i18n="clr-namespace:UserMobile.Markup"
              x:Class="UserMobile.Views.FavoritesPage"
-             Title="Yêu thích"
-             BackgroundColor="#F5F7FB">
+             Title="{i18n:T Favorites_Title}"
+             BackgroundColor="{StaticResource PageBackground}">
     <Grid RowDefinitions="Auto,*" Padding="18,18,18,0">
-        <VerticalStackLayout Spacing="5">
-            <Label Text="Địa điểm yêu thích" FontSize="28" FontAttributes="Bold" TextColor="#172033" />
-            <Label Text="Danh sách được lưu riêng theo tài khoản của bạn." TextColor="#68748A" />
-        </VerticalStackLayout>
+        <Border Style="{StaticResource HeroCard}" Padding="20">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                <VerticalStackLayout Spacing="5">
+                    <Label Text="{i18n:T Favorites_Title}" TextColor="White" FontSize="26" FontAttributes="Bold" />
+                    <Label Text="{i18n:T Favorites_Subtitle}" TextColor="#C8D1E2" FontSize="13" />
+                </VerticalStackLayout>
+                <Label Grid.Column="1" Text="♡" FontSize="36" TextColor="#F8D66D" VerticalOptions="Center" />
+            </Grid>
+        </Border>
 
         <Grid Grid.Row="1" Margin="0,18,0,0">
-            <VerticalStackLayout IsVisible="{Binding IsEmpty}" VerticalOptions="Center" Spacing="14">
-                <Label Text="♡" FontSize="54" TextColor="#7D69E8" HorizontalOptions="Center" />
-                <Label Text="{Binding Message}" FontSize="15" TextColor="#68748A" HorizontalTextAlignment="Center" />
-                <Button Text="Đăng nhập" Clicked="OnLoginClicked" IsVisible="{Binding IsLoggedOut}" />
+            <VerticalStackLayout IsVisible="{Binding IsEmpty}" VerticalOptions="Center" Spacing="12" Padding="24">
+                <Label Text="♡" FontSize="56" TextColor="{StaticResource Primary}" HorizontalTextAlignment="Center" />
+                <Label Text="{Binding Message}" Style="{StaticResource EmptyStateText}" />
+                <Button Text="Đăng nhập để đồng bộ" IsVisible="{Binding IsLoggedOut}" Clicked="OnLoginClicked" Style="{StaticResource SecondaryButton}" HorizontalOptions="Center" />
             </VerticalStackLayout>
 
-            <CollectionView x:Name="FavoritesList"
-                            ItemsSource="{Binding Favorites}"
-                            SelectionMode="Single"
-                            SelectionChanged="OnSelectionChanged">
+            <CollectionView x:Name="FavoritesList" ItemsSource="{Binding Favorites}" SelectionMode="Single" SelectionChanged="OnSelectionChanged">
                 <CollectionView.ItemTemplate>
                     <DataTemplate>
-                        <Border Margin="0,0,0,12" Padding="12" BackgroundColor="White" Stroke="#E5EAF2" StrokeShape="RoundRectangle 18">
-                            <Grid ColumnDefinitions="88,*" ColumnSpacing="14">
-                                <Border WidthRequest="88" HeightRequest="88" Stroke="Transparent" StrokeShape="RoundRectangle 14">
+                        <Border Style="{StaticResource Card}" Margin="0,0,0,12" Padding="12">
+                            <Grid ColumnDefinitions="92,*" ColumnSpacing="14">
+                                <Border WidthRequest="92" HeightRequest="92" Stroke="Transparent" StrokeShape="RoundRectangle 18" BackgroundColor="{StaticResource PageBackground}">
                                     <Image Source="{Binding ImageUrl}" Aspect="AspectFill" />
                                 </Border>
-                                <VerticalStackLayout Grid.Column="1" Spacing="5" VerticalOptions="Center">
-                                    <Label Text="{Binding Title}" FontSize="16" FontAttributes="Bold" TextColor="#172033" />
-                                    <Label Text="{Binding Description}" FontSize="12" TextColor="#68748A" MaxLines="2" LineBreakMode="TailTruncation" />
-                                    <Label Text="Mở chi tiết →" FontSize="12" TextColor="#6C55DD" />
+                                <VerticalStackLayout Grid.Column="1" Spacing="6" VerticalOptions="Center">
+                                    <Label Text="{Binding Title}" FontSize="17" FontAttributes="Bold" TextColor="{StaticResource Ink}" MaxLines="1" LineBreakMode="TailTruncation" />
+                                    <Label Text="{Binding Description}" Style="{StaticResource PageSubtitle}" MaxLines="2" LineBreakMode="TailTruncation" />
+                                    <Label Text="{i18n:T Favorites_OpenDetail}" FontSize="12" TextColor="{StaticResource Primary}" FontAttributes="Bold" />
                                 </VerticalStackLayout>
                             </Grid>
                         </Border>

@@ -1,0 +1,78 @@
+@using AdminWeb.Models
+@model AdminWeb.Models.OwnerMenuItem
+@{
+    ViewData["Title"] = "Sửa menu / sản phẩm";
+    var pois = ViewBag.Pois as List<Poi> ?? new List<Poi>();
+    var previewImageUrl = Model.ImageUrl;
+    if (!string.IsNullOrWhiteSpace(previewImageUrl) && previewImageUrl.StartsWith("/uploads/demo/menu-items/", StringComparison.OrdinalIgnoreCase))
+    {
+        previewImageUrl = $"{previewImageUrl}?v=29";
+    }
+}
+
+<div class="owner-card" style="max-width:920px;">
+    <h2 style="font-weight:950;margin-bottom:6px;">Sửa món / sản phẩm / dịch vụ</h2>
+
+    <form asp-area="Owner" asp-controller="MenuItems" asp-action="Edit" asp-route-id="@Model.Id" method="post" enctype="multipart/form-data" style="display:grid;gap:14px;">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label asp-for="PoiId" class="form-label">POI</label>
+                <select asp-for="PoiId" class="form-select" required>
+                    @foreach (var poi in pois)
+                    {
+                        var name = poi.Translations.FirstOrDefault(t => t.LanguageCode == "vi")?.Name
+                            ?? poi.Translations.FirstOrDefault()?.Name
+                            ?? $"POI #{poi.Id}";
+                        <option value="@poi.Id">#@poi.Id - @name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="Name" class="form-label">Tên mục</label>
+                <input asp-for="Name" class="form-control" required />
+            </div>
+            <div class="col-md-6">
+                <label asp-for="Price" class="form-label">Giá</label>
+                <input asp-for="Price" type="number" min="0" step="1000" class="form-control" />
+            </div>
+            <div class="col-md-3">
+                <label asp-for="Currency" class="form-label">Tiền tệ</label>
+                <input asp-for="Currency" class="form-control" />
+            </div>
+            <div class="col-md-3">
+                <label asp-for="Status" class="form-label">Trạng thái</label>
+                <select asp-for="Status" class="form-select">
+                    <option value="Active">Hiển thị</option>
+                    <option value="Hidden">Ẩn</option>
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label for="imageFile" class="form-label">Thay ảnh món ăn</label>
+                <input id="imageFile" name="imageFile" type="file" accept="image/*" class="form-control" />
+                <span class="text-danger" data-valmsg-for="imageFile" data-valmsg-replace="true"></span>
+                <small class="text-muted">Không chọn file thì giữ ảnh hiện tại.</small>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="ImageUrl" class="form-label">URL ảnh hiện tại / ảnh ngoài</label>
+                <input asp-for="ImageUrl" class="form-control" />
+                @if (!string.IsNullOrWhiteSpace(Model.ImageUrl))
+                {
+                    <div style="margin-top:10px;display:flex;align-items:center;gap:12px;">
+                        <img src="@previewImageUrl" alt="@Model.Name" style="width:110px;height:76px;object-fit:cover;border-radius:16px;border:1px solid rgba(148,163,184,.35);" />
+                        <small class="text-muted" style="word-break:break-all;">@Model.ImageUrl</small>
+                    </div>
+                }
+            </div>
+            <div class="col-12">
+                <label asp-for="Description" class="form-label">Mô tả</label>
+                <textarea asp-for="Description" rows="4" class="form-control"></textarea>
+            </div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button type="submit" class="btn btn-primary">Cập nhật</button>
+            <a asp-area="Owner" asp-controller="MenuItems" asp-action="Index" asp-route-poiId="@Model.PoiId" class="btn btn-secondary">Quay lại</a>
+        </div>
+    </form>
+</div>

@@ -55,5 +55,10 @@ ehthumbs.db
 Desktop.ini
 
 ## Runtime uploads / generated media
-AdminWeb/wwwroot/uploads/
+AdminWeb/wwwroot/uploads/*
+!AdminWeb/wwwroot/uploads/demo/
+AdminWeb/wwwroot/uploads/demo/*
+!AdminWeb/wwwroot/uploads/demo/menu-items/
+AdminWeb/wwwroot/uploads/demo/menu-items/*
+!AdminWeb/wwwroot/uploads/demo/menu-items/photo-*.png
 AdminWeb/wwwroot/audio/*.mp3

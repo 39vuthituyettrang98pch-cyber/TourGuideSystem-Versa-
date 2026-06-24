@@ -42,12 +42,17 @@ public sealed class AuthService : IAuthService
             return Failure("Vui lòng nhập đầy đủ họ tên, email và mật khẩu.");
         }
 
+        var normalizedEmail = email.Trim();
+
+        if (!IsGmailAddress(normalizedEmail))
+            return Failure("Chỉ chấp nhận Gmail có đuôi @gmail.com.");
+
         if (password.Length < 8)
             return Failure("Mật khẩu phải có ít nhất 8 ký tự.");
 
         var response = await _apiService.PostAsync<AuthDto>(
             "api/auth/register",
-            new { FullName = fullName.Trim(), Email = email.Trim(), Password = password });
+            new { FullName = fullName.Trim(), Email = normalizedEmail, Password = password });
 
         return await SaveResultAsync(response);
     }
@@ -127,9 +132,20 @@ public sealed class AuthService : IAuthService
             };
         }
 
+        var normalizedEmail = email.Trim();
+
+        if (!IsGmailAddress(normalizedEmail))
+        {
+            return new ApiResponse<UserProfile>
+            {
+                Success = false,
+                Message = "Chỉ chấp nhận Gmail có đuôi @gmail.com."
+            };
+        }
+
         var response = await _apiService.PutAsync<UserProfile>(
             "api/auth/me",
-            new { FullName = fullName.Trim(), Email = email.Trim() });
+            new { FullName = fullName.Trim(), Email = normalizedEmail });
 
         if (response.Success && response.Data is not null)
         {
@@ -151,11 +167,28 @@ public sealed class AuthService : IAuthService
             });
     }
 
-    public Task<ApiResponse<object>> RequestPasswordResetAsync(string email)
+    public Task<ApiResponse<PasswordResetOtpDto>> RequestPasswordResetAsync(string email)
     {
-        return _apiService.PostAsync<object>(
+        return _apiService.PostAsync<PasswordResetOtpDto>(
             "api/auth/forgot-password",
             new { Email = email?.Trim() ?? string.Empty });
+    }
+
+    public Task<ApiResponse<object>> ResetPasswordAsync(
+        string email,
+        string otp,
+        string newPassword,
+        string confirmPassword)
+    {
+        return _apiService.PostAsync<object>(
+            "api/auth/reset-password",
+            new
+            {
+                Email = email?.Trim() ?? string.Empty,
+                Otp = otp?.Trim() ?? string.Empty,
+                NewPassword = newPassword,
+                ConfirmPassword = confirmPassword
+            });
     }
 
     private async Task<AuthResult> SaveResultAsync(ApiResponse<AuthDto> response)
@@ -176,6 +209,17 @@ public sealed class AuthService : IAuthService
             AccessToken = response.Data.AccessToken,
             Profile = response.Data.Profile
         };
+    }
+
+    private static bool IsGmailAddress(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            return false;
+
+        var atIndex = email.IndexOf('@');
+        return atIndex > 0 &&
+               atIndex == email.LastIndexOf('@') &&
+               email.EndsWith("@gmail.com", StringComparison.OrdinalIgnoreCase);
     }
 
     private static AuthResult Failure(string? message)

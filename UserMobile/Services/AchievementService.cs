@@ -30,7 +30,7 @@ public sealed class AchievementService : IAchievementService
         await EnsureLoggedInAsync();
         var permission = await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
         if (permission != PermissionStatus.Granted)
-            throw new InvalidOperationException("Cần cấp quyền vị trí để check-in khám phá.");
+            throw new InvalidOperationException("Vui lòng bật GPS và cấp quyền vị trí để check-in.");
 
         var location = await Geolocation.Default.GetLocationAsync(
             new GeolocationRequest(GeolocationAccuracy.High, TimeSpan.FromSeconds(15)),
@@ -38,48 +38,26 @@ public sealed class AchievementService : IAchievementService
         if (location == null)
             throw new InvalidOperationException("Không lấy được vị trí hiện tại. Hãy bật GPS và thử lại.");
 
-        return await DiscoverAsync(
-            poiId,
+        var parsedPoiId = ParsePoiId(poiId);
+        var response = await _apiService.PostAsync<DiscoveryResult>(
+            $"api/pois/{parsedPoiId}/check-in-gps",
             new
             {
-                PoiId = ParsePoiId(poiId),
-                Method = "GPS",
                 location.Latitude,
                 location.Longitude,
                 AccuracyMeters = location.Accuracy
             },
             cancellationToken);
-    }
-
-    public async Task<DiscoveryResult> DiscoverByQrAsync(
-        string poiId,
-        string qrCodeToken,
-        CancellationToken cancellationToken = default)
-    {
-        await EnsureLoggedInAsync();
-        return await DiscoverAsync(
-            poiId,
-            new
-            {
-                PoiId = ParsePoiId(poiId),
-                Method = "QR",
-                QrCodeToken = qrCodeToken
-            },
-            cancellationToken);
-    }
-
-    private async Task<DiscoveryResult> DiscoverAsync(
-        string poiId,
-        object body,
-        CancellationToken cancellationToken)
-    {
-        _ = ParsePoiId(poiId);
-        var response = await _apiService.PostAsync<DiscoveryResult>(
-            "api/achievement/discover",
-            body,
-            cancellationToken);
         return ReadData(response);
     }
+
+    public async Task<IReadOnlyList<LeaderboardItem>> GetLeaderboardAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _apiService.GetAsync<List<LeaderboardItem>>("api/leaderboard", cancellationToken);
+        return ReadData(response);
+    }
+
 
     private async Task EnsureLoggedInAsync()
     {

@@ -1,0 +1,172 @@
+@model AdminWeb.Models.OwnerProfile
+@{
+    ViewData["Title"] = "Tổng quan chủ gian hàng";
+    var activeSub = ViewBag.ActiveSubscription as AdminWeb.Models.OwnerSubscription;
+    var poiCount = ViewBag.PoiCount as int? ?? 0;
+    var menuItemCount = ViewBag.MenuItemCount as int? ?? 0;
+    var playCount = ViewBag.PlayCount as int? ?? 0;
+    var pendingRequestCount = ViewBag.PendingRequestCount as int? ?? 0;
+    var reviewCount = ViewBag.ReviewCount as int? ?? 0;
+    var pendingPayments = ViewBag.PendingPayments as int? ?? 0;
+}
+
+<section class="owner-hero">
+    <h2>Xin chào, @Model.BusinessName.</h2>
+    <p>
+        Đây là trung tâm quản lý gian hàng của bạn trên VERSA Travel. Từ đây bạn có thể gửi POI mới,
+        quản lý menu/sản phẩm, theo dõi đánh giá, xem thống kê lượt nghe/quét QR và tạo yêu cầu thanh toán gói dịch vụ.
+    </p>
+
+    <div class="owner-actions">
+        <a asp-area="Owner" asp-controller="Poi" asp-action="Create" class="btn owner-btn-primary">
+            <i class="fa-solid fa-plus"></i>
+            Gửi POI mới
+        </a>
+        <a asp-area="Owner" asp-controller="Poi" asp-action="Claim" class="btn owner-btn-soft">
+            <i class="fa-solid fa-handshake"></i>
+            Nhận POI có sẵn
+        </a>
+        <a asp-area="Owner" asp-controller="MenuItems" asp-action="Create" class="btn owner-btn-soft">
+            <i class="fa-solid fa-utensils"></i>
+            Thêm sản phẩm
+        </a>
+        <a asp-area="Owner" asp-controller="Reports" asp-action="Index" class="btn owner-btn-soft">
+            <i class="fa-solid fa-chart-pie"></i>
+            Xem báo cáo
+        </a>
+    </div>
+</section>
+
+<section class="owner-stat-grid">
+    <div class="owner-stat">
+        <i class="fa-solid fa-map-pin"></i>
+        <span>POI đang quản lý</span>
+        <strong>@poiCount</strong>
+    </div>
+    <div class="owner-stat">
+        <i class="fa-solid fa-bowl-food"></i>
+        <span>Menu / sản phẩm</span>
+        <strong>@menuItemCount</strong>
+    </div>
+    <div class="owner-stat">
+        <i class="fa-solid fa-headphones"></i>
+        <span>Lượt nghe / quét</span>
+        <strong>@playCount</strong>
+    </div>
+    <div class="owner-stat">
+        <i class="fa-solid fa-inbox"></i>
+        <span>Yêu cầu chờ duyệt</span>
+        <strong>@pendingRequestCount</strong>
+    </div>
+</section>
+
+<section class="owner-action-grid">
+    <a asp-area="Owner" asp-controller="Poi" asp-action="Index" class="owner-action-card">
+        <i class="fa-solid fa-location-dot"></i>
+        <div>
+            <strong>Quản lý POI</strong>
+            <span>Xem gian hàng, trạng thái duyệt và QR token.</span>
+        </div>
+    </a>
+    <a asp-area="Owner" asp-controller="MenuItems" asp-action="Index" class="owner-action-card">
+        <i class="fa-solid fa-list-check"></i>
+        <div>
+            <strong>Menu / sản phẩm</strong>
+            <span>Thêm món, dịch vụ, giá bán và hình ảnh.</span>
+        </div>
+    </a>
+    <a asp-area="Owner" asp-controller="Reviews" asp-action="Index" class="owner-action-card">
+        <i class="fa-solid fa-comments"></i>
+        <div>
+            <strong>Đánh giá</strong>
+            <span>Theo dõi phản hồi và bình luận du khách.</span>
+        </div>
+    </a>
+    <a asp-area="Owner" asp-controller="Reports" asp-action="Index" class="owner-action-card">
+        <i class="fa-solid fa-chart-pie"></i>
+        <div>
+            <strong>Báo cáo</strong>
+            <span>Theo dõi lượt nghe, QR, đánh giá và POI nổi bật.</span>
+        </div>
+    </a>
+    <a asp-area="Owner" asp-controller="Payments" asp-action="Index" class="owner-action-card">
+        <i class="fa-solid fa-wallet"></i>
+        <div>
+            <strong>Gói dịch vụ</strong>
+            <span>Tạo yêu cầu thanh toán và xem lịch sử.</span>
+        </div>
+    </a>
+</section>
+
+<section class="owner-grid-2">
+    <div class="owner-card">
+        <h3 class="owner-card-title">Tình trạng gian hàng</h3>
+        <p class="owner-muted">
+            Trạng thái hồ sơ:
+            <span class="badge-soft @(Model.Status == "Active" ? "badge-green" : Model.Status == "Rejected" ? "badge-red" : "badge-yellow")">
+                @Model.Status
+            </span>
+        </p>
+
+        <div class="owner-grid-3" style="margin-top:16px;">
+            <div class="owner-step">
+                <span>1</span>
+                <div>
+                    <strong>Hồ sơ</strong>
+                    <small>Cập nhật thông tin đại diện, điện thoại và địa chỉ.</small>
+                </div>
+            </div>
+            <div class="owner-step">
+                <span>2</span>
+                <div>
+                    <strong>POI</strong>
+                    <small>Gửi POI mới hoặc nhận quyền quản lý POI có sẵn.</small>
+                </div>
+            </div>
+            <div class="owner-step">
+                <span>3</span>
+                <div>
+                    <strong>Sản phẩm</strong>
+                    <small>Đăng menu/sản phẩm để du khách xem khi mở POI.</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <aside class="owner-card">
+        <h3 class="owner-card-title">Gói dịch vụ</h3>
+
+        @if (activeSub?.PaymentPlan != null)
+        {
+            <div class="badge-soft badge-green" style="margin-bottom:12px;">
+                <i class="fa-solid fa-circle-check"></i>
+                Đang hoạt động
+            </div>
+            <p style="margin-bottom:8px;">
+                Gói hiện tại: <strong>@activeSub.PaymentPlan.PlanName</strong>
+            </p>
+            <p class="owner-muted">
+                Hết hạn: <strong>@activeSub.ExpiresAt.ToLocalTime().ToString("dd/MM/yyyy")</strong>
+            </p>
+        }
+        else
+        {
+            <div class="badge-soft badge-yellow" style="margin-bottom:12px;">
+                <i class="fa-solid fa-clock"></i>
+                Chưa có gói hoạt động
+            </div>
+            <p class="owner-muted">
+                Tạo yêu cầu thanh toán để admin xác nhận và kích hoạt gói cho gian hàng.
+            </p>
+        }
+
+        <p class="owner-muted">
+            Đánh giá hiện có: <strong>@reviewCount</strong> · Thanh toán chờ xác nhận: <strong>@pendingPayments</strong>
+        </p>
+
+        <a asp-area="Owner" asp-controller="Payments" asp-action="Index" class="btn owner-btn-primary w-100 mt-2">
+            <i class="fa-solid fa-credit-card"></i>
+            Quản lý gói & thanh toán
+        </a>
+    </aside>
+</section>

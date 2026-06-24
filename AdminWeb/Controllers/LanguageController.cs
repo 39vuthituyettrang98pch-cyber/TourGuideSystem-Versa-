@@ -62,6 +62,7 @@ public sealed class LanguageController : Controller
         await _context.SaveChangesAsync(cancellationToken);
 
         var queuedTasks = 0;
+        var translatedPois = 0;
         var translatedTours = 0;
         var translatedCategories = 0;
 
@@ -74,19 +75,21 @@ public sealed class LanguageController : Controller
                 var summary = await _contentTranslationService
                     .TranslateMissingContentForLanguageAsync(language.LanguageCode, cancellationToken);
 
+                translatedPois = summary.Pois;
                 translatedTours = summary.Tours;
                 translatedCategories = summary.Categories;
             }
             catch (Exception ex)
             {
                 TempData["ErrorMessage"] =
-                    "Ngôn ngữ đã được thêm, nhưng AI chưa dịch được tour/danh mục: " + ex.Message;
+                    "Ngôn ngữ đã được thêm, nhưng AI chưa dịch được POI/tour/danh mục: " + ex.Message;
             }
         }
 
         TempData["SuccessMessage"] = BuildSuccessMessage(
             "Đã thêm ngôn ngữ hỗ trợ.",
             queuedTasks,
+            translatedPois,
             translatedTours,
             translatedCategories);
 
@@ -134,6 +137,7 @@ public sealed class LanguageController : Controller
         await _context.SaveChangesAsync(cancellationToken);
 
         var queuedTasks = 0;
+        var translatedPois = 0;
         var translatedTours = 0;
         var translatedCategories = 0;
 
@@ -146,19 +150,21 @@ public sealed class LanguageController : Controller
                 var summary = await _contentTranslationService
                     .TranslateMissingContentForLanguageAsync(language.LanguageCode, cancellationToken);
 
+                translatedPois = summary.Pois;
                 translatedTours = summary.Tours;
                 translatedCategories = summary.Categories;
             }
             catch (Exception ex)
             {
                 TempData["ErrorMessage"] =
-                    "Ngôn ngữ đã được bật, nhưng AI chưa dịch được tour/danh mục: " + ex.Message;
+                    "Ngôn ngữ đã được bật, nhưng AI chưa dịch được POI/tour/danh mục: " + ex.Message;
             }
         }
 
         TempData["SuccessMessage"] = BuildSuccessMessage(
             "Đã cập nhật ngôn ngữ và giọng đọc.",
             queuedTasks,
+            translatedPois,
             translatedTours,
             translatedCategories);
 
@@ -178,6 +184,7 @@ public sealed class LanguageController : Controller
         await _context.SaveChangesAsync(cancellationToken);
 
         var queuedTasks = 0;
+        var translatedPois = 0;
         var translatedTours = 0;
         var translatedCategories = 0;
 
@@ -190,18 +197,19 @@ public sealed class LanguageController : Controller
                 var summary = await _contentTranslationService
                     .TranslateMissingContentForLanguageAsync(language.LanguageCode, cancellationToken);
 
+                translatedPois = summary.Pois;
                 translatedTours = summary.Tours;
                 translatedCategories = summary.Categories;
             }
             catch (Exception ex)
             {
                 TempData["ErrorMessage"] =
-                    "Ngôn ngữ đã được bật, nhưng AI chưa dịch được tour/danh mục: " + ex.Message;
+                    "Ngôn ngữ đã được bật, nhưng AI chưa dịch được POI/tour/danh mục: " + ex.Message;
             }
         }
 
         TempData["SuccessMessage"] = language.IsActive
-            ? BuildSuccessMessage("Đã bật ngôn ngữ.", queuedTasks, translatedTours, translatedCategories)
+            ? BuildSuccessMessage("Đã bật ngôn ngữ.", queuedTasks, translatedPois, translatedTours, translatedCategories)
             : "Đã tắt ngôn ngữ.";
 
         return RedirectToAction(nameof(Index));
@@ -285,13 +293,17 @@ public sealed class LanguageController : Controller
     private static string BuildSuccessMessage(
         string message,
         int queuedTasks,
+        int translatedPois = 0,
         int translatedTours = 0,
         int translatedCategories = 0)
     {
         var parts = new List<string> { message };
 
+        if (translatedPois > 0)
+            parts.Add($"Đã AI dịch thêm {translatedPois} bản dịch POI.");
+
         if (queuedTasks > 0)
-            parts.Add($"Đã đưa {queuedTasks} POI còn thiếu bản dịch/audio vào hàng đợi AI.");
+            parts.Add($"Đã đưa {queuedTasks} POI vào hàng đợi tạo audio/media nếu có voice.");
 
         if (translatedTours > 0)
             parts.Add($"Đã AI dịch thêm {translatedTours} bản dịch tour.");

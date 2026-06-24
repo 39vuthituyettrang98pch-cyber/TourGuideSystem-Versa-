@@ -1,0 +1,88 @@
+@model IEnumerable<AdminWeb.Models.PoiOwnerRequest>
+@{
+    ViewData["Title"] = "Yêu cầu POI của chủ gian hàng";
+    var status = ViewBag.Status as string;
+    var pendingCount = ViewBag.PendingCount as int? ?? 0;
+}
+
+<div class="page-heading">
+    <div>
+        <div class="page-title">Yêu cầu POI của chủ gian hàng</div>
+        <div class="page-subtitle">Duyệt yêu cầu nhận POI có sẵn hoặc POI mới do chủ gian hàng gửi.</div>
+    </div>
+    <div class="page-actions">
+        <a asp-area="" asp-action="Index" class="btn btn-secondary"><i class="fa-solid fa-store"></i> Chủ gian hàng</a>
+    </div>
+</div>
+
+<div class="stats-grid" style="margin-bottom:18px;">
+    <div class="stat-card"><span>Tổng yêu cầu</span><strong>@Model.Count()</strong></div>
+    <div class="stat-card"><span>Đang chờ</span><strong>@pendingCount</strong></div>
+    <div class="stat-card"><span>Đã duyệt</span><strong>@Model.Count(x => x.Status == "Approved")</strong></div>
+    <div class="stat-card"><span>Từ chối</span><strong>@Model.Count(x => x.Status == "Rejected")</strong></div>
+</div>
+
+<div class="toolbar" style="margin-bottom:14px;">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <a asp-area="" asp-action="Requests" class="btn btn-sm @(string.IsNullOrWhiteSpace(status) ? "btn-primary" : "btn-secondary")">Tất cả</a>
+        <a asp-area="" asp-action="Requests" asp-route-status="Pending" class="btn btn-sm @(status == "Pending" ? "btn-primary" : "btn-secondary")">Pending</a>
+        <a asp-area="" asp-action="Requests" asp-route-status="Approved" class="btn btn-sm @(status == "Approved" ? "btn-primary" : "btn-secondary")">Approved</a>
+        <a asp-area="" asp-action="Requests" asp-route-status="Rejected" class="btn btn-sm @(status == "Rejected" ? "btn-primary" : "btn-secondary")">Rejected</a>
+    </div>
+</div>
+
+<div class="data-table table-wrapper">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Chủ gian hàng</th>
+                <th>Loại</th>
+                <th>POI</th>
+                <th>Ghi chú</th>
+                <th>Trạng thái</th>
+                <th>Ngày gửi</th>
+                <th>Hành động</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var request in Model)
+        {
+            var poiName = request.Poi?.Translations.FirstOrDefault(t => t.LanguageCode == "vi")?.Name
+                ?? request.Poi?.Translations.FirstOrDefault()?.Name
+                ?? (request.PoiId.HasValue ? $"POI #{request.PoiId}" : "POI mới");
+            <tr>
+                <td>@request.Id</td>
+                <td><strong>@request.OwnerProfile?.BusinessName</strong><br /><small>@request.OwnerProfile?.User?.Email</small></td>
+                <td><span class="badge blue">@request.RequestType</span></td>
+                <td>@poiName</td>
+                <td style="white-space:pre-wrap;max-width:320px;">@request.Note</td>
+                <td><span class="badge @(request.Status == "Approved" ? "green" : request.Status == "Rejected" ? "red" : "yellow")">@request.Status</span></td>
+                <td>@request.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                <td>
+                    @if (request.Status == "Pending")
+                    {
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                            <form asp-area="" asp-action="ApproveRequest" method="post" style="display:inline;">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@request.Id" />
+                                <button type="submit" class="btn btn-sm btn-primary">Duyệt</button>
+                            </form>
+                            <form asp-area="" asp-action="RejectRequest" method="post" style="display:flex;gap:6px;">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@request.Id" />
+                                <input name="note" class="form-control form-control-sm" placeholder="Lý do" style="min-width:140px;" />
+                                <button type="submit" class="btn btn-sm btn-danger">Từ chối</button>
+                            </form>
+                        </div>
+                    }
+                    else
+                    {
+                        <small>@(request.ReviewedAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "-")</small>
+                    }
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>

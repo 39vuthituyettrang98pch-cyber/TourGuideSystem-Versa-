@@ -1,13 +1,14 @@
 @model AdminWeb.Models.Tour
 
 @{
+    var currentArea = ViewContext.RouteData.Values["area"]?.ToString() ?? "";
     ViewData["Title"] = "Tạo Tour mới";
 }
 
 <div class="page-title">Tạo Tour mới</div>
 <div class="page-subtitle">Thiết lập thông tin cơ bản cho tour du lịch</div>
 <div class="card" style="padding:28px;">
-    <form asp-action="Create" method="post">
+    <form asp-area="@currentArea" asp-action="Create" method="post">
         @Html.AntiForgeryToken()
         <div class="form-grid">
             <div class="form-group">
@@ -33,7 +34,7 @@
         </div>
         <div style="display:flex;gap:12px;flex-wrap:wrap;">
             <button type="submit" class="btn btn-primary">Lưu tour</button>
-            <a asp-action="Index" class="btn btn-secondary">Huỷ</a>
+            <a asp-area="@currentArea" asp-action="Index" class="btn btn-secondary">Huỷ</a>
         </div>
     </form>
 </div>

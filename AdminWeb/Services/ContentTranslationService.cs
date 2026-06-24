@@ -21,9 +21,9 @@ public sealed class ContentTranslationService
         _logger = logger;
     }
 
-    public sealed record TranslationSummary(int Tours, int Categories)
+    public sealed record TranslationSummary(int Tours, int Categories, int Pois = 0)
     {
-        public int Total => Tours + Categories;
+        public int Total => Pois + Tours + Categories;
     }
 
     public async Task<TranslationSummary> TranslateMissingContentForLanguageAsync(
@@ -35,26 +35,29 @@ public sealed class ContentTranslationService
         if (string.IsNullOrWhiteSpace(languageCode) || languageCode == "vi")
             return new TranslationSummary(0, 0);
 
+        var poiCount = await TranslateMissingPoisAsync(languageCode, cancellationToken);
         var tourCount = await TranslateMissingToursAsync(languageCode, cancellationToken);
         var categoryCount = await TranslateMissingCategoriesAsync(languageCode, cancellationToken);
 
-        return new TranslationSummary(tourCount, categoryCount);
+        return new TranslationSummary(tourCount, categoryCount, poiCount);
     }
 
     public async Task<TranslationSummary> TranslateMissingContentForAllActiveLanguagesAsync(
         CancellationToken cancellationToken = default)
     {
         var languages = await GetTargetLanguagesAsync(null, cancellationToken);
+        var totalPois = 0;
         var totalTours = 0;
         var totalCategories = 0;
 
         foreach (var language in languages)
         {
+            totalPois += await TranslateMissingPoisForLanguageAsync(language, cancellationToken);
             totalTours += await TranslateMissingToursForLanguageAsync(language, cancellationToken);
             totalCategories += await TranslateMissingCategoriesForLanguageAsync(language, cancellationToken);
         }
 
-        return new TranslationSummary(totalTours, totalCategories);
+        return new TranslationSummary(totalTours, totalCategories, totalPois);
     }
 
     public async Task<int> TranslateMissingToursAsync(
@@ -85,6 +88,118 @@ public sealed class ContentTranslationService
         }
 
         return total;
+    }
+
+    public async Task<int> TranslateMissingPoisAsync(
+        string? languageCode = null,
+        CancellationToken cancellationToken = default)
+    {
+        var languages = await GetTargetLanguagesAsync(languageCode, cancellationToken);
+        var total = 0;
+
+        foreach (var language in languages)
+        {
+            total += await TranslateMissingPoisForLanguageAsync(language, cancellationToken);
+        }
+
+        return total;
+    }
+
+    private async Task<int> TranslateMissingPoisForLanguageAsync(
+        SupportedLanguage language,
+        CancellationToken cancellationToken)
+    {
+        var targetCode = NormalizeCode(language.LanguageCode);
+
+        var pois = await _context.Pois
+            .AsNoTracking()
+            .Include(poi => poi.Translations)
+            .Where(poi =>
+                poi.Translations.Any(translation => translation.LanguageCode == "vi") &&
+                !poi.Translations.Any(translation => translation.LanguageCode == targetCode))
+            .OrderBy(poi => poi.Id)
+            .ToListAsync(cancellationToken);
+
+        var items = pois
+            .Select(poi =>
+            {
+                var source = PickSourceTranslation(poi.Translations);
+                return source == null
+                    ? null
+                    : new PoiSourceItem(
+                        poi.Id,
+                        source.Name,
+                        source.ShortDescription ?? string.Empty,
+                        source.FullDescription ?? string.Empty);
+            })
+            .Where(item => item != null)
+            .Cast<PoiSourceItem>()
+            .ToList();
+
+        if (items.Count == 0)
+            return 0;
+
+        var prompt =
+            "Bạn là biên dịch viên nội dung du lịch cho hệ thống tour guide.\n" +
+            $"Hãy dịch danh sách POI sang ngôn ngữ đích: {language.LanguageName} ({targetCode}).\n" +
+            "Giữ nguyên id. Dịch tự nhiên, đúng văn phong du lịch, không bịa thêm dữ kiện mới.\n" +
+            "Quy tắc dịch tên POI:\n" +
+            "- Field name cũng phải được dịch sang ngôn ngữ đích. Với địa danh nổi tiếng, dùng tên bản địa/tên phổ biến trong ngôn ngữ đó.\n" +
+            "- Không giữ nguyên tiếng Anh/tiếng Việt cho name nếu có bản dịch phổ biến.\n" +
+            "- Nếu là thương hiệu/tên quán/tên riêng không nên dịch, hãy giữ tên gốc.\n" +
+            "- Nếu không chắc, dùng tên đã dịch và thêm tên gốc trong ngoặc.\n" +
+            "Trả về DUY NHẤT JSON array, không markdown, không giải thích.\n" +
+            "Schema bắt buộc: [{\"id\":1,\"name\":\"...\",\"shortDescription\":\"...\",\"fullDescription\":\"...\"}]\n" +
+            "Dữ liệu nguồn:\n" +
+            JsonSerializer.Serialize(items);
+
+        var response = await _geminiService.GenerateTextAsync(prompt, cancellationToken);
+        var translatedItems = ParseArray<PoiTranslatedItem>(response)
+            .Where(item => item.Id > 0 && !string.IsNullOrWhiteSpace(item.Name))
+            .ToDictionary(item => item.Id, item => item);
+
+        var existingIds = await _context.PoiTranslations
+            .AsNoTracking()
+            .Where(translation => translation.LanguageCode == targetCode)
+            .Select(translation => translation.PoiId)
+            .ToListAsync(cancellationToken);
+
+        var existingSet = existingIds.ToHashSet();
+        var newItems = new List<PoiTranslation>();
+
+        foreach (var source in items)
+        {
+            if (existingSet.Contains(source.Id))
+                continue;
+
+            if (!translatedItems.TryGetValue(source.Id, out var translated))
+                continue;
+
+            newItems.Add(new PoiTranslation
+            {
+                PoiId = source.Id,
+                LanguageCode = targetCode,
+                Name = translated.Name.Trim(),
+                ShortDescription = string.IsNullOrWhiteSpace(translated.ShortDescription)
+                    ? null
+                    : translated.ShortDescription.Trim(),
+                FullDescription = string.IsNullOrWhiteSpace(translated.FullDescription)
+                    ? null
+                    : translated.FullDescription.Trim(),
+                TtsScript = string.IsNullOrWhiteSpace(translated.FullDescription)
+                    ? null
+                    : translated.FullDescription.Trim(),
+                UpdatedAt = DateTime.Now
+            });
+        }
+
+        if (newItems.Count == 0)
+            return 0;
+
+        await _context.PoiTranslations.AddRangeAsync(newItems, cancellationToken);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return newItems.Count;
     }
 
     private async Task<int> TranslateMissingToursForLanguageAsync(
@@ -262,6 +377,13 @@ public sealed class ContentTranslationService
             .ToListAsync(cancellationToken);
     }
 
+    private static PoiTranslation? PickSourceTranslation(IEnumerable<PoiTranslation> translations)
+    {
+        return translations.FirstOrDefault(item => item.LanguageCode == "vi" && !string.IsNullOrWhiteSpace(item.Name))
+            ?? translations.FirstOrDefault(item => item.LanguageCode == "en" && !string.IsNullOrWhiteSpace(item.Name))
+            ?? translations.FirstOrDefault(item => !string.IsNullOrWhiteSpace(item.Name));
+    }
+
     private static TourTranslation? PickSourceTranslation(IEnumerable<TourTranslation> translations)
     {
         return translations.FirstOrDefault(item => item.LanguageCode == "vi" && !string.IsNullOrWhiteSpace(item.Title))
@@ -344,8 +466,22 @@ public sealed class ContentTranslationService
         return (code ?? string.Empty).Trim().ToLowerInvariant();
     }
 
+    private sealed record PoiSourceItem(
+        int Id,
+        string Name,
+        string ShortDescription,
+        string FullDescription);
+
     private sealed record TourSourceItem(int Id, string Title, string Description);
     private sealed record CategorySourceItem(int Id, string Name);
+
+    private sealed class PoiTranslatedItem
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = "";
+        public string? ShortDescription { get; set; }
+        public string? FullDescription { get; set; }
+    }
 
     private sealed class TourTranslatedItem
     {

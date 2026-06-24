@@ -1,27 +1,35 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:i18n="clr-namespace:UserMobile.Markup"
              xmlns:zxing="clr-namespace:ZXing.Net.Maui.Controls;assembly=ZXing.Net.Maui.Controls"
              x:Class="UserMobile.Views.QrScannerPage"
-             Title="Quét QR"
+             Title="{i18n:T Tab_Qr}"
              BackgroundColor="#111827">
-    <Grid RowDefinitions="Auto,*,Auto" Padding="18,18,18,24">
-        <VerticalStackLayout Spacing="5">
-            <Label Text="Quét mã tại điểm tham quan" FontSize="24" FontAttributes="Bold" TextColor="White" />
-            <Label Text="Đưa mã QR vào giữa khung để mở nội dung." FontSize="13" TextColor="#B9C2D2" />
-        </VerticalStackLayout>
-
-        <Border Grid.Row="1" Margin="0,22" Stroke="#7D69E8" StrokeThickness="3" StrokeShape="RoundRectangle 24" BackgroundColor="Black">
-            <Grid>
-                <zxing:CameraBarcodeReaderView x:Name="BarcodeReader"
-                                               VerticalOptions="Fill"
-                                               HorizontalOptions="Fill"
-                                               IsDetecting="False" />
-                <Border WidthRequest="220" HeightRequest="220" BackgroundColor="Transparent" Stroke="White" StrokeThickness="2" StrokeShape="RoundRectangle 18" />
+    <Grid RowDefinitions="Auto,*,Auto" Padding="18,18,18,24" RowSpacing="16">
+        <Border Style="{StaticResource HeroCard}" BackgroundColor="#172033" Padding="18">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                <VerticalStackLayout Spacing="5">
+                    <Label Text="{i18n:T Qr_Title}" FontSize="24" FontAttributes="Bold" TextColor="White" />
+                    <Label Text="{i18n:T Qr_Subtitle}" FontSize="13" TextColor="#B9C2D2" />
+                </VerticalStackLayout>
+                <Border Grid.Column="1" WidthRequest="52" HeightRequest="52" BackgroundColor="#243044" Stroke="Transparent" StrokeShape="RoundRectangle 18" VerticalOptions="Center">
+                    <Label Text="QR" FontAttributes="Bold" TextColor="White" HorizontalOptions="Center" VerticalOptions="Center" />
+                </Border>
             </Grid>
         </Border>
 
-        <Border Grid.Row="2" BackgroundColor="#243044" Stroke="Transparent" StrokeShape="RoundRectangle 14" Padding="15,12">
+        <Border Grid.Row="1" Stroke="#7D69E8" StrokeThickness="3" StrokeShape="RoundRectangle 28" BackgroundColor="Black">
+            <Grid>
+                <zxing:CameraBarcodeReaderView x:Name="BarcodeReader" VerticalOptions="Fill" HorizontalOptions="Fill" IsDetecting="False" />
+                <Border WidthRequest="230" HeightRequest="230" BackgroundColor="Transparent" Stroke="White" StrokeThickness="2" StrokeShape="RoundRectangle 24" />
+                <Border BackgroundColor="#7D69E8" Stroke="Transparent" StrokeShape="RoundRectangle 14" Padding="10,6" VerticalOptions="Start" HorizontalOptions="Center" Margin="0,16,0,0">
+                    <Label Text="Đưa mã vào khung" TextColor="White" FontSize="12" FontAttributes="Bold" />
+                </Border>
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="2" BackgroundColor="#243044" Stroke="Transparent" StrokeShape="RoundRectangle 18" Padding="15,13">
             <Label Text="{Binding ScanResult}" TextColor="White" FontSize="14" HorizontalTextAlignment="Center" />
         </Border>
     </Grid>

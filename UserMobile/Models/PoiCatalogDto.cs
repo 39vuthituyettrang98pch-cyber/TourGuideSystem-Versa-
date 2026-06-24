@@ -13,6 +13,8 @@ public sealed class PoiCatalogDto
     public double Radius { get; set; }
     public double AverageRating { get; set; }
     public int RatingCount { get; set; }
+    public bool IsFeatured { get; set; }
+    public string? OwnerBusinessName { get; set; }
     public List<ReviewDto> RecentReviews { get; set; } = [];
     public List<int> CategoryIds { get; set; } = [];
     public List<PoiTranslationDto> Translations { get; set; } = [];

@@ -1,5 +1,6 @@
 @model IEnumerable<AdminWeb.Models.SystemSetting>
 @{
+    var isAdmin = User.IsInRole("Admin");
     ViewData["Title"] = "Cài đặt hệ thống";
 }
 
@@ -19,7 +20,7 @@
             </div>
 
             <div class="card-body">
-                <form asp-action="Save" method="post">
+                <form asp-area="" asp-action="Save" method="post">
                     <div class="form-group mb-4">
                         <label class="form-label text-white">Độ nhạy GPS / Bán kính (mét)</label>
                         <div style="position: relative;">
@@ -94,7 +95,7 @@
                         Danh sách cấu hình chi tiết (Advanced Settings).
                     </p>
                 </div>
-                <a asp-action="Create" class="btn btn-primary btn-sm">
+                <a asp-area="" asp-action="Create" class="btn btn-primary btn-sm">
                     <i class="fa-solid fa-plus"></i> Thêm mới
                 </a>
             </div>
@@ -120,8 +121,8 @@
                                     <td class="text-white" style="font-size: 13px;">@item.Description</td>
                                     <td style="text-align: right;">
                                         <div class="d-flex justify-content-end gap-2">
-                                            <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-secondary" title="Chỉnh sửa"><i class="fa-solid fa-pen"></i></a>
-                                            <form asp-action="Delete" asp-route-id="@item.Id" method="post" onsubmit="return confirm('Bạn có chắc chắn muốn xóa cấu hình này?');">
+                                            <a asp-area="" asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-secondary" title="Chỉnh sửa"><i class="fa-solid fa-pen"></i></a>
+                                            <form asp-area="" asp-action="Delete" asp-route-id="@item.Id" method="post" onsubmit="return confirm('Bạn có chắc chắn muốn xóa cấu hình này?');">
                                                 <button type="submit" class="btn btn-sm btn-danger" title="Xóa">
                                                     <i class="fa-solid fa-trash"></i>
                                                 </button>
@@ -153,16 +154,16 @@
                     <nav aria-label="Page navigation">
                         <ul class="pagination pagination-sm justify-content-end mb-0" style="gap: 4px;">
                             <li class="page-item @(ViewBag.CurrentPage == 1 ? "disabled" : "")">
-                                <a class="page-link" asp-action="Index" asp-route-page="@(ViewBag.CurrentPage - 1)" style="background-color: var(--bg3); border-color: var(--border); color: var(--text2); border-radius: 6px;">Trước</a>
+                                <a asp-area="" class="page-link" asp-action="Index" asp-route-page="@(ViewBag.CurrentPage - 1)" style="background-color: var(--bg3); border-color: var(--border); color: var(--text2); border-radius: 6px;">Trước</a>
                             </li>
                             @for (int i = 1; i <= ViewBag.TotalPages; i++)
                             {
                                 <li class="page-item @(ViewBag.CurrentPage == i ? "active" : "")">
-                                    <a class="page-link" asp-action="Index" asp-route-page="@i" style="background-color: @(ViewBag.CurrentPage == i ? "var(--accent)" : "var(--bg3)"); border-color: @(ViewBag.CurrentPage == i ? "var(--accent)" : "var(--border)"); color: @(ViewBag.CurrentPage == i ? "white" : "var(--text)"); border-radius: 6px;">@i</a>
+                                    <a asp-area="" class="page-link" asp-action="Index" asp-route-page="@i" style="background-color: @(ViewBag.CurrentPage == i ? "var(--accent)" : "var(--bg3)"); border-color: @(ViewBag.CurrentPage == i ? "var(--accent)" : "var(--border)"); color: @(ViewBag.CurrentPage == i ? "white" : "var(--text)"); border-radius: 6px;">@i</a>
                                 </li>
                             }
                             <li class="page-item @(ViewBag.CurrentPage == ViewBag.TotalPages ? "disabled" : "")">
-                                <a class="page-link" asp-action="Index" asp-route-page="@(ViewBag.CurrentPage + 1)" style="background-color: var(--bg3); border-color: var(--border); color: var(--text2); border-radius: 6px;">Sau</a>
+                                <a asp-area="" class="page-link" asp-action="Index" asp-route-page="@(ViewBag.CurrentPage + 1)" style="background-color: var(--bg3); border-color: var(--border); color: var(--text2); border-radius: 6px;">Sau</a>
                             </li>
                         </ul>
                     </nav>

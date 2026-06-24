@@ -22,7 +22,7 @@
                 </p>
             </div>
 
-            <form asp-action="Create" method="post">
+            <form asp-area="" asp-action="Create" method="post">
                 <div class="form-grid">
                     <div class="form-group full">
                         <label asp-for="VersionNumber" class="form-label">Mã phiên bản <span class="text-danger">*</span></label>
@@ -47,7 +47,7 @@
                 <hr style="border-color: var(--border); margin: 24px 0 20px;" />
 
                 <div style="display: flex; gap: 12px; justify-content: flex-end;">
-                    <a asp-action="Index" class="btn btn-secondary">
+                    <a asp-area="" asp-action="Index" class="btn btn-secondary">
                         Hủy bỏ
                     </a>
                     <button type="submit" class="btn btn-primary">

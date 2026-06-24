@@ -1,15 +1,18 @@
 using Microsoft.Extensions.DependencyInjection;
+using UserMobile.Services;
 using UserMobile.ViewModels;
 
 namespace UserMobile.Views;
 
 public partial class ProfilePage : ContentPage
 {
+    private readonly ILocalizationService _localizationService;
     private ProfileViewModel ViewModel => BindingContext as ProfileViewModel ?? throw new InvalidOperationException();
 
     public ProfilePage()
     {
         InitializeComponent();
+        _localizationService = App.Services.GetRequiredService<ILocalizationService>();
         BindingContext = App.Services.GetRequiredService<ProfileViewModel>();
     }
 
@@ -39,6 +42,15 @@ public partial class ProfilePage : ContentPage
         await Shell.Current.GoToAsync(nameof(AchievementPage));
     }
 
+    private async void OnPremiumClicked(object? sender, EventArgs e) =>
+        await Shell.Current.GoToAsync(nameof(PremiumPage));
+
+    private async void OnLeaderboardClicked(object? sender, EventArgs e) =>
+        await Shell.Current.GoToAsync(nameof(LeaderboardPage));
+
+    private async void OnOrdersClicked(object? sender, EventArgs e) =>
+        await Shell.Current.GoToAsync(nameof(MenuOrdersPage));
+
     private async void OnLoginClicked(object? sender, EventArgs e)
     {
         await Shell.Current.GoToAsync(nameof(LoginPage));
@@ -49,9 +61,10 @@ public partial class ProfilePage : ContentPage
         if (ViewModel.Profile is null)
             return;
 
+        var title = _localizationService.Translate("Profile_Edit");
         var fullName = await DisplayPromptAsync(
-            "Sửa hồ sơ",
-            "Họ tên",
+            title,
+            _localizationService.Translate("Register_FullName"),
             initialValue: ViewModel.Profile.FullName,
             maxLength: 120);
 
@@ -59,8 +72,8 @@ public partial class ProfilePage : ContentPage
             return;
 
         var email = await DisplayPromptAsync(
-            "Sửa hồ sơ",
-            "Email",
+            title,
+            _localizationService.Translate("Register_Email"),
             initialValue: ViewModel.Profile.Email,
             keyboard: Keyboard.Email,
             maxLength: 160);
@@ -69,46 +82,46 @@ public partial class ProfilePage : ContentPage
             return;
 
         var message = await ViewModel.UpdateProfileAsync(fullName, email);
-        await DisplayAlert("Hồ sơ", message, "OK");
+        await DisplayAlertAsync(title, message, _localizationService.Translate("Common_Ok"));
     }
 
     private async void OnChangePasswordClicked(object? sender, EventArgs e)
     {
+        var title = _localizationService.Translate("Profile_ChangePassword");
         var currentPassword = await DisplayPromptAsync(
-            "Đổi mật khẩu",
-            "Mật khẩu hiện tại",
-            placeholder: "Nhập mật khẩu hiện tại",
+            title,
+            _localizationService.Translate("Login_Password"),
             keyboard: Keyboard.Default);
 
         if (currentPassword is null)
             return;
 
         var newPassword = await DisplayPromptAsync(
-            "Đổi mật khẩu",
-            "Mật khẩu mới",
-            placeholder: "Ít nhất 8 ký tự",
+            title,
+            _localizationService.Translate("Profile_ChangePassword"),
             keyboard: Keyboard.Default);
 
         if (newPassword is null)
             return;
 
         var confirmPassword = await DisplayPromptAsync(
-            "Đổi mật khẩu",
-            "Xác nhận mật khẩu mới",
+            title,
+            _localizationService.Translate("Register_Password"),
             keyboard: Keyboard.Default);
 
         if (confirmPassword is null)
             return;
 
         var message = await ViewModel.ChangePasswordAsync(currentPassword, newPassword, confirmPassword);
-        await DisplayAlert("Đổi mật khẩu", message, "OK");
+        await DisplayAlertAsync(title, message, _localizationService.Translate("Common_Ok"));
     }
 
     private async void OnForgotPasswordClicked(object? sender, EventArgs e)
     {
+        var title = _localizationService.Translate("Profile_ForgotPassword");
         var email = await DisplayPromptAsync(
-            "Quên mật khẩu",
-            "Nhập email tài khoản du khách",
+            title,
+            _localizationService.Translate("Login_Email"),
             keyboard: Keyboard.Email,
             maxLength: 160);
 
@@ -116,12 +129,15 @@ public partial class ProfilePage : ContentPage
             return;
 
         var message = await ViewModel.RequestPasswordResetAsync(email);
-        await DisplayAlert("Quên mật khẩu", message, "OK");
+        await DisplayAlertAsync(title, message, _localizationService.Translate("Common_Ok"));
     }
 
     private async void OnLogoutClicked(object? sender, EventArgs e)
     {
         await ViewModel.LogoutAsync();
-        await DisplayAlert("Đăng xuất", "Bạn đã đăng xuất khỏi tài khoản.", "OK");
+        await DisplayAlertAsync(
+            _localizationService.Translate("Profile_Logout"),
+            _localizationService.Translate("Profile_Logout"),
+            _localizationService.Translate("Common_Ok"));
     }
 }

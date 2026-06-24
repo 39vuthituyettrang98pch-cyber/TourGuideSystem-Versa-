@@ -43,4 +43,7 @@ public partial class ToursPage : ContentPage
         detailPage.LoadTour(tour);
         await Navigation.PushAsync(detailPage);
     }
+
+    private async void OnPremiumClicked(object? sender, EventArgs e) =>
+        await Shell.Current.GoToAsync(nameof(PremiumPage));
 }

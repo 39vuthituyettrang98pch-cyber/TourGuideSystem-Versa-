@@ -1,0 +1,312 @@
+@model IEnumerable<AdminWeb.Models.PaymentTransaction>
+@{
+    ViewData["Title"] = "Gói & thanh toán";
+    var plans = (ViewBag.Plans as IEnumerable<AdminWeb.Models.PaymentPlan> ?? Enumerable.Empty<AdminWeb.Models.PaymentPlan>()).ToList();
+    var activeSub = ViewBag.ActiveSubscription as AdminWeb.Models.OwnerSubscription;
+    var payments = Model.ToList();
+    var vnPayConfigured = ViewBag.VnPayConfigured as bool? ?? false;
+    var momoConfigured = ViewBag.MomoConfigured as bool? ?? false;
+    var momoDemoMode = ViewBag.MomoDemoMode as bool? ?? false;
+    var momoReady = momoConfigured || momoDemoMode;
+    var onlineReady = vnPayConfigured || momoReady;
+    var paidTotal = payments.Where(p => p.Status == "Paid").Sum(p => p.Amount);
+    var pendingCount = payments.Count(p => p.Status == "Pending");
+    var daysLeft = activeSub == null ? 0 : Math.Max(0, (int)Math.Ceiling((activeSub.ExpiresAt.ToUniversalTime() - DateTime.UtcNow).TotalDays));
+    string Money(decimal value) => value <= 0 ? "0 đ" : value.ToString("N0") + " đ";
+    string PlanTier(AdminWeb.Models.PaymentPlan plan)
+    {
+        var code = (plan.PlanCode ?? string.Empty).ToUpperInvariant();
+        if (code.Contains("FREE")) return "Dùng thử";
+        if (IsFeaturedMapPlan(plan)) return "Nổi bật bản đồ";
+        return "Phổ biến";
+    }
+    bool IsFeaturedMapPlan(AdminWeb.Models.PaymentPlan plan)
+    {
+        var text = $"{plan.PlanCode} {plan.PlanName} {plan.Description}".ToUpperInvariant();
+        return text.Contains("FEATURED")
+            || text.Contains("NOI_BAT")
+            || text.Contains("NỔI BẬT")
+            || text.Contains("NOI BAT")
+            || text.Contains("PREMIUM")
+            || text.Contains("PRO")
+            || text.Contains("PRIORITY")
+            || text.Contains("ƯU TIÊN")
+            || text.Contains("UU TIEN")
+            || plan.Price >= 199000m;
+    }
+    string DisplayMethod(string? method) => string.IsNullOrWhiteSpace(method) ? "-" : method.Replace("MoMo Demo", "MoMo");
+    string DisplayGateway(string? status) => string.IsNullOrWhiteSpace(status) ? "-" : status.Replace("MOMO_DEMO", "MOMO").Replace("DEMO", "MOMO");
+    string[] Benefits(AdminWeb.Models.PaymentPlan plan)
+    {
+        var code = (plan.PlanCode ?? string.Empty).ToUpperInvariant();
+        if (code.Contains("FREE"))
+        {
+            return new[]
+            {
+                "1 POI/gian hàng cơ bản để dùng thử",
+                "Gửi POI mới hoặc nhận POI có sẵn",
+                "Xem POI của mình trên bản đồ",
+                "Menu mẫu giới hạn cho demo",
+                "Theo dõi trạng thái duyệt POI"
+            };
+        }
+        if (code.Contains("PREMIUM") || code.Contains("PRO"))
+        {
+            return new[]
+            {
+                "Quản lý POI, menu/sản phẩm có hình ảnh",
+                "Upload ảnh POI và ảnh món từ máy",
+                "AI tối ưu nội dung POI trước khi gửi duyệt",
+                "Báo cáo doanh thu, món bán chạy và đơn gần đây",
+                "POI được gắn nhãn Nổi bật trên bản đồ du khách",
+                "Ghim lên đầu khu Khám phá bản đồ và ưu tiên trong trang chủ"
+            };
+        }
+        return new[]
+        {
+            "Quản lý POI đã được duyệt",
+            "Thêm/sửa menu hoặc sản phẩm có ảnh",
+            "Nhận đơn mua menu từ du khách",
+            "Cập nhật trạng thái đơn hàng",
+            "Xem báo cáo cơ bản về doanh thu và đánh giá"
+        };
+    }
+}
+
+@section Styles {
+<style>
+    .billing-shell{display:grid;gap:16px}.billing-hero{border:1px solid var(--owner-border);border-radius:26px;padding:22px;background:linear-gradient(135deg,rgba(45,212,191,.18),rgba(56,189,248,.10)),var(--owner-card);box-shadow:var(--owner-shadow)}.billing-hero-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(280px,.65fr);gap:18px;align-items:stretch}.billing-kicker{font-size:12px;font-weight:1000;letter-spacing:.16em;text-transform:uppercase;color:var(--owner-accent)}.billing-title{font-size:clamp(32px,4vw,54px);line-height:.95;font-weight:1000;letter-spacing:-.06em;margin:8px 0 10px}.billing-sub{color:var(--owner-muted);font-weight:800;max-width:840px;margin:0}.billing-current{border:1px solid var(--owner-border);border-radius:22px;padding:18px;background:rgba(2,12,20,.46)}.billing-current h3{margin:0 0 10px;font-size:18px}.current-plan{font-size:24px;font-weight:1000}.current-days{font-size:44px;font-weight:1000;color:var(--owner-accent);line-height:1}.billing-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.mini-stat{border:1px solid var(--owner-border);border-radius:18px;background:var(--owner-card);padding:14px}.mini-stat small{display:block;color:var(--owner-muted);font-weight:850;margin-bottom:6px}.mini-stat strong{font-size:24px;font-weight:1000}.gateway-status{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.gateway-box{border:1px solid var(--owner-border);border-radius:18px;background:var(--owner-card);padding:14px;display:flex;gap:12px;align-items:center}.gateway-icon{width:40px;height:40px;border-radius:14px;display:grid;place-items:center;background:rgba(45,212,191,.14);color:var(--owner-accent)}.gateway-box strong{display:block}.gateway-box small{color:var(--owner-muted);font-weight:750}.gateway-box.off{border-color:rgba(251,191,36,.25);background:rgba(251,191,36,.06)}.gateway-box.off .gateway-icon{background:rgba(251,191,36,.12);color:#fde68a}.setup-note{border:1px solid rgba(251,191,36,.28);background:rgba(251,191,36,.08);color:#fde68a;border-radius:18px;padding:12px 14px;font-weight:850}.plans-head h2{font-size:28px;font-weight:1000;margin:0}.plans-head p{margin:6px 0 0;color:var(--owner-muted);font-weight:800}.plan-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(305px,1fr));gap:16px}.plan-card{border:1px solid var(--owner-border);border-radius:26px;background:var(--owner-card);box-shadow:var(--owner-shadow);padding:18px;display:flex;flex-direction:column;gap:14px}.plan-card.featured{border-color:rgba(45,212,191,.5);box-shadow:0 0 0 1px rgba(45,212,191,.12),var(--owner-shadow)}.plan-card.current{border-color:rgba(96,165,250,.55)}.plan-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.plan-name{font-size:24px;line-height:1.05;font-weight:1000;margin:0}.plan-code{color:var(--owner-muted);font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.08em}.plan-price{font-size:38px;font-weight:1000;letter-spacing:-.06em}.plan-desc{color:var(--owner-muted);font-weight:800;min-height:38px}.benefit-list{display:grid;gap:9px;margin:0;padding:0;list-style:none}.benefit-list li{display:flex;gap:9px;align-items:flex-start;color:#e5efff;font-weight:750}.benefit-list i{color:var(--owner-accent);margin-top:3px}.pay-actions{display:grid;gap:10px;margin-top:auto}.online-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}.locked-gateway{width:100%;border:1px dashed rgba(251,191,36,.35)!important;color:#fde68a!important;background:rgba(251,191,36,.07)!important;cursor:not-allowed}.history-card{border:1px solid var(--owner-border);border-radius:24px;background:var(--owner-card);overflow:hidden}.history-head{padding:16px 18px;border-bottom:1px solid var(--owner-border)}.history-head h2{font-size:24px;margin:0;font-weight:1000}.status-pill{display:inline-flex;align-items:center;gap:7px;padding:7px 10px;border-radius:999px;font-size:12px;font-weight:950}.status-pill.paid{background:rgba(52,211,153,.14);color:#86efac}.status-pill.pending{background:rgba(251,191,36,.14);color:#fde68a}.status-pill.cancelled,.status-pill.rejected{background:rgba(251,113,133,.14);color:#fecdd3}.mode-card{border:1px solid rgba(45,212,191,.20);border-radius:20px;background:rgba(45,212,191,.06);padding:14px}.mode-card h3{margin:0 0 6px;font-size:18px}.mode-card p{margin:0;color:var(--owner-muted);font-weight:800}.map-feature-note{border:1px solid rgba(250,204,21,.28);border-radius:18px;background:linear-gradient(135deg,rgba(250,204,21,.12),rgba(251,146,60,.08));padding:13px;color:#fde68a;font-weight:850;display:flex;gap:10px;align-items:flex-start}.map-feature-note i{margin-top:3px;color:#facc15}@@media(max-width:960px){.billing-hero-grid,.billing-row,.gateway-status{grid-template-columns:1fr}.online-actions{grid-template-columns:1fr}.billing-title{font-size:36px}}
+</style>
+}
+
+<div class="billing-shell">
+    <section class="billing-hero">
+        <div class="billing-hero-grid">
+            <div>
+                <div class="billing-kicker"><i class="fa-solid fa-credit-card"></i> Owner billing center</div>
+                <h1 class="billing-title">Gói đăng ký chủ gian hàng</h1>
+                <p class="billing-sub">
+                    Chọn gói để mở quyền quản lý POI, menu/sản phẩm, đơn hàng, đánh giá và báo cáo doanh thu. Trang này chỉ hiển thị hai cổng thanh toán: <strong>VNPay</strong> và <strong>MoMo</strong>.
+                </p>
+            </div>
+            <aside class="billing-current">
+                <h3>Gói hiện tại</h3>
+                @if (activeSub?.PaymentPlan != null)
+                {
+                    <div class="current-plan">@activeSub.PaymentPlan.PlanName</div>
+                    <div class="current-days">@daysLeft</div>
+                    <p class="owner-muted" style="margin:0;">ngày còn lại · hết hạn @activeSub.ExpiresAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p>
+                }
+                else
+                {
+                    <div class="current-plan">Chưa kích hoạt</div>
+                    <p class="owner-muted" style="margin:8px 0 0;">Bạn có thể kích hoạt gói miễn phí hoặc chọn gói trả phí để mở thêm quyền.</p>
+                }
+            </aside>
+        </div>
+    </section>
+
+    <div class="billing-row">
+        <div class="mini-stat"><small>Tổng đã thanh toán</small><strong>@Money(paidTotal)</strong></div>
+        <div class="mini-stat"><small>Giao dịch đang chờ</small><strong>@pendingCount</strong></div>
+        <div class="mini-stat"><small>Tổng giao dịch</small><strong>@payments.Count</strong></div>
+    </div>
+
+    <section class="gateway-status">
+        <div class="gateway-box @(vnPayConfigured ? "" : "off")">
+            <div class="gateway-icon"><i class="fa-solid fa-building-columns"></i></div>
+            <div>
+                <strong>VNPay @(vnPayConfigured ? "đã sẵn sàng" : "chưa cấu hình")</strong>
+                <small>@(vnPayConfigured ? "Có thể tạo link thanh toán VNPay." : "Điền TmnCode, HashSecret và PaymentUrl để bật nút VNPay.")</small>
+            </div>
+        </div>
+        <div class="gateway-box @(momoReady ? "" : "off")">
+            <div class="gateway-icon"><i class="fa-solid fa-mobile-screen"></i></div>
+            <div>
+                <strong>MoMo @(momoReady ? "đã sẵn sàng" : "chưa cấu hình")</strong>
+                <small>@(momoReady ? "Có thể tạo thanh toán MoMo." : "Điền key MoMo hoặc bật chế độ mô phỏng để mở nút MoMo.")</small>
+            </div>
+        </div>
+    </section>
+
+    @if (!onlineReady)
+    {
+        <div class="setup-note">
+            <i class="fa-solid fa-circle-info"></i>
+            Hiện chưa thanh toán online được vì VNPay và MoMo chưa cấu hình. Các gói trả phí sẽ chỉ có nút “Gửi yêu cầu thủ công”.
+        </div>
+    }
+
+    <section class="mode-card">
+        <h3>Quyền lợi theo gói</h3>
+        <p><strong>Miễn phí</strong>: dùng thử 1 POI. <strong>Cơ bản</strong>: quản lý POI, menu, đơn hàng và đánh giá. <strong>Gói nổi bật</strong>: thêm AI, upload ảnh, báo cáo nâng cao, đồng thời làm POI nổi bật trên bản đồ và khu Khám phá bản đồ của du khách.</p>
+    </section>
+
+    <div class="map-feature-note">
+        <i class="fa-solid fa-crown"></i>
+        <div>
+            Khi chủ POI thanh toán gói có mã/tên <strong>PREMIUM, PRO, FEATURED hoặc Nổi bật</strong>, toàn bộ POI đã được duyệt của chủ đó sẽ được đánh dấu <strong>POI nổi bật</strong>, marker sáng hơn trên bản đồ du khách và được đưa lên đầu danh sách Khám phá bản đồ.
+        </div>
+    </div>
+
+    @if (plans.Count == 0)
+    {
+        <div class="owner-empty">
+            <i class="fa-solid fa-credit-card"></i>
+            <h3>Chưa có gói dịch vụ</h3>
+            <p>Admin chưa tạo PaymentPlan cho Owner/Both.</p>
+        </div>
+    }
+    else
+    {
+        <div class="plans-head">
+            <div>
+                <h2>Chọn gói phù hợp</h2>
+                <p>Gói miễn phí kích hoạt ngay. Gói trả phí dùng VNPay, MoMo hoặc admin xác nhận thủ công.</p>
+            </div>
+        </div>
+
+        <div class="plan-grid">
+            @for (var i = 0; i < plans.Count; i++)
+            {
+                var plan = plans[i];
+                var benefits = Benefits(plan);
+                var mapFeatured = IsFeaturedMapPlan(plan);
+                var featured = mapFeatured || i == plans.Count - 1;
+                var isFree = plan.Price <= 0;
+                var isCurrent = activeSub?.PaymentPlanId == plan.Id && activeSub.Status == "Active" && activeSub.ExpiresAt > DateTime.UtcNow;
+                <article class="plan-card @(featured ? "featured" : "") @(isCurrent ? "current" : "")">
+                    <div class="plan-top">
+                        <div>
+                            <h3 class="plan-name">@plan.PlanName</h3>
+                            <div class="plan-code">@plan.PlanCode · @plan.DurationDays ngày</div>
+                        </div>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
+                            @if (isCurrent)
+                            {
+                                <span class="badge-soft badge-blue">Đang dùng</span>
+                            }
+                            @if (mapFeatured && !isFree)
+                            {
+                                <span class="badge-soft badge-green"><i class="fa-solid fa-crown"></i> @PlanTier(plan)</span>
+                            }
+                            else if (featured && !isFree)
+                            {
+                                <span class="badge-soft badge-green">@PlanTier(plan)</span>
+                            }
+                            else if (isFree)
+                            {
+                                <span class="badge-soft badge-yellow">@PlanTier(plan)</span>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="plan-price">@Money(plan.Price)</div>
+                    <div class="plan-desc">@plan.Description</div>
+
+                    <ul class="benefit-list">
+                        @foreach (var benefit in benefits)
+                        {
+                            <li><i class="fa-solid fa-check"></i><span>@benefit</span></li>
+                        }
+                    </ul>
+
+                    <div class="pay-actions">
+                        @if (isCurrent)
+                        {
+                            <button type="button" class="btn owner-btn-soft" disabled style="width:100%;"><i class="fa-solid fa-circle-check"></i> Gói đang hoạt động</button>
+                        }
+                        else if (isFree)
+                        {
+                            <form action="/Owner/Payments/ActivateFree" method="post">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="planId" value="@plan.Id" />
+                                <button class="btn owner-btn-primary" style="width:100%;"><i class="fa-solid fa-bolt"></i> Kích hoạt miễn phí</button>
+                            </form>
+                        }
+                        else
+                        {
+                            <div class="online-actions">
+                                @if (vnPayConfigured)
+                                {
+                                    <form action="/Owner/Payments/CreateVnPay" method="post">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="planId" value="@plan.Id" />
+                                        <button class="btn owner-btn-primary" style="width:100%;"><i class="fa-solid fa-building-columns"></i> VNPay</button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <button type="button" class="btn locked-gateway" disabled><i class="fa-solid fa-lock"></i> VNPay khóa</button>
+                                }
+
+                                @if (momoReady)
+                                {
+                                    <form action="/Owner/Payments/CreateMomo" method="post">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="planId" value="@plan.Id" />
+                                        <button class="btn owner-btn-primary" style="width:100%;"><i class="fa-solid fa-mobile-screen"></i> MoMo</button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <button type="button" class="btn locked-gateway" disabled><i class="fa-solid fa-lock"></i> MoMo khóa</button>
+                                }
+                            </div>
+
+                            <form action="/Owner/Payments/Create" method="post">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="planId" value="@plan.Id" />
+                                <button class="btn owner-btn-soft" style="width:100%;"><i class="fa-solid fa-paper-plane"></i> Gửi yêu cầu thủ công</button>
+                            </form>
+                        }
+                    </div>
+                </article>
+            }
+        </div>
+    }
+
+    <section class="history-card">
+        <div class="history-head">
+            <h2>Lịch sử giao dịch</h2>
+            <p class="owner-muted" style="margin:6px 0 0;">Theo dõi giao dịch VNPay, MoMo, miễn phí và thủ công.</p>
+        </div>
+        @if (payments.Count == 0)
+        {
+            <div class="owner-empty"><i class="fa-solid fa-receipt"></i><h3>Chưa có giao dịch</h3><p>Chọn gói để tạo giao dịch mới.</p></div>
+        }
+        else
+        {
+            <div class="owner-table-wrap">
+                <table class="owner-table">
+                    <thead><tr><th>Mã</th><th>Gói</th><th>Số tiền</th><th>Hình thức</th><th>Gateway</th><th>Trạng thái</th><th>Ngày tạo</th><th>Thao tác</th></tr></thead>
+                    <tbody>
+                    @foreach (var payment in payments)
+                    {
+                        var statusClass = (payment.Status ?? "").ToLowerInvariant();
+                        <tr>
+                            <td><code>@payment.TransactionCode</code></td>
+                            <td>@(payment.PaymentPlan?.PlanName ?? payment.Purpose)</td>
+                            <td><strong>@Money(payment.Amount)</strong></td>
+                            <td>@DisplayMethod(payment.PaymentMethod)</td>
+                            <td>@DisplayGateway(payment.GatewayStatus)</td>
+                            <td><span class="status-pill @statusClass">@payment.Status</span></td>
+                            <td>@payment.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                            <td>
+                                @if (payment.Status == "Pending" && !string.IsNullOrWhiteSpace(payment.CheckoutUrl))
+                                {
+                                    <a href="@payment.CheckoutUrl" target="_blank" rel="noopener" class="btn owner-btn-soft btn-sm">Tiếp tục trả</a>
+                                }
+                                else
+                                {
+                                    <span class="owner-muted">-</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+</div>

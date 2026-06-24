@@ -1,0 +1,101 @@
+@model IEnumerable<AdminWeb.Models.Tourist>
+
+@{
+    ViewData["Title"] = "Tài khoản du khách";
+    var query = ViewBag.Query as string ?? "";
+    var staffCount = ViewBag.StaffCount as int? ?? 0;
+    var touristCount = ViewBag.TouristCount as int? ?? Model?.Count() ?? 0;
+    var orderCounts = ViewBag.OrderCounts as IDictionary<int, int> ?? new Dictionary<int, int>();
+    var discoveryCounts = ViewBag.DiscoveryCounts as IDictionary<int, int> ?? new Dictionary<int, int>();
+}
+
+<div class="page-title">Quản lý tài khoản du khách</div>
+<div class="page-subtitle">Du khách dùng bảng <code>tourists</code>, khác với tài khoản Admin/Editor/Reviewer/Owner trong bảng <code>users</code>.</div>
+
+<div class="toolbar">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <a href="/Admin/User" class="btn btn-secondary btn-sm">
+            <i class="fa-solid fa-user-shield"></i> Nhân sự hệ thống (@staffCount)
+        </a>
+        <a href="/Admin/User/Tourists" class="btn btn-primary btn-sm">
+            <i class="fa-solid fa-person-walking-luggage"></i> Du khách (@touristCount)
+        </a>
+    </div>
+    <div>
+        <a href="/Admin/User/CreateTourist" class="btn btn-primary btn-sm">
+            <i class="fa-solid fa-plus"></i> Thêm du khách
+        </a>
+    </div>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success">@TempData["SuccessMessage"]</div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
+}
+
+<form action="/Admin/User/Tourists" method="get" class="card" style="padding:16px;margin-bottom:16px;">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <input class="form-control" style="max-width:420px;" type="search" name="q" value="@query" placeholder="Tìm theo tên hoặc Gmail du khách..." />
+        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-magnifying-glass"></i> Tìm</button>
+        <a href="/Admin/User/Tourists" class="btn btn-secondary">Xóa lọc</a>
+    </div>
+</form>
+
+<div class="table-wrapper">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Du khách</th>
+                <th>Email</th>
+                <th>Nguồn đăng nhập</th>
+                <th>Khám phá</th>
+                <th>Đơn món</th>
+                <th>Ngày tạo</th>
+                <th>Thao tác</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Model != null && Model.Any())
+            {
+                foreach (var tourist in Model)
+                {
+                    var discoveryCount = discoveryCounts.TryGetValue(tourist.Id, out var dCount) ? dCount : 0;
+                    var orderCount = orderCounts.TryGetValue(tourist.Id, out var oCount) ? oCount : 0;
+
+                    <tr>
+                        <td style="font-weight:800;">@(tourist.FullName ?? "Chưa có tên")</td>
+                        <td>@tourist.Email</td>
+                        <td><span class="badge blue">@tourist.AuthProvider</span></td>
+                        <td>@discoveryCount</td>
+                        <td>@orderCount</td>
+                        <td style="font-size:13px;color:var(--text2);">@tourist.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                        <td>
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                                <a href="/Admin/User/EditTourist/@tourist.Id" class="btn btn-sm btn-secondary" title="Sửa du khách">
+                                    <i class="fa-solid fa-pen"></i>
+                                </a>
+                                <form action="/Admin/User/DeleteTourist" method="post" style="display:inline;" onsubmit="return confirm('Xóa tài khoản du khách này? Nếu du khách đã có đơn hàng/giao dịch thì hệ thống sẽ không cho xóa.');">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@tourist.Id" />
+                                    <button type="submit" class="btn btn-sm btn-danger" title="Xóa du khách">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            }
+            else
+            {
+                <tr>
+                    <td colspan="7" style="text-align:center;padding:24px;color:var(--text2);">Chưa có tài khoản du khách nào.</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

@@ -599,6 +599,24 @@
         .custom-marker.rejected { background: #ff6577; }
         .custom-marker.admin { background: #5b8cff; }
 
+        .current-user-marker {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: linear-gradient(180deg, #4f8cff 0%, #2f6df6 100%);
+            border: 3px solid #ffffff;
+            box-shadow: 0 10px 24px rgba(47, 109, 246, 0.35);
+            color: #ffffff;
+            font-size: 15px;
+        }
+
+        .current-user-marker i {
+            transform: none;
+        }
+
         .leaflet-container {
             font-family: inherit;
         }
@@ -725,7 +743,7 @@
             <span class="dashboard-stat-label">Tổng lượt phát</span>
         </a>
 
-        <a class="dashboard-stat" asp-area="" asp-controller="AudioTasks" asp-action="Index">
+        <a class="dashboard-stat" href="/Admin/AudioTasks">
             <span class="dashboard-stat-icon">
                 <i class="fa-solid fa-file-audio"></i>
             </span>
@@ -814,7 +832,7 @@
                         <i class="fa-solid fa-arrow-right"></i>
                     </a>
 
-                    <a class="quick-link" asp-area="" asp-controller="AudioTasks" asp-action="Index">
+                    <a class="quick-link" href="/Admin/AudioTasks">
                         <span><i class="fa-solid fa-wand-magic-sparkles"></i> Tác vụ AI Media</span>
                         <i class="fa-solid fa-arrow-right"></i>
                     </a>
@@ -1337,7 +1355,7 @@
                 } else {
                     const adminIcon = L.divIcon({
                         className: 'custom-map-icon',
-                        html: `<div class="custom-marker admin"><i class="fa-solid fa-user-tie"></i></div>`,
+                        html: `<div class="current-user-marker"><i class="fa-solid fa-user"></i></div>`,
                         iconSize: [32, 32],
                         iconAnchor: [16, 32],
                         popupAnchor: [0, -32]

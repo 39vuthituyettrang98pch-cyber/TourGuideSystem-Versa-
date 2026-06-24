@@ -113,8 +113,13 @@ public sealed class RegisterViewModel : BaseViewModel
         if (string.IsNullOrWhiteSpace(Email))
             return "Vui lòng nhập email.";
 
-        if (!MailAddress.TryCreate(Email.Trim(), out _))
+        var normalizedEmail = Email.Trim();
+
+        if (!MailAddress.TryCreate(normalizedEmail, out _))
             return "Email chưa đúng định dạng.";
+
+        if (!IsGmailAddress(normalizedEmail))
+            return "Chỉ chấp nhận Gmail có đuôi @gmail.com.";
 
         if (string.IsNullOrEmpty(Password))
             return "Vui lòng nhập mật khẩu.";
@@ -128,6 +133,17 @@ public sealed class RegisterViewModel : BaseViewModel
         return !string.Equals(Password, ConfirmPassword, StringComparison.Ordinal)
             ? "Mật khẩu xác nhận không khớp."
             : null;
+    }
+
+    private static bool IsGmailAddress(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            return false;
+
+        var atIndex = email.IndexOf('@');
+        return atIndex > 0 &&
+               atIndex == email.LastIndexOf('@') &&
+               email.EndsWith("@gmail.com", StringComparison.OrdinalIgnoreCase);
     }
 
     private AuthResult ValidationFailure(string message)

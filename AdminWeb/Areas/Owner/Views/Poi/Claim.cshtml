@@ -1,0 +1,35 @@
+@using AdminWeb.Models
+@{
+    ViewData["Title"] = "Nhận POI có sẵn";
+    var pois = ViewBag.Pois as List<Poi> ?? new List<Poi>();
+}
+
+<div class="owner-card" style="max-width:980px;">
+    <h2 style="font-weight:950;margin-bottom:6px;">Yêu cầu nhận quyền quản lý POI</h2>
+    <p style="color:var(--text-muted);font-weight:750;">Chọn POI có sẵn chưa có chủ, gửi yêu cầu để admin xác nhận.</p>
+
+    <form asp-area="Owner" asp-controller="Poi" asp-action="Claim" method="post" style="display:grid;gap:14px;">
+        @Html.AntiForgeryToken()
+        <div>
+            <label class="form-label">POI muốn nhận</label>
+            <select name="poiId" class="form-select" required>
+                <option value="">-- Chọn POI --</option>
+                @foreach (var poi in pois)
+                {
+                    var name = poi.Translations.FirstOrDefault(t => t.LanguageCode == "vi")?.Name
+                        ?? poi.Translations.FirstOrDefault()?.Name
+                        ?? $"POI #{poi.Id}";
+                    <option value="@poi.Id">#@poi.Id - @name</option>
+                }
+            </select>
+        </div>
+        <div>
+            <label class="form-label">Ghi chú xác minh</label>
+            <textarea name="note" rows="4" class="form-control" placeholder="Ví dụ: Tôi là chủ quán, số điện thoại xác minh..., giấy tờ..." required></textarea>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-paper-plane"></i> Gửi yêu cầu</button>
+            <a asp-area="Owner" asp-controller="Poi" asp-action="Requests" class="btn btn-secondary">Xem yêu cầu của tôi</a>
+        </div>
+    </form>
+</div>

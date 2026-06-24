@@ -19,7 +19,7 @@
                 </p>
             </div>
 
-            <form asp-action="Edit" method="post">
+            <form asp-area="" asp-action="Edit" method="post">
                 <input type="hidden" asp-for="Id" />
                 <input type="hidden" asp-for="CreatedAt" />
                 
@@ -61,7 +61,7 @@
                 <hr style="border-color: var(--border); margin: 24px 0 20px;" />
 
                 <div style="display: flex; gap: 12px; justify-content: flex-end;">
-                    <a asp-action="Index" class="btn btn-secondary">
+                    <a asp-area="" asp-action="Index" class="btn btn-secondary">
                         Hủy bỏ
                     </a>
                     <button type="submit" class="btn btn-primary">

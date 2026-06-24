@@ -2,17 +2,37 @@
 
 @{
     ViewData["Title"] = "Tài khoản hệ thống";
+    var staffCount = ViewBag.StaffCount as int? ?? Model?.Count() ?? 0;
+    var touristCount = ViewBag.TouristCount as int? ?? 0;
 }
 
-<div class="page-title">Quản lý tài khoản hệ thống</div>
-<div class="page-subtitle">Tạo và phân quyền tài khoản Admin, Biên tập viên hoặc Kiểm duyệt viên.</div>
+<div class="page-title">Quản lý tài khoản & vai trò</div>
+<div class="page-subtitle">Admin quản lý tài khoản hệ thống riêng, tài khoản du khách riêng. Du khách nằm trong bảng tourists nên không trộn chung với Admin/Editor/Reviewer/Owner.</div>
 
 <div class="toolbar">
-    <div></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <a href="/Admin/User" class="btn btn-primary btn-sm">
+            <i class="fa-solid fa-user-shield"></i> Nhân sự hệ thống (@staffCount)
+        </a>
+        <a href="/Admin/User/Tourists" class="btn btn-secondary btn-sm">
+            <i class="fa-solid fa-person-walking-luggage"></i> Du khách (@touristCount)
+        </a>
+    </div>
     <div>
-        <a asp-action="Create" class="btn btn-primary btn-sm"><i class="fa-solid fa-plus"></i> Thêm tài khoản</a>
+        <a href="/Admin/User/Create" class="btn btn-primary btn-sm">
+            <i class="fa-solid fa-plus"></i> Thêm tài khoản hệ thống
+        </a>
     </div>
 </div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success">@TempData["SuccessMessage"]</div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
+}
 
 <div class="table-wrapper">
     <table class="data-table">
@@ -20,16 +40,25 @@
             <tr>
                 <th>Tên đăng nhập</th>
                 <th>Email</th>
-                <th>Phân quyền (Role)</th>
+                <th>Phân quyền</th>
                 <th>Trạng thái</th>
                 <th>Ngày tạo</th>
                 <th>Thao tác</th>
             </tr>
         </thead>
         <tbody>
-            @if(Model != null && Model.Any()) {
-                foreach (var user in Model) {
-                    var roleBadge = user.Role?.RoleName switch { "Admin" => "red", "Reviewer" => "green", _ => "blue" };
+            @if (Model != null && Model.Any())
+            {
+                foreach (var user in Model)
+                {
+                    var roleBadge = user.Role?.RoleName switch
+                    {
+                        "Admin" => "red",
+                        "Reviewer" => "green",
+                        "Owner" => "amber",
+                        _ => "blue"
+                    };
+
                     <tr>
                         <td style="font-weight: bold;">@user.Username</td>
                         <td>@user.Email</td>
@@ -44,19 +73,35 @@
                         <td style="font-size: 13px; color: var(--text2);">@user.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
                         <td>
                             <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                                <a asp-action="Edit" asp-route-id="@user.Id" class="btn btn-sm btn-secondary"><i class="fa-solid fa-pen"></i></a>
-                                <form asp-action="Delete" method="post" style="display:inline;" onsubmit="return confirm('Xóa tài khoản này?');">
+                                <a href="/Admin/User/Edit/@user.Id" class="btn btn-sm btn-secondary" title="Sửa tài khoản">
+                                    <i class="fa-solid fa-pen"></i>
+                                </a>
+                                <form action="/Admin/User/Delete" method="post" style="display:inline;" onsubmit="return confirm('Xóa tài khoản này?');">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="id" value="@user.Id" />
-                                    <button type="submit" class="btn btn-sm btn-danger"><i class="fa-solid fa-trash"></i></button>
+                                    <button type="submit" class="btn btn-sm btn-danger" title="Xóa tài khoản">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
                                 </form>
                             </div>
                         </td>
                     </tr>
                 }
-            } else {
-                <tr><td colspan="6" style="text-align: center; padding: 24px; color: var(--text2);">Chưa có tài khoản nào.</td></tr>
+            }
+            else
+            {
+                <tr>
+                    <td colspan="6" style="text-align: center; padding: 24px; color: var(--text2);">Chưa có tài khoản hệ thống nào.</td>
+                </tr>
             }
         </tbody>
     </table>
+</div>
+
+<div class="card" style="padding:18px;margin-top:16px;">
+    <strong>Lưu ý luồng tài khoản:</strong>
+    <div style="color:var(--text-soft);line-height:1.7;margin-top:6px;">
+        Admin / Editor / Reviewer / Owner dùng bảng <code>users</code> và đăng nhập theo portal riêng.
+        Du khách dùng bảng <code>tourists</code>, đăng nhập ở web du khách và app mobile.
+    </div>
 </div>

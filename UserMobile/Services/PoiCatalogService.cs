@@ -47,17 +47,77 @@ public sealed class PoiCatalogService : IPoiCatalogService
         string qrData,
         CancellationToken cancellationToken = default)
     {
-        var normalized = qrData.Trim();
-        var places = await GetAllAsync(cancellationToken: cancellationToken);
+        var normalized = ExtractQrToken(qrData);
+        if (string.IsNullOrWhiteSpace(normalized))
+            return null;
 
-        return places.FirstOrDefault(place =>
+        var places = await GetAllAsync(cancellationToken: cancellationToken);
+        var localMatch = places.FirstOrDefault(place =>
             string.Equals(place.Id, normalized, StringComparison.OrdinalIgnoreCase) ||
             string.Equals(place.QrCodeToken, normalized, StringComparison.OrdinalIgnoreCase) ||
             normalized.EndsWith($"/{place.Id}", StringComparison.OrdinalIgnoreCase) ||
             normalized.EndsWith($"/{place.QrCodeToken}", StringComparison.OrdinalIgnoreCase));
+
+        if (localMatch != null)
+            return localMatch;
+
+        var language = await _localizationService.GetSavedLanguageAsync();
+        var languageCode = language?.Code ?? "vi";
+        var response = await _apiService.GetAsync<PoiCatalogDto>(
+            $"api/poi/by-qr?qr={Uri.EscapeDataString(normalized)}&lang={Uri.EscapeDataString(languageCode)}",
+            cancellationToken);
+
+        if (!response.Success || response.Data == null)
+            return null;
+
+        var resolved = MapPlace(response.Data);
+        _cache = _cache is null
+            ? new List<PlaceItem> { resolved }
+            : _cache.Where(place => !string.Equals(place.Id, resolved.Id, StringComparison.OrdinalIgnoreCase))
+                .Append(resolved)
+                .ToList();
+        _cachedLanguageCode = languageCode;
+        return resolved;
     }
 
-    private static PlaceItem MapPlace(PoiCatalogDto item)
+    private static string ExtractQrToken(string? qrData)
+    {
+        var normalized = (qrData ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(normalized))
+            return string.Empty;
+
+        if (Uri.TryCreate(normalized, UriKind.Absolute, out var uri))
+        {
+            var queryToken = TryGetQueryValue(uri.Query, "qr")
+                ?? TryGetQueryValue(uri.Query, "token");
+            if (!string.IsNullOrWhiteSpace(queryToken))
+                return queryToken.Trim();
+
+            return uri.Segments.LastOrDefault()?.Trim('/') ?? normalized;
+        }
+
+        return normalized.Trim().Trim('/');
+    }
+
+    private static string? TryGetQueryValue(string query, string key)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+            return null;
+
+        foreach (var pair in query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var parts = pair.Split('=', 2);
+            var name = Uri.UnescapeDataString(parts[0]);
+            if (!string.Equals(name, key, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            return parts.Length == 2 ? Uri.UnescapeDataString(parts[1]) : string.Empty;
+        }
+
+        return null;
+    }
+
+    private PlaceItem MapPlace(PoiCatalogDto item)
     {
         var narrationLanguages = item.Translations
             .Where(translation => !string.IsNullOrWhiteSpace(translation.LanguageCode))
@@ -66,8 +126,8 @@ public sealed class PoiCatalogService : IPoiCatalogService
                 Code = translation.LanguageCode,
                 Name = translation.LanguageName,
                 NativeName = translation.LanguageName,
-                AudioUrl = translation.AudioUrl ?? string.Empty,
-                VideoUrl = translation.VideoUrl ?? string.Empty
+                AudioUrl = ResolveMediaUrl(translation.AudioUrl),
+                VideoUrl = ResolveMediaUrl(translation.VideoUrl)
             })
             .ToList();
 
@@ -78,16 +138,53 @@ public sealed class PoiCatalogService : IPoiCatalogService
             Title = item.Name,
             Description = item.ShortDescription,
             Introduction = item.FullDescription,
-            ImageUrl = item.CoverImageUrl ?? string.Empty,
+            ImageUrl = ResolveMediaUrl(item.CoverImageUrl),
             Latitude = item.Latitude,
             Longitude = item.Longitude,
             Radius = item.Radius,
             AverageRating = item.AverageRating,
             RatingCount = item.RatingCount,
+            IsFeatured = item.IsFeatured,
+            OwnerBusinessName = item.OwnerBusinessName ?? string.Empty,
             Reviews = item.RecentReviews ?? [],
             HasNarration = narrationLanguages.Any(language =>
                 !string.IsNullOrWhiteSpace(language.AudioUrl)),
             NarrationLanguages = narrationLanguages
         };
     }
+
+    private string ResolveMediaUrl(string? value)
+    {
+        var raw = (value ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(raw))
+            return string.Empty;
+
+        var apiBase = _apiService.BaseAddress;
+
+        if (Uri.TryCreate(raw, UriKind.Absolute, out var absoluteUri))
+        {
+            if (apiBase != null && IsLoopbackHost(absoluteUri.Host) && !IsLoopbackHost(apiBase.Host))
+            {
+                var builder = new UriBuilder(absoluteUri)
+                {
+                    Scheme = apiBase.Scheme,
+                    Host = apiBase.Host,
+                    Port = apiBase.Port
+                };
+                return builder.Uri.ToString();
+            }
+
+            return absoluteUri.ToString();
+        }
+
+        if (apiBase == null)
+            return raw;
+
+        return new Uri(apiBase, raw.TrimStart('/')).ToString();
+    }
+
+    private static bool IsLoopbackHost(string host) =>
+        string.Equals(host, "localhost", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(host, "127.0.0.1", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(host, "::1", StringComparison.OrdinalIgnoreCase);
 }

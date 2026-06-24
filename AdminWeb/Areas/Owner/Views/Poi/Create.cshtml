@@ -1,0 +1,153 @@
+@{
+    ViewData["Title"] = "Gửi POI mới";
+    var canUseAi = ViewBag.CanUseOwnerAi as bool? ?? false;
+    var ownerPlanName = ViewBag.OwnerPlanName as string;
+}
+
+@section Styles {
+<style>
+    .owner-create-shell{max-width:1080px;display:grid;gap:18px}.owner-create-hero{border:1px solid var(--owner-border);border-radius:26px;padding:22px;background:linear-gradient(135deg,rgba(45,212,191,.16),rgba(56,189,248,.08)),var(--owner-card);box-shadow:var(--owner-shadow)}.owner-create-hero h1{font-size:clamp(32px,4vw,52px);line-height:.96;font-weight:1000;letter-spacing:-.05em;margin:6px 0 10px}.owner-create-hero p{margin:0;color:var(--owner-muted);font-weight:800}.owner-create-card{border:1px solid var(--owner-border);border-radius:26px;background:var(--owner-card);box-shadow:var(--owner-shadow);padding:22px}.owner-form-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:14px}.span-12{grid-column:span 12}.span-8{grid-column:span 8}.span-6{grid-column:span 6}.span-4{grid-column:span 4}.image-upload-box{border:1px dashed rgba(45,212,191,.35);border-radius:20px;padding:14px;background:rgba(45,212,191,.05);display:grid;gap:10px}.image-preview{width:100%;min-height:160px;border-radius:16px;border:1px solid var(--owner-border);background:rgba(2,12,20,.45);display:grid;place-items:center;overflow:hidden;color:var(--owner-muted);font-weight:850}.image-preview img{width:100%;height:220px;object-fit:cover;display:block}.ai-box{border:1px solid rgba(129,140,248,.28);border-radius:20px;background:rgba(129,140,248,.08);padding:14px;display:grid;gap:10px}.ai-box.locked{border-color:rgba(251,191,36,.26);background:rgba(251,191,36,.07)}.ai-status{font-size:13px;color:var(--owner-muted);font-weight:800}.form-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:4px}.owner-location-picker{min-width:0}.owner-location-picker [data-poi-map-picker]{margin:0}.owner-location-picker .poi-map-picker{border-color:var(--owner-border);background:var(--owner-card-2);box-shadow:var(--owner-shadow)}.owner-location-picker #poiAdminMapPicker{min-height:520px}@@media(max-width:900px){.span-8,.span-6,.span-4{grid-column:span 12}}
+</style>
+}
+
+<div class="owner-create-shell">
+    <section class="owner-create-hero">
+        <div style="font-size:12px;font-weight:1000;letter-spacing:.16em;text-transform:uppercase;color:var(--owner-accent);">Owner POI Center</div>
+        <h1>Gửi POI / gian hàng mới</h1>
+        <p>Owner có thể gửi POI mới kèm ảnh bìa tải từ máy. POI sẽ ở trạng thái <b>Pending</b>, Admin hoặc Reviewer duyệt xong mới hiển thị công khai.</p>
+    </section>
+
+    <form asp-area="Owner" asp-controller="Poi" asp-action="Create" method="post" enctype="multipart/form-data" class="owner-create-card">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+        <div class="owner-form-grid">
+            <div class="span-8">
+                <label class="form-label">Tên POI / gian hàng</label>
+                <input id="poiName" name="name" value="@ViewBag.Name" class="form-control" placeholder="Ví dụ: Bánh Mì Huynh Hoa - Lê Thị Riêng" required />
+            </div>
+            <div class="span-4">
+                <label class="form-label">Bán kính kích hoạt GPS</label>
+                <input id="Radius" name="radius" value="@(ViewBag.Radius ?? 50)" type="number" min="10" max="5000" class="form-control" required />
+            </div>
+
+            <div class="span-6">
+                <label class="form-label">Latitude</label>
+                <input id="Latitude" name="latitude" value="@ViewBag.Latitude" inputmode="decimal" class="form-control" placeholder="VD: 10.762508" required />
+            </div>
+            <div class="span-6">
+                <label class="form-label">Longitude</label>
+                <input id="Longitude" name="longitude" value="@ViewBag.Longitude" inputmode="decimal" class="form-control" placeholder="VD: 106.660126" required />
+            </div>
+
+            <div class="span-12 owner-location-picker">
+                @await Html.PartialAsync("~/Views/Poi/PoiLocationPicker.cshtml")
+            </div>
+
+            <div class="span-12 image-upload-box">
+                <label class="form-label" style="margin:0;">Ảnh bìa POI / gian hàng</label>
+                <div class="image-preview" id="coverPreview">
+                    <span>Chọn ảnh từ máy để xem trước tại đây</span>
+                </div>
+                <input type="file" name="coverImage" id="coverImage" class="form-control" accept="image/*" />
+                <small class="owner-muted">Bạn có thể tải ảnh trực tiếp từ máy giống trang Admin. Nếu không chọn file, hệ thống sẽ dùng URL bên dưới nếu có.</small>
+                <input name="coverImageUrl" value="@ViewBag.CoverImageUrl" class="form-control" placeholder="URL ảnh dự phòng: /uploads/... hoặc https://..." />
+            </div>
+
+            <div class="span-12 @(canUseAi ? "ai-box" : "ai-box locked")">
+                <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;">
+                    <div>
+                        <strong><i class="fa-solid fa-wand-magic-sparkles"></i> AI tối ưu nội dung</strong>
+                        <div class="ai-status">
+                            @if (canUseAi)
+                            {
+                                <span>Đang mở khóa bởi gói @(string.IsNullOrWhiteSpace(ownerPlanName) ? "199.000đ / Premium" : ownerPlanName).</span>
+                            }
+                            else
+                            {
+                                <span>Tính năng này dành cho gói 199.000đ / Premium.</span>
+                            }
+                        </div>
+                    </div>
+                    <button type="button" id="aiOptimizeBtn" class="btn owner-btn-primary" @(canUseAi ? "" : "disabled")>
+                        <i class="fa-solid fa-sparkles"></i> Tối ưu mô tả bằng AI
+                    </button>
+                </div>
+                <small id="aiOptimizeStatus" class="ai-status">Nhập tên, mô tả ngắn hoặc mô tả chi tiết rồi bấm tối ưu. AI sẽ viết lại mô tả ngắn và nội dung thuyết minh.</small>
+            </div>
+
+            <div class="span-12">
+                <label class="form-label">Mô tả ngắn</label>
+                <textarea id="shortDescription" name="shortDescription" rows="3" class="form-control" placeholder="Mô tả ngắn hiển thị trên card POI...">@ViewBag.ShortDescription</textarea>
+            </div>
+            <div class="span-12">
+                <label class="form-label">Mô tả chi tiết / nội dung thuyết minh</label>
+                <textarea id="fullDescription" name="fullDescription" rows="7" class="form-control" placeholder="Nội dung giới thiệu chi tiết để duyệt và tạo thuyết minh...">@ViewBag.FullDescription</textarea>
+            </div>
+            <div class="span-12">
+                <label class="form-label">Ghi chú gửi admin</label>
+                <textarea name="note" rows="3" class="form-control" placeholder="Ví dụ: Tôi là chủ địa điểm này, xin duyệt POI...">@ViewBag.Note</textarea>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-paper-plane"></i> Gửi duyệt</button>
+            <a asp-area="Owner" asp-controller="Poi" asp-action="Index" class="btn btn-secondary">Quay lại</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+<script>
+(function(){
+    const fileInput = document.getElementById('coverImage');
+    const preview = document.getElementById('coverPreview');
+    fileInput?.addEventListener('change', function(){
+        const file = this.files && this.files[0];
+        if (!file) {
+            preview.innerHTML = '<span>Chọn ảnh từ máy để xem trước tại đây</span>';
+            return;
+        }
+        const url = URL.createObjectURL(file);
+        preview.innerHTML = `<img src="${url}" alt="Ảnh bìa POI">`;
+    });
+
+    const aiBtn = document.getElementById('aiOptimizeBtn');
+    const aiStatus = document.getElementById('aiOptimizeStatus');
+    aiBtn?.addEventListener('click', async function(){
+        const name = document.getElementById('poiName')?.value || '';
+        const shortText = document.getElementById('shortDescription')?.value || '';
+        const fullText = document.getElementById('fullDescription')?.value || '';
+        const rawText = [name, shortText, fullText].filter(Boolean).join('\n\n');
+        if (!rawText.trim()) {
+            aiStatus.textContent = 'Vui lòng nhập tên hoặc mô tả trước khi tối ưu.';
+            return;
+        }
+        aiBtn.disabled = true;
+        aiStatus.textContent = 'Đang tối ưu nội dung bằng AI...';
+        try {
+            const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+            const response = await fetch('@Url.Action("OptimizeContent", "Poi", new { area = "Owner" })', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': token
+                },
+                body: JSON.stringify({ rawText })
+            });
+            const data = await response.json();
+            if (!response.ok || !data.success) {
+                throw new Error(data.message || 'Không tối ưu được nội dung.');
+            }
+            document.getElementById('shortDescription').value = data.shortDescription || shortText;
+            document.getElementById('fullDescription').value = data.fullDescription || fullText;
+            aiStatus.textContent = 'Đã tối ưu nội dung. Bạn có thể chỉnh lại trước khi gửi duyệt.';
+        } catch (error) {
+            aiStatus.textContent = error.message || 'AI tối ưu nội dung bị lỗi.';
+        } finally {
+            aiBtn.disabled = false;
+        }
+    });
+})();
+</script>
+}

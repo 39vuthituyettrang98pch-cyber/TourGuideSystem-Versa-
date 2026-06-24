@@ -1,6 +1,8 @@
 @model AdminWeb.Models.Poi
 
 @{
+    var currentArea = ViewContext.RouteData.Values["area"]?.ToString() ?? "";
+    var isAdmin = User.IsInRole("Admin");
     ViewData["Title"] = "Quản lý Media";
     var poiName = Model.Translations?.FirstOrDefault(t => t.LanguageCode == "vi")?.Name ?? $"POI #{Model.Id}";
 }
@@ -9,7 +11,7 @@
 <div class="page-subtitle">Quản lý hình ảnh và video trình chiếu cho điểm tham quan này.</div>
 
 <div class="toolbar">
-    <a asp-controller="Poi" asp-action="Index" class="btn btn-secondary btn-sm"><i class="fa-solid fa-arrow-left"></i> Quay lại danh sách POI</a>
+    <a asp-area="@currentArea" asp-controller="Poi" asp-action="Index" class="btn btn-secondary btn-sm"><i class="fa-solid fa-arrow-left"></i> Quay lại danh sách POI</a>
 </div>
 
 <div style="display: flex; flex-wrap: wrap; gap: 24px; margin-top: 24px;">
@@ -17,7 +19,7 @@
     <div class="card" style="flex: 1; min-width: 300px; max-width: 400px; height: fit-content;">
         <div class="card-header"><div class="card-title">Tải lên Media mới</div></div>
         <div class="card-body" style="padding: 20px;">
-            <form asp-action="UploadMedia" method="post" enctype="multipart/form-data">
+            <form asp-area="@currentArea" asp-action="UploadMedia" method="post" enctype="multipart/form-data">
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="poiId" value="@Model.Id" />
                 
@@ -58,11 +60,14 @@
                             }
                             <div style="padding: 12px; display: flex; justify-content: space-between; align-items: center;">
                                 <div style="font-size: 12px; color: var(--text2);">Thứ tự: <strong>@media.SortOrder</strong></div>
-                                <form asp-action="DeleteMedia" method="post" style="margin: 0;" onsubmit="return confirm('Bạn có chắc chắn muốn xóa file media này?');">
+                                @if (isAdmin)
+                                {
+                                <form asp-area="@currentArea" asp-action="DeleteMedia" method="post" style="margin: 0;" onsubmit="return confirm('Bạn có chắc chắn muốn xóa file media này?');">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="id" value="@media.Id" />
                                     <button type="submit" class="btn btn-sm btn-danger" style="padding: 6px 10px;" title="Xóa"><i class="fa-solid fa-trash"></i></button>
                                 </form>
+                                }
                             </div>
                         </div>
                     }

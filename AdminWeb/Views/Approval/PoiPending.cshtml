@@ -43,14 +43,14 @@
                         </td>
                         <td>
                             <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                                <form asp-action="PoiApprove" asp-controller="Approval" asp-route-id="@poi.Id" method="post" style="display:inline;">
+                                <form asp-area="" asp-action="PoiApprove" asp-controller="Approval" asp-route-id="@poi.Id" method="post" style="display:inline;">
                                     @Html.AntiForgeryToken()
                                     <button type="submit" class="btn btn-sm btn-primary" title="Approve">
                                         <i class="fa-solid fa-check"></i>
                                     </button>
                                 </form>
 
-                                <form asp-action="PoiReject" asp-controller="Approval" asp-route-id="@poi.Id" method="post" style="display:inline; min-width:260px;">
+                                <form asp-area="" asp-action="PoiReject" asp-controller="Approval" asp-route-id="@poi.Id" method="post" style="display:inline; min-width:260px;">
                                     @Html.AntiForgeryToken()
                                     <input type="text" name="adminNote" class="form-control" placeholder="Lý do từ chối" required style="padding:6px 10px; width:220px;" />
                                     <button type="submit" class="btn btn-sm btn-danger" title="Reject" style="margin-left:8px;">

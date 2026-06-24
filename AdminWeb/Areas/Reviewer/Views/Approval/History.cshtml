@@ -1,0 +1,67 @@
+@model ReviewerApprovalQueueViewModel
+@{
+    ViewData["Title"] = "Lịch sử kiểm duyệt";
+    string Badge(string status) => status switch { "Approved" => "green", "Rejected" => "red", _ => "amber" };
+    string Level(int score) => score >= 85 ? "green" : score >= 60 ? "amber" : "red";
+}
+
+<div class="page-heading">
+    <div>
+        <div class="page-title">Lịch sử kiểm duyệt</div>
+        <div class="page-subtitle">Tra cứu POI đã phê duyệt hoặc đã từ chối.</div>
+    </div>
+    <div class="page-actions">
+        <a asp-area="Reviewer" asp-controller="Approval" asp-action="PoiPending" class="btn btn-primary"><i class="fa-solid fa-list-check"></i> Hàng chờ</a>
+    </div>
+</div>
+
+<form method="get" class="card" style="padding:18px;">
+    <div style="display:grid;grid-template-columns:1fr 180px auto;gap:12px;align-items:end;">
+        <div>
+            <label class="form-label">Tìm POI</label>
+            <input class="form-control" name="q" value="@Model.Search" placeholder="Nhập tên POI" />
+        </div>
+        <div>
+            <label class="form-label">Trạng thái</label>
+            <select class="form-select" name="status">
+                <option value="All" selected="@(Model.StatusFilter == "All")">Tất cả</option>
+                <option value="Approved" selected="@(Model.StatusFilter == "Approved")">Đã duyệt</option>
+                <option value="Rejected" selected="@(Model.StatusFilter == "Rejected")">Đã từ chối</option>
+            </select>
+        </div>
+        <button class="btn btn-primary" type="submit"><i class="fa-solid fa-filter"></i> Lọc</button>
+    </div>
+</form>
+
+<section class="card" style="margin-top:18px">
+    <div class="card-header">
+        <div>
+            <div class="card-title"><i class="fa-solid fa-clock-rotate-left"></i> Danh sách lịch sử</div>
+            <div class="card-subtitle">Tổng @Model.Items.Count kết quả.</div>
+        </div>
+    </div>
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead><tr><th>POI</th><th>Trạng thái</th><th>Điểm</th><th>Lý do/ghi chú</th><th></th></tr></thead>
+            <tbody>
+            @if (Model.Items.Count == 0)
+            {
+                <tr><td colspan="5"><div class="empty-state compact"><i class="fa-solid fa-magnifying-glass"></i><p>Không có dữ liệu phù hợp.</p></div></td></tr>
+            }
+            else
+            {
+                foreach (var item in Model.Items)
+                {
+                    <tr>
+                        <td><strong>@item.Name</strong><br /><small style="color:var(--text-soft)">#@item.Id · @item.CreatedAt.ToString("dd/MM/yyyy")</small></td>
+                        <td><span class="badge @Badge(item.Status)">@item.Status</span></td>
+                        <td><span class="badge @Level(item.QualityScore)">@item.QualityScore%</span></td>
+                        <td style="max-width:420px">@(string.IsNullOrWhiteSpace(item.AdminNote) ? "-" : item.AdminNote)</td>
+                        <td><a class="btn btn-secondary btn-sm" asp-area="Reviewer" asp-controller="Approval" asp-action="Details" asp-route-id="@item.Id"><i class="fa-solid fa-eye"></i> Chi tiết</a></td>
+                    </tr>
+                }
+            }
+            </tbody>
+        </table>
+    </div>
+</section>

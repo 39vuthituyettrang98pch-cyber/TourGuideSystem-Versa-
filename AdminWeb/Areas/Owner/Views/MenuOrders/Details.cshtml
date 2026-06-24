@@ -1,0 +1,98 @@
+@model AdminWeb.Models.MenuOrder
+@{
+    ViewData["Title"] = $"Đơn {Model.OrderCode}";
+    var poiName = Model.Poi?.Translations.FirstOrDefault(t => t.LanguageCode == "vi")?.Name
+        ?? Model.Poi?.Translations.FirstOrDefault()?.Name
+        ?? $"POI #{Model.PoiId}";
+}
+
+<div class="owner-hero compact">
+    <div>
+        <div class="owner-kicker"><i class="fa-solid fa-receipt"></i> @Model.Status</div>
+        <h2>@Model.OrderCode</h2>
+        <p>@poiName · @Model.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <a asp-area="Owner" asp-controller="MenuOrders" asp-action="Index" class="btn owner-btn-soft"><i class="fa-solid fa-arrow-left"></i> Danh sách</a>
+    </div>
+</div>
+
+<div class="owner-grid-2">
+    <section class="owner-card">
+        <h3>Chi tiết món/sản phẩm</h3>
+        <div style="display:grid;gap:12px;">
+            @foreach (var item in Model.Items)
+            {
+                <div style="display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid var(--owner-border);padding-bottom:12px;">
+                    <div>
+                        <strong>@item.ItemName</strong>
+                        <div class="owner-muted">@item.UnitPrice.ToString("N0") @item.Currency × @item.Quantity</div>
+                    </div>
+                    <strong>@item.LineTotal.ToString("N0") @item.Currency</strong>
+                </div>
+            }
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:18px;font-size:22px;font-weight:950;color:var(--owner-accent);">
+            <span>Tổng</span><span>@Model.TotalAmount.ToString("N0") @Model.Currency</span>
+        </div>
+    </section>
+
+    <aside class="owner-card">
+        <h3>Khách hàng</h3>
+        <p><strong>Họ tên:</strong><br />@Model.CustomerName</p>
+        <p><strong>SĐT:</strong><br />@Model.CustomerPhone</p>
+        <p><strong>Thanh toán:</strong><br />Trả tại quầy / khi nhận hàng</p>
+        <p><strong>Trạng thái thanh toán:</strong><br />@Model.PaymentStatus</p>
+        @if (!string.IsNullOrWhiteSpace(Model.Note))
+        {
+            <p><strong>Ghi chú:</strong><br />@Model.Note</p>
+        }
+    </aside>
+</div>
+
+@{
+    var statusLabels = new Dictionary<string, string>
+    {
+        ["Pending"] = "Chờ xác nhận",
+        ["Confirmed"] = "Đã xác nhận",
+        ["Preparing"] = "Đang chuẩn bị",
+        ["Ready"] = "Sẵn sàng giao",
+        ["Completed"] = "Hoàn tất",
+        ["Cancelled"] = "Đã hủy"
+    };
+    var currentStatusText = statusLabels.TryGetValue(Model.Status, out var label) ? label : Model.Status;
+}
+
+<section class="owner-card" style="margin-top:20px;">
+    <div style="display:flex;justify-content:space-between;gap:14px;align-items:flex-start;flex-wrap:wrap;">
+        <div>
+            <h3>Cập nhật trạng thái</h3>
+            <p class="owner-muted" style="margin:4px 0 0;">Trạng thái hiện tại: <strong style="color:var(--owner-accent);">@currentStatusText</strong></p>
+        </div>
+        <a asp-area="Owner" asp-controller="MenuOrders" asp-action="Details" asp-route-id="@Model.Id" class="btn owner-btn-soft">
+            <i class="fa-solid fa-rotate-right"></i> Tải lại
+        </a>
+    </div>
+
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;">
+        @foreach (var status in new[] { "Pending", "Confirmed", "Preparing", "Ready", "Completed", "Cancelled" })
+        {
+            var isCurrent = string.Equals(Model.Status, status, StringComparison.OrdinalIgnoreCase);
+            var text = statusLabels[status];
+            <form asp-area="Owner" asp-controller="MenuOrders" asp-action="UpdateStatus" method="post" style="display:inline-block;">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" value="@Model.Id" />
+                <input type="hidden" name="status" value="@status" />
+                <button type="submit"
+                        class="btn @(isCurrent ? "owner-btn-primary" : "owner-btn-soft")"
+                        disabled="@isCurrent">
+                    @if (isCurrent)
+                    {
+                        <i class="fa-solid fa-check"></i>
+                    }
+                    @text
+                </button>
+            </form>
+        }
+    </div>
+</section>

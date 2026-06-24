@@ -515,10 +515,11 @@
 
                     <a asp-area="DuKhach"
                        asp-controller="Account"
-                       asp-action="Register"
-                       asp-route-returnUrl="@Model.ReturnUrl"
+                       asp-action="ForgotPassword"
+                       asp-route-email="@Model.Email"
                        style="color:var(--accent-2);font-weight:900;text-decoration:none;">
-                        Tạo tài khoản mới
+                        <i class="fa-solid fa-key"></i>
+                        Quên mật khẩu?
                     </a>
                 </div>
 
@@ -537,6 +538,7 @@
                     Đăng ký ngay
                 </a>
             </div>
+
         </div>
     </section>
 </div>

@@ -1,5 +1,6 @@
 @model AdminWeb.Models.Tour
 @{
+    var currentArea = ViewContext.RouteData.Values["area"]?.ToString() ?? "";
     ViewData["Title"] = (Model != null && Model.Id > 0) ? "Sửa tuyến tham quan" : "Xây dựng tuyến tham quan (Tour Builder)";
     var vi = Model?.Translations?.FirstOrDefault(t => t.LanguageCode == "vi");
 }
@@ -10,7 +11,7 @@
 <div class="grid cols-2" style="grid-template-columns: 350px 1fr; gap: 20px; align-items: start;">
     <!-- Cột trái: Form thông tin Tour -->
     <div class="card" style="padding: 24px;">
-        <form id="tourForm" asp-controller="Tour" asp-action="SaveBuilder" method="post">
+        <form asp-area="@currentArea" id="tourForm" asp-controller="Tour" asp-action="SaveBuilder" method="post">
             @Html.AntiForgeryToken()
             <input type="hidden" name="Id" value="@Model?.Id" />
             <input type="hidden" id="orderedPoiIds" name="OrderedPoiIds" value="@(Model != null && Model.TourPois != null ? string.Join(",", Model.TourPois.OrderBy(x => x.SequenceOrder).Select(x => x.PoiId)) : "")" />
@@ -156,7 +157,7 @@
 
             // 1. Tải danh sách POI từ API có sẵn của bạn
             try {
-                const res = await fetch('/Poi/MapData');
+                const res = await fetch('/Admin/Poi/MapData', { credentials: 'same-origin' });
                 allPois = await res.json();
             } catch(e) {
                 console.error("Lỗi tải POI", e);

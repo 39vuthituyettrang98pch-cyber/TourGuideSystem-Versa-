@@ -1,57 +1,93 @@
 @model AdminWeb.Models.PoiTranslation
 @{
+    var currentArea = ViewContext.RouteData.Values["area"]?.ToString() ?? "";
+    var languages = (IEnumerable<AdminWeb.Models.SupportedLanguage>)(ViewBag.Languages ?? Array.Empty<AdminWeb.Models.SupportedLanguage>());
     ViewData["Title"] = "Thêm bản dịch POI";
 }
 
 <div class="page-heading">
     <div>
         <div class="page-title">Thêm bản dịch POI</div>
-        <div class="page-subtitle">Tạo nội dung thủ công và có thể tải lên audio thuyết minh có sẵn.</div>
+        <div class="page-subtitle">Chọn ngôn ngữ đang bật trong hệ thống. Có thể để AI dịch trước, sau đó admin chỉnh lại tên riêng nếu cần.</div>
     </div>
 </div>
 
 <div class="form-shell">
     <section class="card">
-        <form asp-action="Create" method="post" enctype="multipart/form-data">
-            @Html.AntiForgeryToken()
-            <input type="hidden" asp-for="PoiId" />
-            <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
-            <div class="form-grid">
-                <div class="form-group">
-                    <label asp-for="LanguageCode" class="form-label">Mã ngôn ngữ</label>
-                    <input asp-for="LanguageCode" class="form-control" list="lang-list" placeholder="Ví dụ: en, ja, ko" required autocomplete="off" />
-                    <datalist id="lang-list">
-                        <option value="vi">Tiếng Việt</option>
-                        @foreach (var language in (IEnumerable<AdminWeb.Models.SupportedLanguage>)(ViewBag.Languages ?? Array.Empty<AdminWeb.Models.SupportedLanguage>()))
-                        {
-                            <option value="@language.LanguageCode">@language.LanguageName</option>
-                        }
-                    </datalist>
-                    <span asp-validation-for="LanguageCode" class="field-validation-error"></span>
-                </div>
-                <div class="form-group full">
-                    <label asp-for="Name" class="form-label">Tên hiển thị</label>
-                    <input asp-for="Name" class="form-control" required />
-                    <span asp-validation-for="Name" class="field-validation-error"></span>
-                </div>
-                <div class="form-group full">
-                    <label asp-for="ShortDescription" class="form-label">Mô tả ngắn</label>
-                    <textarea asp-for="ShortDescription" class="form-control" rows="2"></textarea>
-                </div>
-                <div class="form-group full">
-                    <label asp-for="FullDescription" class="form-label">Mô tả đầy đủ</label>
-                    <textarea asp-for="FullDescription" class="form-control" rows="5"></textarea>
-                </div>
-                <div class="form-group full">
-                    <label class="form-label" for="audioFile">Audio thuyết minh</label>
-                    <input class="form-control" id="audioFile" type="file" name="audioFile" accept="audio/*" />
+        @if (!languages.Any())
+        {
+            <div class="empty-state" style="padding:28px;text-align:center;">
+                <i class="fa-solid fa-language" style="font-size:34px;opacity:.65;margin-bottom:12px;"></i>
+                <h3>POI này đã có đủ các ngôn ngữ đang bật</h3>
+                <p style="color:var(--text2);">Muốn thêm ngôn ngữ mới, hãy vào Admin → Ngôn ngữ và giọng đọc để thêm/bật ngôn ngữ trước.</p>
+                <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:16px;">
+                    <a asp-area="@currentArea" asp-action="Index" asp-route-poiId="@Model.PoiId" class="btn btn-secondary">Quay lại</a>
+                    <a asp-area="" asp-controller="Language" asp-action="Create" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Thêm ngôn ngữ hệ thống</a>
                 </div>
             </div>
-            <div class="form-actions">
-                <a asp-action="Index" asp-route-poiId="@Model.PoiId" class="btn btn-secondary">Hủy</a>
-                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Lưu bản dịch</button>
-            </div>
-        </form>
+        }
+        else
+        {
+            <form asp-area="@currentArea" asp-action="Create" method="post" enctype="multipart/form-data">
+                @Html.AntiForgeryToken()
+                <input type="hidden" asp-for="PoiId" />
+                <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label asp-for="LanguageCode" class="form-label">Ngôn ngữ cần thêm</label>
+                        <select asp-for="LanguageCode" class="form-control" required>
+                            @foreach (var language in languages)
+                            {
+                                <option value="@language.LanguageCode">
+                                    @language.LanguageName (@language.LanguageCode.ToUpper())
+                                    @(string.IsNullOrWhiteSpace(language.EdgeTtsVoice) ? " - chưa có voice TTS" : "")
+                                </option>
+                            }
+                        </select>
+                        <span asp-validation-for="LanguageCode" class="field-validation-error"></span>
+                        <small style="color:var(--text2);font-size:12px;margin-top:6px;display:block;">
+                            Danh sách này lấy động từ bảng ngôn ngữ và chỉ hiện ngôn ngữ POI này chưa có bản dịch.
+                        </small>
+                    </div>
+
+                    <div class="form-group full">
+                        <label style="display:flex;align-items:center;gap:8px;">
+                            <input type="checkbox" name="autoTranslate" value="true" checked />
+                            Tự dịch bằng AI khi lưu
+                        </label>
+                        <small style="color:var(--text2);font-size:12px;margin-top:6px;display:block;">
+                            Nên bật mục này. AI sẽ dịch tên, mô tả ngắn và mô tả đầy đủ. Với tên quán/thương hiệu, AI sẽ giữ tên gốc; với địa danh nổi tiếng, AI sẽ dùng tên bản địa/phổ biến.
+                        </small>
+                    </div>
+
+                    <div class="form-group full">
+                        <label asp-for="Name" class="form-label">Tên hiển thị</label>
+                        <input asp-for="Name" class="form-control" placeholder="Có thể để trống nếu bật AI dịch" />
+                        <span asp-validation-for="Name" class="field-validation-error"></span>
+                    </div>
+                    <div class="form-group full">
+                        <label asp-for="ShortDescription" class="form-label">Mô tả ngắn</label>
+                        <textarea asp-for="ShortDescription" class="form-control" rows="2" placeholder="Có thể để trống nếu bật AI dịch"></textarea>
+                    </div>
+                    <div class="form-group full">
+                        <label asp-for="FullDescription" class="form-label">Mô tả đầy đủ</label>
+                        <textarea asp-for="FullDescription" class="form-control" rows="5" placeholder="Có thể để trống nếu bật AI dịch"></textarea>
+                    </div>
+                    <div class="form-group full">
+                        <label class="form-label" for="audioFile">Audio thuyết minh thủ công</label>
+                        <input class="form-control" id="audioFile" type="file" name="audioFile" accept="audio/*" />
+                        <small style="color:var(--text2);font-size:12px;margin-top:6px;display:block;">
+                            Không bắt buộc. Nếu ngôn ngữ có Edge-TTS voice, tác vụ AI Media có thể tạo audio sau.
+                        </small>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <a asp-area="@currentArea" asp-action="Index" asp-route-poiId="@Model.PoiId" class="btn btn-secondary">Hủy</a>
+                    <button type="submit" class="btn btn-primary"><i class="fa-solid fa-wand-magic-sparkles"></i> Dịch & lưu bản dịch</button>
+                </div>
+            </form>
+        }
     </section>
 </div>
 

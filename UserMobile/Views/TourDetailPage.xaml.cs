@@ -58,4 +58,20 @@ public partial class TourDetailPage : ContentPage
         await detailPage.LoadPlaceAsync(place);
         await Navigation.PushAsync(detailPage);
     }
+
+    private async void OnOpenRouteClicked(object? sender, EventArgs e)
+    {
+        if (BindingContext is not TourCatalogDto { Pois.Count: > 0 } tour) return;
+        var points = tour.Pois.OrderBy(item => item.SequenceOrder).ToList();
+        static string Point(TourPoiCatalogDto item) =>
+            $"{item.Latitude.ToString(System.Globalization.CultureInfo.InvariantCulture)},{item.Longitude.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
+
+        var origin = Point(points[0]);
+        var destination = Point(points[^1]);
+        var middle = points.Skip(1).SkipLast(1).Take(8).Select(Point).ToList();
+        var url = $"https://www.google.com/maps/dir/?api=1&origin={Uri.EscapeDataString(origin)}&destination={Uri.EscapeDataString(destination)}&travelmode=walking";
+        if (middle.Count > 0)
+            url += $"&waypoints={Uri.EscapeDataString(string.Join('|', middle))}";
+        await Browser.Default.OpenAsync(url, BrowserLaunchMode.SystemPreferred);
+    }
 }

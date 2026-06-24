@@ -3,11 +3,12 @@ using AdminWeb.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace AdminWeb.Areas.DuKhach.Controllers;
 
 [Area("DuKhach")]
-[AllowAnonymous]
+[Authorize(Policy = "TouristAreaPolicy")]
 public sealed class TourController : Controller
 {
     private const string FallbackLanguageCode = "vi";
@@ -21,6 +22,12 @@ public sealed class TourController : Controller
 
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
     {
+        if (!await HasActivePremiumAsync(cancellationToken))
+        {
+            TempData["DuKhachErrorMessage"] = "Tour du lịch là tính năng Premium. Vui lòng mua gói Premium để mở khóa.";
+            return RedirectToAction("Plans", "Payments", new { area = "DuKhach" });
+        }
+
         var selectedLanguageCode = GetSelectedLanguageCode();
         ViewBag.SelectedLanguageCode = selectedLanguageCode;
 
@@ -29,7 +36,6 @@ public sealed class TourController : Controller
             .Include(tour => tour.Translations)
             .Include(tour => tour.TourPois)
             .Where(tour => tour.Status == "active" || tour.Status == "Active")
-            .AsSplitQuery()
             .ToListAsync(cancellationToken);
 
         var model = tours.Select(tour =>
@@ -54,6 +60,12 @@ public sealed class TourController : Controller
 
     public async Task<IActionResult> Details(int id, CancellationToken cancellationToken)
     {
+        if (!await HasActivePremiumAsync(cancellationToken))
+        {
+            TempData["DuKhachErrorMessage"] = "Chi tiết tour là tính năng Premium. Vui lòng mua gói Premium để mở khóa.";
+            return RedirectToAction("Plans", "Payments", new { area = "DuKhach" });
+        }
+
         var selectedLanguageCode = GetSelectedLanguageCode();
         ViewBag.SelectedLanguageCode = selectedLanguageCode;
 
@@ -63,7 +75,6 @@ public sealed class TourController : Controller
             .Include(tour => tour.TourPois)
                 .ThenInclude(tourPoi => tourPoi.Poi)
                     .ThenInclude(poi => poi!.Translations)
-            .AsSplitQuery()
             .FirstOrDefaultAsync(tour => tour.Id == id, cancellationToken);
 
         if (tour == null)
@@ -109,6 +120,25 @@ public sealed class TourController : Controller
         };
 
         return View(model);
+    }
+
+    private async Task<bool> HasActivePremiumAsync(CancellationToken cancellationToken)
+    {
+        var touristIdText = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!int.TryParse(touristIdText, out var touristId))
+            return false;
+
+        var now = DateTime.UtcNow;
+        return await _context.TouristSubscriptions
+            .AsNoTracking()
+            .Include(item => item.PaymentPlan)
+            .AnyAsync(item =>
+                item.TouristId == touristId &&
+                item.Status == "Active" &&
+                item.ExpiresAt > now &&
+                item.PaymentPlan != null &&
+                (item.PaymentPlan.PlanCode == "USER_PREMIUM" || item.PaymentPlan.Audience == "Tourist" || item.PaymentPlan.Audience == "Both"),
+                cancellationToken);
     }
 
     private string GetSelectedLanguageCode()

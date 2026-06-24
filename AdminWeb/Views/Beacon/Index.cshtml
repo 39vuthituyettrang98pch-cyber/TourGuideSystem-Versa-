@@ -1,6 +1,7 @@
 @model IEnumerable<AdminWeb.Models.Beacon>
 
 @{
+    var isAdmin = User.IsInRole("Admin");
     ViewData["Title"] = "Quản lý thiết bị Beacon";
 }
 
@@ -10,7 +11,7 @@
 <div class="toolbar">
     <div></div>
     <div>
-        <a asp-action="Create" class="btn btn-primary btn-sm"><i class="fa-solid fa-plus"></i> Thêm Beacon mới</a>
+        <a asp-area="" asp-action="Create" class="btn btn-primary btn-sm"><i class="fa-solid fa-plus"></i> Thêm Beacon mới</a>
     </div>
 </div>
 
@@ -47,8 +48,8 @@
                         <td style="font-size: 13px; color: var(--text2);">@item.PlacementNote</td>
                         <td>
                             <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                                <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-secondary"><i class="fa-solid fa-pen"></i></a>
-                                <form asp-action="Delete" method="post" style="display:inline;" onsubmit="return confirm('Bạn có chắc chắn muốn xóa thiết bị này?');">
+                                <a asp-area="" asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-secondary"><i class="fa-solid fa-pen"></i></a>
+                                <form asp-area="" asp-action="Delete" method="post" style="display:inline;" onsubmit="return confirm('Bạn có chắc chắn muốn xóa thiết bị này?');">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="id" value="@item.Id" />
                                     <button type="submit" class="btn btn-sm btn-danger"><i class="fa-solid fa-trash"></i></button>

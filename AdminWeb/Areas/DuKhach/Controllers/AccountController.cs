@@ -5,11 +5,9 @@ using AdminWeb.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
-using System.Security.Cryptography;
-using System.Text;
 
 namespace AdminWeb.Areas.DuKhach.Controllers;
 
@@ -21,21 +19,18 @@ public sealed class AccountController : Controller
     private readonly AppDbContext _context;
     private readonly PasswordService _passwordService;
     private readonly VisitorAchievementService _achievementService;
-    private readonly IEmailSender _emailSender;
-    private readonly IWebHostEnvironment _environment;
+    private readonly PasswordResetService _passwordResetService;
 
     public AccountController(
         AppDbContext context,
         PasswordService passwordService,
         VisitorAchievementService achievementService,
-        IEmailSender emailSender,
-        IWebHostEnvironment environment)
+        PasswordResetService passwordResetService)
     {
         _context = context;
         _passwordService = passwordService;
         _achievementService = achievementService;
-        _emailSender = emailSender;
-        _environment = environment;
+        _passwordResetService = passwordResetService;
     }
 
     [AllowAnonymous]
@@ -64,6 +59,12 @@ public sealed class AccountController : Controller
             return View(model);
 
         var email = NormalizeEmail(model.Email);
+
+        if (!IsGmailAddress(email))
+        {
+            ModelState.AddModelError(nameof(model.Email), "Chỉ chấp nhận địa chỉ Gmail có đuôi @gmail.com.");
+            return View(model);
+        }
 
         var emailExists = await _context.Tourists
             .AnyAsync(item => item.Email == email, cancellationToken);
@@ -155,7 +156,7 @@ public sealed class AccountController : Controller
             .FirstOrDefaultAsync(item => item.Id == touristId, cancellationToken);
 
         if (tourist == null)
-            return RedirectToAction(nameof(LogoutByGet));
+            return RedirectToAction(nameof(LogoutByGet), "Account", new { area = "DuKhach" });
 
         var details = await _achievementService.GetDetailsAsync(touristId, cancellationToken);
 
@@ -187,6 +188,12 @@ public sealed class AccountController : Controller
 
         var email = NormalizeEmail(model.Email);
 
+        if (!IsGmailAddress(email))
+        {
+            ModelState.AddModelError(nameof(model.Email), "Chỉ chấp nhận địa chỉ Gmail có đuôi @gmail.com.");
+            return View(model);
+        }
+
         var emailExists = await _context.Tourists.AnyAsync(
             item => item.Id != touristId && item.Email == email,
             cancellationToken);
@@ -214,7 +221,7 @@ public sealed class AccountController : Controller
         await SignInTouristAsync(tourist, isPersistent: true);
 
         TempData["DuKhachSuccessMessage"] = "Cập nhật hồ sơ thành công.";
-        return RedirectToAction(nameof(Profile));
+        return RedirectToAction(nameof(Profile), "Account", new { area = "DuKhach" });
     }
 
     [Authorize(Policy = "TouristAreaPolicy")]
@@ -255,200 +262,88 @@ public sealed class AccountController : Controller
         await _context.SaveChangesAsync(cancellationToken);
 
         TempData["DuKhachSuccessMessage"]= "Đổi mật khẩu thành công. App vẫn đăng nhập bằng mật khẩu mới này.";
-        return RedirectToAction(nameof(Profile));
+        return RedirectToAction(nameof(Profile), "Account", new { area = "DuKhach" });
     }
 
     [AllowAnonymous]
     [HttpGet]
-    public IActionResult ForgotPassword()
+    public IActionResult ForgotPassword(string? email = null)
     {
-        return View();
+        return View(new DuKhachForgotPasswordViewModel
+        {
+            Email = email?.Trim() ?? ""
+        });
     }
 
     [AllowAnonymous]
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [EnableRateLimiting("PasswordResetPerIp")]
     public async Task<IActionResult> ForgotPassword(
-        string email,
+        DuKhachForgotPasswordViewModel model,
         CancellationToken cancellationToken)
+    {
+        if (!ModelState.IsValid)
+            return View(model);
+
+        var normalizedEmail = PasswordResetService.NormalizeEmail(model.Email);
+        var result = await _passwordResetService.RequestOtpAsync(normalizedEmail, cancellationToken);
+
+        TempData["DuKhachSuccessMessage"] =
+            "Nếu email đã đăng ký, mã OTP 6 số đã được gửi. Mã có hiệu lực trong 10 phút.";
+
+        if (!string.IsNullOrWhiteSpace(result.DebugOtp))
+            TempData["DuKhachDebugOtp"] = result.DebugOtp;
+
+        return RedirectToAction(
+            nameof(ResetPassword),
+            "Account",
+            new { area = "DuKhach", email = normalizedEmail });
+    }
+
+    [AllowAnonymous]
+    [HttpGet]
+    public IActionResult ResetPassword(string? email)
     {
         if (string.IsNullOrWhiteSpace(email))
         {
-            ModelState.AddModelError(string.Empty, "Vui lòng nhập email.");
-            return View();
+            return RedirectToAction(nameof(ForgotPassword), "Account", new { area = "DuKhach" });
         }
 
-        var normalizedEmail = NormalizeEmail(email);
-
-        var tourist = await _context.Tourists
-            .FirstOrDefaultAsync(item => item.Email == normalizedEmail, cancellationToken);
-
-       TempData["DuKhachSuccessMessage"] = "Nếu email hợp lệ, hướng dẫn đặt lại mật khẩu sẽ được gửi đến hộp thư của bạn.";
-
-        if (tourist == null || string.IsNullOrWhiteSpace(tourist.Email))
-            return View();
-
-        var token = CreateResetToken();
-        var tokenHash = HashResetToken(token);
-
-        var oldTokens = await _context.PasswordResetTokens
-            .Where(item => item.TouristId == tourist.Id && item.UsedAt == null)
-            .ToListAsync(cancellationToken);
-
-        if (oldTokens.Count > 0)
-            _context.PasswordResetTokens.RemoveRange(oldTokens);
-
-        _context.PasswordResetTokens.Add(new PasswordResetToken
+        return View(new DuKhachResetPasswordViewModel
         {
-            TouristId = tourist.Id,
-            Email = tourist.Email,
-            TokenHash = tokenHash,
-            CreatedAt = DateTime.UtcNow,
-            ExpiresAt = DateTime.UtcNow.AddMinutes(30)
+            Email = PasswordResetService.NormalizeEmail(email)
         });
-
-        await _context.SaveChangesAsync(cancellationToken);
-
-        var resetUrl = Url.ActionLink(
-            nameof(ResetPassword),
-            "Account",
-            new { area = "DuKhach", email = tourist.Email, token });
-
-        if (!string.IsNullOrWhiteSpace(resetUrl) && _emailSender.IsConfigured)
-        {
-            var body = $"""
-                <div style="font-family:Arial,sans-serif;line-height:1.6;color:#102033">
-                    <h2>Đặt lại mật khẩu VERSA Travel</h2>
-
-                    <p>Xin chào {System.Net.WebUtility.HtmlEncode(tourist.FullName ?? "du khách")},</p>
-
-                    <p>Bấm nút bên dưới để tạo mật khẩu mới. Liên kết này hết hạn sau 30 phút.</p>
-
-                    <p>
-                        <a href="{System.Net.WebUtility.HtmlEncode(resetUrl)}"
-                           style="display:inline-block;padding:12px 18px;border-radius:12px;background:#34d399;color:#03131d;font-weight:700;text-decoration:none">
-                            Đặt lại mật khẩu
-                        </a>
-                    </p>
-
-                    <p>Nếu bạn không yêu cầu thao tác này, hãy bỏ qua email.</p>
-                </div>
-                """;
-
-            await _emailSender.SendAsync(
-                tourist.Email,
-                "Đặt lại mật khẩu VERSA Travel",
-                body,
-                cancellationToken);
-        }
-        else if (_environment.IsDevelopment() && !string.IsNullOrWhiteSpace(resetUrl))
-        {
-           TempData["DuKhachDebugResetLink"] = resetUrl;
-        }
-
-        return View();
-    }
-
-    [AllowAnonymous]
-    [HttpGet]
-    public async Task<IActionResult> ResetPassword(
-        string? email,
-        string? token,
-        CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(token))
-        {
-            TempData["DuKhachErrorMessage"] = "Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn.";
-            return RedirectToAction(nameof(ForgotPassword));
-        }
-
-        var normalizedEmail = NormalizeEmail(email);
-        var tokenHash = HashResetToken(token);
-        var now = DateTime.UtcNow;
-
-        var resetToken = await _context.PasswordResetTokens
-            .AsNoTracking()
-            .Include(item => item.Tourist)
-            .FirstOrDefaultAsync(item =>
-                item.Email == normalizedEmail &&
-                item.TokenHash == tokenHash &&
-                item.UsedAt == null &&
-                item.ExpiresAt > now,
-                cancellationToken);
-
-        if (resetToken == null)
-        {
-            TempData["DuKhachErrorMessage"] = "Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn.";
-            return RedirectToAction(nameof(ForgotPassword));
-        }
-
-        ViewBag.Email = resetToken.Email;
-        ViewBag.Token = token;
-
-        return View();
     }
 
     [AllowAnonymous]
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [EnableRateLimiting("PasswordResetPerIp")]
     public async Task<IActionResult> ResetPassword(
-        string email,
-        string token,
-        string newPassword,
-        string confirmPassword,
+        DuKhachResetPasswordViewModel model,
         CancellationToken cancellationToken)
     {
-        ViewBag.Email = email;
-        ViewBag.Token = token;
-
-        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(token))
-            ModelState.AddModelError(string.Empty, "Liên kết đặt lại mật khẩu không hợp lệ.");
-
-        if (string.IsNullOrWhiteSpace(newPassword) || newPassword.Length < 8)
-            ModelState.AddModelError(string.Empty, "Mật khẩu mới phải có ít nhất 8 ký tự.");
-
-        if (newPassword != confirmPassword)
-            ModelState.AddModelError(string.Empty, "Mật khẩu xác nhận không khớp.");
-
         if (!ModelState.IsValid)
-            return View();
+            return View(model);
 
-        var normalizedEmail = NormalizeEmail(email);
-        var tokenHash = HashResetToken(token);
-        var now = DateTime.UtcNow;
+        var status = await _passwordResetService.ResetPasswordAsync(
+            model.Email,
+            model.Otp,
+            model.NewPassword,
+            cancellationToken);
 
-        var resetToken = await _context.PasswordResetTokens
-            .Include(item => item.Tourist)
-            .FirstOrDefaultAsync(item =>
-                item.Email == normalizedEmail &&
-                item.TokenHash == tokenHash &&
-                item.UsedAt == null &&
-                item.ExpiresAt > now,
-                cancellationToken);
-
-        if (resetToken?.Tourist == null)
+        if (status != PasswordResetStatus.Success)
         {
-            ModelState.AddModelError(string.Empty, "Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn.");
-            return View();
+            ModelState.AddModelError(
+                nameof(model.Otp),
+                "Mã OTP không đúng, đã hết hạn hoặc đã được sử dụng.");
+            return View(model);
         }
 
-        resetToken.Tourist.PasswordHash = _passwordService.Hash(newPassword);
-        resetToken.UsedAt = DateTime.UtcNow;
-
-        var remainingTokens = await _context.PasswordResetTokens
-            .Where(item =>
-                item.TouristId == resetToken.TouristId &&
-                item.Id != resetToken.Id &&
-                item.UsedAt == null)
-            .ToListAsync(cancellationToken);
-
-        if (remainingTokens.Count > 0)
-            _context.PasswordResetTokens.RemoveRange(remainingTokens);
-
-        await _context.SaveChangesAsync(cancellationToken);
-
-       TempData["DuKhachSuccessMessage"] = "Đặt lại mật khẩu thành công. Hãy đăng nhập bằng mật khẩu mới.";
-        return RedirectToAction(nameof(Login));
+        TempData["DuKhachSuccessMessage"] =
+            "Đặt lại mật khẩu thành công. Bạn có thể dùng mật khẩu mới trên web và app.";
+        return Redirect("/Areas/DuKhach/Account/Login");
     }
 
     [Authorize(Policy = "TouristAreaPolicy")]
@@ -457,7 +352,7 @@ public sealed class AccountController : Controller
     public async Task<IActionResult> Logout()
     {
         await HttpContext.SignOutAsync(TouristScheme);
-        return RedirectToAction("Index", "Home", new { area = "DuKhach" });
+        return Redirect("/Areas/DuKhach");
     }
 
     [Authorize(Policy = "TouristAreaPolicy")]
@@ -465,7 +360,7 @@ public sealed class AccountController : Controller
     public async Task<IActionResult> LogoutByGet()
     {
         await HttpContext.SignOutAsync(TouristScheme);
-        return RedirectToAction(nameof(Login));
+        return Redirect("/Areas/DuKhach/Account/Login");
     }
 
     private async Task SignInTouristAsync(Tourist tourist, bool isPersistent)
@@ -485,6 +380,9 @@ public sealed class AccountController : Controller
 
         var identity = new ClaimsIdentity(claims, TouristScheme);
         var principal = new ClaimsPrincipal(identity);
+
+        // Chỉ thay phiên DuKhach. Không xóa Owner/Admin/Editor/Reviewer để có thể mở nhiều portal cùng lúc.
+        await HttpContext.SignOutAsync(TouristScheme);
 
         await HttpContext.SignInAsync(
             TouristScheme,
@@ -523,7 +421,7 @@ public sealed class AccountController : Controller
 
     private string GetSafeDuKhachReturnUrl(string? returnUrl)
     {
-        var fallbackUrl = Url.Action("Index", "Home", new { area = "DuKhach" }) ?? "/DuKhach/Home";
+        var fallbackUrl = Url.Action("Index", "Home", new { area = "DuKhach" }) ?? "/Areas/DuKhach";
 
         if (string.IsNullOrWhiteSpace(returnUrl))
             return fallbackUrl;
@@ -536,10 +434,17 @@ public sealed class AccountController : Controller
         if (url == "/" || url == "/#")
             return fallbackUrl;
 
-        if (!url.StartsWith("/DuKhach", StringComparison.OrdinalIgnoreCase))
+        if (!url.StartsWith("/Areas/DuKhach", StringComparison.OrdinalIgnoreCase) &&
+            !url.StartsWith("/DuKhach", StringComparison.OrdinalIgnoreCase))
             return fallbackUrl;
 
-        if (url.StartsWith("/DuKhach/Account/Login", StringComparison.OrdinalIgnoreCase) ||
+        if (url.StartsWith("/Areas/DuKhach/Account/Login", StringComparison.OrdinalIgnoreCase) ||
+            url.StartsWith("/Areas/DuKhach/Account/Register", StringComparison.OrdinalIgnoreCase) ||
+            url.StartsWith("/Areas/DuKhach/Account/ForgotPassword", StringComparison.OrdinalIgnoreCase) ||
+            url.StartsWith("/Areas/DuKhach/Account/ResetPassword", StringComparison.OrdinalIgnoreCase) ||
+            url.StartsWith("/Areas/DuKhach/Account/Logout", StringComparison.OrdinalIgnoreCase) ||
+            url.StartsWith("/Areas/DuKhach/Account/LogoutByGet", StringComparison.OrdinalIgnoreCase) ||
+            url.StartsWith("/DuKhach/Account/Login", StringComparison.OrdinalIgnoreCase) ||
             url.StartsWith("/DuKhach/Account/Register", StringComparison.OrdinalIgnoreCase) ||
             url.StartsWith("/DuKhach/Account/ForgotPassword", StringComparison.OrdinalIgnoreCase) ||
             url.StartsWith("/DuKhach/Account/ResetPassword", StringComparison.OrdinalIgnoreCase) ||
@@ -552,16 +457,16 @@ public sealed class AccountController : Controller
         return url;
     }
 
-    private static string CreateResetToken()
+    private static bool IsGmailAddress(string email)
     {
-        var bytes = RandomNumberGenerator.GetBytes(32);
-        return WebEncoders.Base64UrlEncode(bytes);
-    }
+        if (string.IsNullOrWhiteSpace(email))
+            return false;
 
-    private static string HashResetToken(string token)
-    {
-        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(token));
-        return Convert.ToHexString(bytes);
+        var atIndex = email.IndexOf('@');
+
+        return atIndex > 0 &&
+               atIndex == email.LastIndexOf('@') &&
+               email.EndsWith("@gmail.com", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string NormalizeEmail(string? email)

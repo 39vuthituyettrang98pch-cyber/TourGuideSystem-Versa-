@@ -6,10 +6,10 @@
 <div class="page-heading">
     <div>
         <div class="page-title">Xin chào, @User.Identity?.Name</div>
-        <div class="page-subtitle">Quản lý nội dung và theo dõi tiến độ xử lý media trong không gian dành riêng cho biên tập viên.</div>
+        <div class="page-subtitle">Không gian riêng cho biên tập viên: soạn nội dung, kiểm tra chất lượng, tạo bản dịch và gửi kiểm duyệt.</div>
     </div>
     <div class="page-actions">
-        <a asp-area="Editor" asp-controller="Tour" asp-action="Create" class="btn btn-secondary"><i class="fa-solid fa-route"></i> Tạo tour</a>
+        <a asp-area="Editor" asp-controller="Workspace" asp-action="Quality" class="btn btn-secondary"><i class="fa-solid fa-shield-heart"></i> Kiểm tra chất lượng</a>
         <a asp-area="Editor" asp-controller="Poi" asp-action="Create" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Tạo POI</a>
     </div>
 </div>
@@ -17,19 +17,38 @@
 <div class="editor-notice">
     <span class="stat-icon"><i class="fa-solid fa-circle-info"></i></span>
     <div>
-        <strong>Quy trình xuất bản</strong>
-        <p>POI do biên tập viên tạo hoặc cập nhật sẽ chuyển về trạng thái chờ duyệt. Quản trị viên sẽ kiểm tra trước khi nội dung xuất hiện trên ứng dụng.</p>
+        <strong>Quy trình Editor mới</strong>
+        <p>Biên tập viên chỉnh nội dung trong bảng làm việc, xử lý lỗi thiếu ngôn ngữ/audio/media, sau đó gửi POI sang Reviewer. Reviewer sẽ phê duyệt hoặc trả lại kèm lý do.</p>
     </div>
 </div>
 
 <div class="stats-grid">
-    <a class="stat-card" asp-area="Editor" asp-controller="Poi" asp-action="Index">
-        <span class="stat-icon"><i class="fa-solid fa-map-pin"></i></span>
-        <span><span class="stat-value">@Model.TotalPois</span><span class="stat-label">Điểm tham quan</span></span>
+    <a class="stat-card" asp-area="Editor" asp-controller="Workspace" asp-action="Board">
+        <span class="stat-icon"><i class="fa-solid fa-layer-group"></i></span>
+        <span><span class="stat-value">@Model.TotalPois</span><span class="stat-label">Tổng POI</span></span>
     </a>
-    <a class="stat-card" asp-area="Editor" asp-controller="Poi" asp-action="Index">
+    <a class="stat-card" asp-area="Editor" asp-controller="Workspace" asp-action="Board" asp-route-status="Pending">
         <span class="stat-icon"><i class="fa-solid fa-hourglass-half"></i></span>
-        <span><span class="stat-value">@Model.PendingPois</span><span class="stat-label">POI chờ duyệt</span></span>
+        <span><span class="stat-value">@Model.PendingPois</span><span class="stat-label">Chờ Reviewer duyệt</span></span>
+    </a>
+    <a class="stat-card" asp-area="Editor" asp-controller="Workspace" asp-action="Board" asp-route-status="Rejected">
+        <span class="stat-icon"><i class="fa-solid fa-rotate-left"></i></span>
+        <span><span class="stat-value">@Model.RejectedPois</span><span class="stat-label">Bị trả lại</span></span>
+    </a>
+    <a class="stat-card" asp-area="Editor" asp-controller="Workspace" asp-action="Quality">
+        <span class="stat-icon"><i class="fa-solid fa-gauge-high"></i></span>
+        <span><span class="stat-value">@Model.AverageQualityScore%</span><span class="stat-label">Điểm chất lượng TB</span></span>
+    </a>
+</div>
+
+<div class="stats-grid" style="margin-top:18px">
+    <a class="stat-card" asp-area="Editor" asp-controller="Workspace" asp-action="Board" asp-route-issue="MissingLanguage">
+        <span class="stat-icon"><i class="fa-solid fa-language"></i></span>
+        <span><span class="stat-value">@Model.MissingTranslationPois</span><span class="stat-label">POI thiếu ngôn ngữ</span></span>
+    </a>
+    <a class="stat-card" asp-area="Editor" asp-controller="Workspace" asp-action="Board" asp-route-issue="MissingAudio">
+        <span class="stat-icon"><i class="fa-solid fa-volume-xmark"></i></span>
+        <span><span class="stat-value">@Model.MissingAudioPois</span><span class="stat-label">POI thiếu audio</span></span>
     </a>
     <a class="stat-card" asp-area="Editor" asp-controller="Tour" asp-action="Index">
         <span class="stat-icon"><i class="fa-solid fa-route"></i></span>
@@ -45,10 +64,10 @@
     <section class="card">
         <div class="card-header">
             <div>
-                <div class="card-title"><i class="fa-solid fa-clock-rotate-left"></i> POI mới cập nhật</div>
-                <div class="card-subtitle">Các nội dung gần nhất trong hệ thống.</div>
+                <div class="card-title"><i class="fa-solid fa-clipboard-list"></i> POI mới cập nhật</div>
+                <div class="card-subtitle">Theo dõi nhanh trạng thái nội dung gần nhất.</div>
             </div>
-            <a asp-area="Editor" asp-controller="Poi" asp-action="Index" class="btn btn-secondary btn-sm">Xem tất cả</a>
+            <a asp-area="Editor" asp-controller="Workspace" asp-action="Board" class="btn btn-secondary btn-sm">Mở bảng làm việc</a>
         </div>
         <div class="table-wrapper">
             <table class="data-table">
@@ -59,9 +78,9 @@
                     foreach (var poi in Model.RecentPois)
                     {
                         var name = poi.Translations.FirstOrDefault(item => item.LanguageCode == "vi")?.Name ?? $"POI #{poi.Id}";
-                        var badge = poi.Status switch { "Approved" => "green", "Rejected" => "red", _ => "amber" };
+                        var badge = poi.Status switch { "Approved" => "green", "Rejected" => "red", "Draft" => "gray", _ => "amber" };
                         <tr>
-                            <td><strong>@name</strong><br /><small style="color:var(--text-soft)">@poi.Translations.Count ngôn ngữ</small></td>
+                            <td><strong>@name</strong><br /><small style="color:var(--text-soft)">#@poi.Id · @poi.Translations.Count ngôn ngữ</small></td>
                             <td><span class="badge @badge">@poi.Status</span></td>
                             <td>@poi.CreatedAt.ToString("dd/MM/yyyy")</td>
                             <td><a asp-area="Editor" asp-controller="Poi" asp-action="Edit" asp-route-id="@poi.Id" class="btn btn-secondary btn-sm"><i class="fa-solid fa-pen"></i></a></td>
@@ -81,13 +100,14 @@
         <div class="card-header">
             <div>
                 <div class="card-title"><i class="fa-solid fa-wand-magic-sparkles"></i> AI Media</div>
-                <div class="card-subtitle">Theo dõi tiến trình dịch thuật và lồng tiếng.</div>
+                <div class="card-subtitle">Tạo audio/TTS và phát hiện tác vụ lỗi.</div>
             </div>
         </div>
         <div class="editor-task-summary">
             <div><span class="badge blue">@Model.PendingMediaTasks</span><strong>Đang chờ hoặc xử lý</strong><p>Worker đang xử lý các ngôn ngữ nền.</p></div>
             <div><span class="badge @(Model.FailedMediaTasks > 0 ? "red" : "green")">@Model.FailedMediaTasks</span><strong>Cần kiểm tra</strong><p>Tác vụ thất bại hoặc hoàn thành một phần.</p></div>
+            <div><span class="badge purple">@Model.DraftPois</span><strong>Bản nháp</strong><p>Các POI chưa gửi sang Reviewer.</p></div>
         </div>
-        <a asp-area="" asp-controller="AudioTasks" asp-action="Index" class="btn btn-primary" style="margin-top:18px"><i class="fa-solid fa-list-check"></i> Mở danh sách tác vụ</a>
+        <a href="/Editor/AudioTasks" class="btn btn-primary" style="margin-top:18px"><i class="fa-solid fa-list-check"></i> Mở tác vụ AI Media</a>
     </section>
 </div>

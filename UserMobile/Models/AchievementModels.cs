@@ -49,9 +49,7 @@ public sealed class RecentDiscovery
     public int Points { get; set; }
     public DateTime DiscoveredAt { get; set; }
 
-    public string MethodText => Method.Equals("QR", StringComparison.OrdinalIgnoreCase)
-        ? "Quét QR"
-        : "Check-in GPS";
+    public string MethodText => "Check-in GPS";
     public string PointsText => $"+{Points} điểm";
     public string DiscoveredAtText => DiscoveredAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm");
 }

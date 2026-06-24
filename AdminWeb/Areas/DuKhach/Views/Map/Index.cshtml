@@ -3,7 +3,6 @@
 
 @{
     ArgumentNullException.ThrowIfNull(Model);
-
     ViewData["Title"] = "Bản đồ du khách";
 
     var poiJson = JsonSerializer.Serialize(
@@ -12,6 +11,33 @@
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase
         });
+
+    static string GetNativeLanguageDisplayName(string? code, string? currentName)
+    {
+        var normalizedCode = (code ?? string.Empty).Trim().ToLowerInvariant();
+        return normalizedCode switch
+        {
+            "vi" => "Tiếng Việt",
+            "en" => "English",
+            "fr" => "Français",
+            "zh" or "zh-cn" or "zh-tw" => "中文",
+            "ja" => "日本語",
+            "ko" => "한국어",
+            "th" => "ไทย",
+            "de" => "Deutsch",
+            "es" => "Español",
+            "it" => "Italiano",
+            "pt" => "Português",
+            "ru" => "Русский",
+            _ => string.IsNullOrWhiteSpace(currentName) ? normalizedCode.ToUpperInvariant() : currentName.Trim()
+        };
+    }
+
+    var selectedMapLanguageName = GetNativeLanguageDisplayName(
+        Model.SelectedLanguageCode,
+        Model.Languages
+            .FirstOrDefault(language => string.Equals(language.Code, Model.SelectedLanguageCode, StringComparison.OrdinalIgnoreCase))
+            ?.Name ?? Model.SelectedLanguageName ?? "Tiếng Việt");
 }
 
 @section Styles {
@@ -21,295 +47,109 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
 
     <style>
+        /* =========================================================
+           GLOBAL & LAYOUT TRANG
+           ========================================================= */
         .dk-shell {
-            width: min(1440px, calc(100% - 32px));
-        }
-
-        .map-btn.bookmark {
-            color: #ef4444;
-            background: rgba(239, 68, 68, 0.1);
-        }
-        .map-btn.bookmark.active {
-            background: #ef4444;
-            color: #fff;
-        }
-
-        .map-language-box {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            min-height: 42px;
-            padding: 0 12px;
-            border: 1px solid var(--border);
-            border-radius: 999px;
-            background: rgba(148, 163, 184, 0.10);
-            color: var(--text);
-            font-weight: 900;
-            font-size: 13px;
-        }
-
-        .map-language-box i {
-            color: var(--accent-2);
-        }
-
-        .map-language-box select {
-            border: 0;
-            outline: 0;
-            color: var(--text);
-            background: transparent;
-            font-weight: 900;
-            cursor: pointer;
-        }
-
-        .map-language-box option {
-            color: #0f172a;
-            background: #fff;
-        }
-
-        .narration-note {
-            margin: 10px 0;
-            padding: 12px 13px;
-            border: 1px dashed var(--border);
-            border-radius: 16px;
-            color: var(--muted);
-            background: rgba(148, 163, 184, 0.08);
-            font-size: 13px;
-            line-height: 1.55;
-        }
-
-        .rating-stars { display: flex; gap: 4px; color: #f59e0b; }
-        .rating-stars .star { cursor: pointer; }
-        .rating-form { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
-        .rating-form textarea {
-            width: 100%;
-            padding: 10px;
-            border-radius: 12px;
-            border: 1px solid var(--border);
-            background: var(--surface-2);
-            color: var(--text);
-            min-height: 80px;
-            margin-top: 10px;
-            resize: vertical;
-        }
-
-
-        .map-hero {
-            position: relative;
-            overflow: hidden;
-            margin-bottom: 20px;
-            padding: 34px;
-            border: 1px solid var(--border);
-            border-radius: 34px;
-            background:
-                radial-gradient(circle at 15% 20%, rgba(52, 211, 153, 0.20), transparent 30%),
-                radial-gradient(circle at 88% 32%, rgba(56, 189, 248, 0.18), transparent 32%),
-                linear-gradient(135deg, rgba(15, 29, 52, 0.92), rgba(7, 18, 34, 0.78)),
-                var(--card);
-            box-shadow: var(--shadow);
-        }
-
-        html[data-theme="light"] .map-hero {
-            background:
-                radial-gradient(circle at 15% 20%, rgba(52, 211, 153, 0.18), transparent 30%),
-                radial-gradient(circle at 88% 32%, rgba(56, 189, 248, 0.18), transparent 32%),
-                linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(238, 248, 255, 0.84)),
-                var(--card);
-        }
-
-        .map-hero-inner {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) minmax(320px, 470px);
-            gap: 28px;
-            align-items: end;
-        }
-
-        .map-eyebrow {
-            width: fit-content;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 13px;
-            border-radius: 999px;
-            border: 1px solid rgba(52, 211, 153, 0.30);
-            color: var(--accent);
-            background: rgba(52, 211, 153, 0.10);
-            font-size: 13px;
-            font-weight: 900;
-        }
-
-        .map-hero h1 {
-            max-width: 760px;
-            margin: 14px 0 12px;
-            font-size: clamp(36px, 5vw, 64px);
-            line-height: 0.96;
-            font-weight: 950;
-            letter-spacing: -0.07em;
-        }
-
-        .map-hero h1 span {
-            background: linear-gradient(135deg, var(--accent), var(--accent-2));
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-        }
-
-        .map-hero p {
-            max-width: 760px;
-            margin: 0;
-            color: var(--muted);
-            line-height: 1.75;
-            font-size: 16px;
-        }
-
-        .map-stat-grid {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 12px;
-        }
-
-        .map-stat-card {
-            min-width: 0;
-            padding: 18px;
-            border: 1px solid var(--border);
-            border-radius: 24px;
-            background: rgba(148, 163, 184, 0.10);
-            backdrop-filter: blur(14px);
-        }
-
-        .map-stat-card strong {
-            display: block;
-            font-size: 30px;
-            line-height: 1;
-            font-weight: 950;
-            letter-spacing: -0.045em;
-            word-break: break-word;
-        }
-
-        .map-stat-card span {
-            display: block;
-            margin-top: 9px;
-            color: var(--muted);
-            font-size: 13px;
-            font-weight: 800;
-        }
-
-        .map-login-alert {
-            display: flex;
-            align-items: flex-start;
-            gap: 12px;
-            margin-bottom: 20px;
-            padding: 16px 18px;
-            border-radius: 22px;
-            border: 1px solid rgba(251, 113, 133, 0.30);
-            color: var(--text);
-            background: rgba(251, 113, 133, 0.10);
-            line-height: 1.6;
-        }
-
-        .map-login-alert i {
-            color: var(--danger);
-            margin-top: 4px;
-        }
-
-        .map-login-alert a {
-            color: var(--accent-2);
-            font-weight: 900;
-            text-decoration: none;
+            width: min(1540px, calc(100% - 28px));
+            margin: 0 auto;
         }
 
         .map-page {
             width: 100%;
-            max-width: 100%;
-            min-width: 0;
             display: grid;
-            grid-template-columns: minmax(0, 1fr) 410px;
-            gap: 20px;
+            grid-template-columns: minmax(0, 1fr) 440px;
+            gap: 18px;
             align-items: stretch;
+            height: calc(100vh - 120px);
+            min-height: 680px;
+            margin-bottom: 20px;
         }
 
         .map-main {
-            min-width: 0;
+            position: relative;
+            width: 100%;
+            height: 100%;
+            border-radius: 24px;
             overflow: hidden;
-            border: 1px solid var(--border);
-            border-radius: 34px;
-            background: var(--card);
+            background: #0b1b31;
             box-shadow: var(--shadow);
+            border: 1px solid var(--border);
         }
 
         #touristMap {
+            position: absolute;
+            inset: 0;
             width: 100%;
-            height: 720px;
-            min-height: 720px;
-            border-radius: 34px;
-            overflow: hidden;
-            background: var(--surface);
+            height: 100%;
             z-index: 1;
+            background: #dbeafe;
         }
 
+        /* =========================================================
+           UI PANEL BÊN PHẢI (GLASSMORPHISM & FLEXBOX FIX)
+           ========================================================= */
         .map-side {
-            min-width: 0;
-            height: 720px;
-            border: 1px solid var(--border);
-            background: var(--card);
-            border-radius: 34px;
-            overflow: hidden;
             display: flex;
             flex-direction: column;
-            box-shadow: var(--shadow);
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            box-shadow: -8px 0 30px rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+            height: 100%;
         }
 
         .map-side-head {
             flex: 0 0 auto;
-            padding: 20px;
-            border-bottom: 1px solid var(--border);
-            background: rgba(148, 163, 184, 0.06);
+            padding: 20px 20px 10px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
         }
 
-        .side-eyebrow {
-            width: fit-content;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 7px 11px;
-            border-radius: 999px;
-            border: 1px solid rgba(52, 211, 153, 0.24);
-            color: var(--accent);
-            background: rgba(52, 211, 153, 0.10);
-            font-size: 12px;
-            font-weight: 900;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
+        .map-side-title-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
         }
 
         .map-side-title {
-            margin-top: 12px;
-            font-size: 24px;
-            line-height: 1.05;
-            font-weight: 950;
-            letter-spacing: -0.05em;
+            font-size: 22px;
+            font-weight: 800;
+            margin: 0;
+            letter-spacing: -0.5px;
+            color: #f8fafc;
         }
 
         .map-side-subtitle {
-            margin-top: 8px;
-            color: var(--muted);
-            font-size: 13px;
-            line-height: 1.55;
+            font-size: 12.5px;
+            color: #94a3b8;
+            margin-top: 4px;
+            line-height: 1.5;
         }
 
         .map-search {
             display: flex;
             align-items: center;
             gap: 10px;
-            min-height: 48px;
-            margin-top: 16px;
+            min-height: 44px;
             padding: 0 14px;
-            border: 1px solid var(--border);
-            border-radius: 18px;
-            background: var(--surface);
+            border-radius: 14px;
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.2s ease;
+        }
+
+        .map-search:focus-within {
+            background: rgba(0, 0, 0, 0.4);
+            border-color: rgba(56, 189, 248, 0.5);
+            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
         }
 
         .map-search i {
-            color: var(--muted);
+            color: #64748b;
         }
 
         .map-search input {
@@ -318,377 +158,634 @@
             border: 0;
             outline: 0;
             background: transparent;
-            color: var(--text);
-            font-weight: 700;
-        }
-
-        .map-search input::placeholder {
-            color: var(--soft);
+            color: #f8fafc;
             font-weight: 600;
         }
 
-        .map-toolbar {
+        .map-search input::placeholder {
+            color: #64748b;
+        }
+
+        /* Toolbar dạng Chip: cho phép xuống dòng để không che nút 4+ Sao */
+        .map-toolbar-chips {
             display: flex;
-            gap: 10px;
             flex-wrap: wrap;
+            gap: 8px;
+            row-gap: 8px;
             margin-top: 14px;
+            overflow: visible;
+            padding-bottom: 4px;
         }
 
-        .map-btn {
-            min-height: 42px;
-            border: 1px solid var(--border);
-            border-radius: 999px;
-            padding: 9px 14px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            color: var(--text);
-            background: rgba(148, 163, 184, 0.10);
-            font-weight: 900;
-            cursor: pointer;
-            transition: 0.2s ease;
-            text-decoration: none;
-            font-size: 13px;
+        .map-toolbar-chips::-webkit-scrollbar {
+            height: 0px;
         }
 
-        .map-btn:hover {
-            color: var(--text);
-            transform: translateY(-1px);
-            background: rgba(148, 163, 184, 0.16);
-        }
-
-        .map-btn.primary {
-            color: #03131d;
-            border-color: transparent;
-            background: linear-gradient(135deg, var(--accent), var(--accent-2));
-        }
-
-        .map-btn.primary:hover {
-            color: #03131d;
-        }
-
-        .map-message {
-            min-height: 22px;
-            margin-top: 12px;
-            color: var(--muted);
-            font-size: 14px;
-            line-height: 1.5;
-        }
-
-        .map-message.ok {
-            color: var(--accent);
-        }
-
-        .map-message.err {
-            color: var(--danger);
-        }
-
-        .poi-list {
-            flex: 1 1 auto;
-            min-height: 0;
-            overflow: auto;
-            padding: 14px;
-            display: grid;
-            gap: 11px;
-            align-content: start;
-        }
-
-        .poi-list::-webkit-scrollbar,
-        .detail-panel::-webkit-scrollbar {
-            width: 8px;
-        }
-
-        .poi-list::-webkit-scrollbar-thumb,
-        .detail-panel::-webkit-scrollbar-thumb {
-            background: rgba(148, 163, 184, 0.28);
-            border-radius: 999px;
-        }
-
-        .poi-list-item {
-            width: 100%;
-            min-width: 0;
-            border: 1px solid var(--border);
-            border-radius: 22px;
-            padding: 15px;
-            color: var(--text);
-            background: rgba(148, 163, 184, 0.08);
-            cursor: pointer;
-            text-align: left;
-            transition: 0.18s ease;
-        }
-
-        .poi-list-item:hover {
-            transform: translateY(-2px);
-            border-color: rgba(56, 189, 248, 0.42);
-            background: rgba(56, 189, 248, 0.08);
-        }
-
-        .poi-list-item.active {
-            border-color: var(--accent-2);
-            background: rgba(56, 189, 248, 0.13);
-            box-shadow: 0 12px 34px rgba(56, 189, 248, 0.08);
-        }
-
-        .poi-list-title {
-            min-width: 0;
-            display: flex;
-            gap: 8px;
-            justify-content: space-between;
-            align-items: flex-start;
-            font-weight: 950;
-            letter-spacing: -0.02em;
-        }
-
-        .poi-list-title span:first-child {
-            min-width: 0;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .poi-list-desc {
-            margin-top: 8px;
-            color: var(--muted);
-            font-size: 13px;
-            line-height: 1.55;
-        }
-
-        .badge-soft {
+        .chip-btn {
             flex: 0 0 auto;
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            padding: 5px 8px;
-            border-radius: 999px;
-            background: rgba(34, 197, 94, 0.14);
-            color: var(--accent);
-            font-size: 12px;
-            font-weight: 900;
+            padding: 8px 14px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            color: #cbd5e1;
+            font-size: 12.5px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .chip-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+
+        .chip-btn.primary {
+            background: linear-gradient(135deg, #34d399, #38bdf8);
+            color: #020617;
+            border: none;
+            font-weight: 700;
+            box-shadow: 0 4px 15px rgba(52, 211, 153, 0.2);
+        }
+
+        .chip-btn.active {
+            background: rgba(239, 68, 68, 0.15);
+            border-color: rgba(239, 68, 68, 0.4);
+            color: #f87171;
+        }
+
+        /* Danh sách POI */
+        .poi-list {
+            flex: 1 1 auto;
+            height: auto;
+            max-height: none;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 16px 32px 18px 20px; /* chừa chỗ cho thanh cuộn bên phải */
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            scrollbar-gutter: stable both-edges;
+        }
+
+        .poi-list::-webkit-scrollbar,
+        .detail-panel::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .poi-list::-webkit-scrollbar-thumb,
+        .detail-panel::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+        }
+
+        .poi-list-item {
+            position: relative;
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+            text-align: left;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 18px;
+            padding: 16px;
+            cursor: pointer;
+            transition: transform 0.2s, background 0.2s, border-color 0.2s;
+            overflow: visible;
+        }
+
+        .poi-list-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .poi-list-item.active {
+            background: rgba(56, 189, 248, 0.08);
+            border-color: rgba(56, 189, 248, 0.4);
+        }
+
+        .poi-list-item.active::before {
+            content: "";
+            position: absolute;
+            left: -1px;
+            top: 16px;
+            bottom: 16px;
+            width: 4px;
+            background: #38bdf8;
+            border-radius: 0 4px 4px 0;
+        }
+
+        .poi-list-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px 10px;
+            font-size: 15px;
+            font-weight: 700;
+            color: #f8fafc;
+            min-width: 0;
+            line-height: 1.35;
+        }
+
+        .poi-list-title-name {
+            flex: 1 1 230px;
+            min-width: 0;
+            max-width: 100%;
+            overflow: visible;
+            text-overflow: unset;
+            display: inline;
+            -webkit-line-clamp: unset;
+            -webkit-box-orient: unset;
+            line-height: 1.35;
+            overflow-wrap: anywhere;
+        }
+
+        .poi-list-desc {
+            color: #94a3b8;
+            font-size: 13px;
+            margin-top: 6px;
+            line-height: 1.5;
+            display: block;
+            overflow: visible;
+            overflow-wrap: anywhere;
+        }
+
+        /* Badge trạng thái */
+        .badge-soft {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            padding: 4px 8px;
+            border-radius: 8px;
+            background: rgba(34, 197, 94, 0.15);
+            color: #34d399;
+            font-size: 11px;
+            font-weight: 800;
             white-space: nowrap;
+            flex: 0 0 auto;
+            max-width: none;
+            position: relative;
+            z-index: 2;
         }
-
         .badge-muted {
-            background: rgba(148, 163, 184, 0.12);
-            color: var(--muted);
+            background: rgba(255, 255, 255, 0.08);
+            color: #94a3b8;
         }
 
+
+        .featured-stat {
+            border-color: rgba(250, 204, 21, .42) !important;
+            background: linear-gradient(135deg, rgba(250,204,21,.16), rgba(251,146,60,.10)) !important;
+        }
+
+        .featured-filter {
+            border-color: rgba(250,204,21,.45) !important;
+            background: linear-gradient(135deg, rgba(250,204,21,.18), rgba(251,146,60,.12)) !important;
+        }
+
+        .badge-featured {
+            background: linear-gradient(135deg, #facc15, #fb923c);
+            color: #111827;
+            box-shadow: 0 10px 24px rgba(250, 204, 21, 0.22);
+        }
+
+        .poi-list-item.featured {
+            border-color: rgba(250, 204, 21, 0.55);
+            background: linear-gradient(135deg, rgba(250, 204, 21, 0.12), rgba(251, 146, 60, 0.07)), rgba(255, 255, 255, 0.03);
+        }
+
+        .poi-list-item.featured::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border-radius: 18px;
+            pointer-events: none;
+            box-shadow: inset 0 0 0 1px rgba(250, 204, 21, 0.12), 0 18px 46px rgba(250, 204, 21, 0.10);
+        }
+
+        .featured-owner-line {
+            display: flex;
+            align-items: flex-start;
+            gap: 6px;
+            margin-top: 8px;
+            color: #fde68a;
+            font-size: 11.5px;
+            font-weight: 900;
+            line-height: 1.35;
+            max-width: 100%;
+            overflow-wrap: anywhere;
+            white-space: normal;
+        }
+
+        .featured-owner-line i {
+            flex: 0 0 auto;
+            margin-top: 2px;
+        }
+
+        .poi-chip.featured {
+            color: #111827;
+            background: linear-gradient(135deg, #facc15, #fb923c);
+            border-color: transparent;
+            box-shadow: 0 10px 24px rgba(250, 204, 21, 0.20);
+        }
+
+        /* Panel Chi tiết */
         .detail-panel {
             flex: 0 0 auto;
-            max-height: 320px;
-            overflow: auto;
+            max-height: 42vh;
+            overflow-y: auto;
+            background: rgba(11, 17, 32, 0.95);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 0 0 24px 24px;
+            box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.3);
             padding: 20px;
-            border-top: 1px solid var(--border);
-            background: rgba(0, 0, 0, 0.08);
+            z-index: 10;
         }
 
-        html[data-theme="light"] .detail-panel {
-            background: rgba(15, 23, 42, 0.04);
-        }
-
-        .detail-panel img {
-            width: 100%;
-            max-height: 165px;
-            object-fit: cover;
-            border-radius: 20px;
-            border: 1px solid var(--border);
-            margin-bottom: 14px;
-        }
-
-        .detail-title {
-            margin-bottom: 8px;
-            font-size: 24px;
-            font-weight: 950;
-            letter-spacing: -0.05em;
-        }
-
-        .detail-desc {
-            max-height: 130px;
-            overflow: auto;
-            color: var(--muted);
-            line-height: 1.65;
-            font-size: 14px;
-        }
-
-        .detail-actions {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-top: 14px;
-        }
-
-        .empty-list {
-            border: 1px dashed var(--border);
-            border-radius: 22px;
-            padding: 18px;
-            color: var(--muted);
-            line-height: 1.6;
-            background: rgba(148, 163, 184, 0.06);
-        }
-
-        .custom-map-icon {
-            background: transparent;
-            border: none;
-        }
-
-        .custom-marker {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            width: 34px;
-            height: 34px;
-            border-radius: 50% 50% 50% 0;
-            transform: rotate(-45deg);
-            border: 2px solid #ffffff;
-            box-shadow: 0 8px 18px rgba(0, 0, 0, 0.30);
-            color: #ffffff;
-            font-size: 14px;
-        }
-
-        .custom-marker i {
-            transform: rotate(45deg);
-        }
-
-        .custom-marker.discovered {
-            background: #22c55e;
-        }
-
-        .custom-marker.undiscovered {
-            background: #3b82f6;
-        }
-
-        .custom-marker.user {
-            background: #f59e0b;
-        }
-
-        .leaflet-container {
-            width: 100%;
-            max-width: 100%;
-            font-family: inherit;
-        }
-
-        .leaflet-control-container {
-            max-width: 100%;
-        }
-
-        .leaflet-popup-content-wrapper,
-        .leaflet-popup-tip {
-            background: var(--card);
-            color: var(--text);
-            border: 1px solid var(--border);
-        }
-
-        .leaflet-popup-content {
-            margin: 13px 15px;
-        }
-
-        .leaflet-popup-content button {
-            color: #03131d;
-            background: linear-gradient(135deg, var(--accent), var(--accent-2));
-        }
-
-        .leaflet-routing-container {
+        .detail-panel.empty-detail {
             display: none !important;
         }
 
-        .marker-cluster-small,
-        .marker-cluster-medium,
-        .marker-cluster-large {
-            background-color: rgba(56, 189, 248, 0.22);
+        .poi-detail-cover {
+            position: relative;
+            border-radius: 16px;
+            overflow: hidden;
+            margin-bottom: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
-        .marker-cluster-small div,
-        .marker-cluster-medium div,
-        .marker-cluster-large div {
-            background-color: rgba(52, 211, 153, 0.92);
-            color: #03131d;
-            font-weight: 950;
+        .poi-detail-cover img {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+            display: block;
         }
 
-        @@media (max-width: 1200px) {
-            .map-hero-inner {
-                grid-template-columns: 1fr;
-            }
-
-            .map-page {
-                grid-template-columns: 1fr;
-            }
-
-            #touristMap {
-                height: 620px;
-                min-height: 620px;
-            }
-
-            .map-side {
-                height: auto;
-                min-height: 560px;
-            }
+        .poi-detail-cover-badge {
+            position: absolute;
+            left: 10px;
+            bottom: 10px;
+            padding: 6px 10px;
+            border-radius: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            font-size: 11px;
+            font-weight: 800;
         }
 
-        @@media (max-width: 720px) {
-            .dk-shell {
-                width: min(100% - 20px, 1440px);
-            }
-
-            .map-hero {
-                padding: 24px;
-                border-radius: 28px;
-            }
-
-            .map-stat-grid {
-                grid-template-columns: 1fr;
-            }
-
-            #touristMap {
-                height: 480px;
-                min-height: 480px;
-                border-radius: 26px;
-            }
-
-            .map-main,
-            .map-side {
-                border-radius: 26px;
-            }
-
-            .map-toolbar .map-btn {
-                width: 100%;
-            }
+        .detail-title {
+            font-size: 22px;
+            font-weight: 800;
+            color: #f8fafc;
+            margin-bottom: 8px;
+            line-height: 1.2;
         }
+
+        .detail-desc {
+            color: #cbd5e1;
+            font-size: 13.5px;
+            line-height: 1.6;
+            margin-bottom: 14px;
+        }
+
+        .poi-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.08);
+            color: #cbd5e1;
+            font-size: 11.5px;
+            font-weight: 700;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .poi-chip.ok { color: #34d399; background: rgba(52, 211, 153, 0.1); border-color: rgba(52, 211, 153, 0.2); }
+        .poi-chip.warn { color: #fbbf24; background: rgba(251, 191, 36, 0.1); border-color: rgba(251, 191, 36, 0.2); }
+
+        .poi-rating-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 10px 0;
+        }
+
+        .rating-stars {
+            color: #f59e0b;
+            font-size: 14px;
+            white-space: nowrap;
+        }
+
+        .poi-rating-text {
+            color: #94a3b8;
+            font-size: 12.5px;
+            font-weight: 600;
+        }
+
+        .poi-list-rating-row {
+            position: relative;
+            z-index: 2;
+        }
+
+        .poi-audio-box {
+            padding: 10px;
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            margin-bottom: 14px;
+        }
+        .poi-audio-box audio { width: 100%; display: block; height: 36px; }
+
+        .poi-qr-card {
+            display: grid;
+            grid-template-columns: 112px minmax(0, 1fr);
+            gap: 12px;
+            align-items: center;
+            padding: 12px;
+            margin: 12px 0 14px;
+            border-radius: 18px;
+            background: rgba(56, 189, 248, .10);
+            border: 1px solid rgba(56, 189, 248, .24);
+        }
+
+        .poi-qr-card img {
+            width: 112px;
+            height: 112px;
+            border-radius: 14px;
+            padding: 6px;
+            background: #fff;
+            box-shadow: 0 10px 24px rgba(0, 0, 0, .20);
+        }
+
+        .poi-qr-title {
+            font-weight: 900;
+            color: #e0f2fe;
+            font-size: 13px;
+            margin-bottom: 4px;
+        }
+
+        .poi-qr-note {
+            color: #bae6fd;
+            font-size: 12px;
+            line-height: 1.45;
+            margin-bottom: 8px;
+        }
+
+
+        .poi-qr-only-card {
+            grid-template-columns: 1fr;
+            justify-items: center;
+            text-align: center;
+            padding: 18px;
+            margin-top: 14px;
+        }
+
+        .poi-qr-only-card img {
+            width: 190px;
+            height: 190px;
+        }
+
+        .poi-qr-only-card .poi-qr-title {
+            font-size: 16px;
+            margin-top: 10px;
+        }
+
+        .poi-qr-only-card .poi-qr-note {
+            max-width: 320px;
+            margin: 8px auto 0;
+        }
+
+        @@media (max-width: 520px) {
+            .poi-qr-card { grid-template-columns: 1fr; justify-items: center; text-align: center; }
+        }
+
+        .detail-actions {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .map-btn {
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            gap: 6px;
+            padding: 10px;
+            border-radius: 12px;
+            font-size: 12.5px;
+            font-weight: 700;
+            cursor: pointer;
+            text-decoration: none;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #e2e8f0;
+            transition: 0.2s;
+        }
+        .map-btn:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
+        .map-btn.primary { background: linear-gradient(135deg, #34d399, #38bdf8); color: #020617; border: none; }
+        .map-btn.bookmark { color: #f87171; }
+        .map-btn.bookmark.active { background: #ef4444; color: #fff; border-color: transparent; }
+        .map-btn.menu-order { background: linear-gradient(135deg, #fbbf24, #fb923c); color: #020617; border: none; }
+
+        /* Review List */
+        .poi-review-list {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            display: grid;
+            gap: 10px;
+        }
+        .poi-review-item {
+            padding: 12px;
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* Nút ngôn ngữ thu gọn */
+        .map-language-btn {
+            min-height: 36px;
+            padding: 0 12px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #fff;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12.5px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .map-language-menu {
+            min-width: 160px !important;
+            background: rgba(15, 23, 42, 0.95) !important;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            border-radius: 16px !important;
+            padding: 8px !important;
+        }
+
+        .map-language-option {
+            width: 100%;
+            padding: 8px 12px;
+            border-radius: 10px;
+            border: none;
+            background: transparent;
+            color: #e2e8f0;
+            text-align: left;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .map-language-option:hover { background: rgba(255, 255, 255, 0.1); }
+        .map-language-option.active { background: rgba(56, 189, 248, 0.2); color: #38bdf8; }
+
+        /* Header UI (Hero Banner) */
+        .map-hero {
+            position: relative;
+            padding: 24px 30px;
+            border-radius: 28px;
+            background: linear-gradient(135deg, rgba(52, 211, 153, 0.15), rgba(56, 189, 248, 0.1)), rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .map-hero h1 { font-size: 36px; font-weight: 900; color: #fff; margin: 10px 0; letter-spacing: -0.5px; }
+        .map-hero h1 span { background: linear-gradient(135deg, #34d399, #38bdf8); -webkit-background-clip: text; color: transparent; }
+        .map-hero p { color: #94a3b8; font-size: 14.5px; max-width: 600px; margin: 0; line-height: 1.6; }
+
+        .map-stat-grid { display: flex; gap: 14px; }
+        .map-stat-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 18px;
+            padding: 16px 20px;
+            min-width: 140px;
+        }
+        .map-stat-card strong { font-size: 24px; color: #fff; font-weight: 900; display: block; }
+        .map-stat-card span { font-size: 12px; color: #94a3b8; font-weight: 600; }
+
+        /* Custom Marker CSS */
+        .custom-map-icon { background: transparent; border: none; }
+        .custom-marker {
+            display: flex; justify-content: center; align-items: center;
+            width: 36px; height: 36px; border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg); border: 2.5px solid #fff; color: #fff;
+            font-size: 13px; box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+        }
+        .custom-marker i { transform: rotate(45deg); }
+        .custom-marker.discovered { background: #22c55e; }
+        .custom-marker.undiscovered { background: #3b82f6; }
+        .custom-marker.featured {
+            width: 46px;
+            height: 46px;
+            background: linear-gradient(135deg, #facc15, #fb923c);
+            color: #111827;
+            border-color: #fff7ed;
+            box-shadow: 0 0 0 7px rgba(250, 204, 21, 0.18), 0 18px 32px rgba(251, 146, 60, 0.38);
+            animation: featuredPoiPulse 1.8s ease-in-out infinite;
+        }
+        .custom-marker.user { background: #f59e0b; }
+
+        @@keyframes featuredPoiPulse {
+            0%, 100% { box-shadow: 0 0 0 6px rgba(250, 204, 21, 0.16), 0 18px 32px rgba(251, 146, 60, 0.34); }
+            50% { box-shadow: 0 0 0 12px rgba(250, 204, 21, 0.06), 0 22px 42px rgba(251, 146, 60, 0.46); }
+        }
+
+        /* Alert Msg */
+        .map-message { font-size: 12px; margin-top: 8px; min-height: 18px; }
+        .map-message.ok { color: #34d399; }
+        .map-message.err { color: #f87171; }
+
+        .map-login-alert {
+            background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 16px; padding: 14px 20px; color: #f8fafc; font-size: 14px; margin-bottom: 20px;
+        }
+        .map-login-alert a { color: #38bdf8; font-weight: 700; text-decoration: none; }
+
+        @@media (max-width: 1100px) {
+            .map-page { grid-template-columns: 1fr; height: auto; min-height: auto; }
+            .map-main { height: 60vh; min-height: 500px; }
+            .map-side { height: auto; }
+            .poi-list { padding-right: 22px; }
+            .badge-soft { max-width: none; padding-inline: 7px; }
+            .detail-panel { max-height: none; }
+            .map-hero { flex-direction: column; align-items: flex-start; gap: 20px; }
+            .map-stat-grid { width: 100%; flex-wrap: wrap; }
+        }
+
+        /* ===== RESTORE REVIEW FORM / COMMENT INPUT ===== */
+        .rating-form {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .rating-form textarea {
+            width: 100%;
+            min-height: 88px;
+            margin-top: 10px;
+            padding: 12px;
+            border-radius: 14px;
+            outline: none;
+            resize: vertical;
+            color: #f8fafc;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.10);
+        }
+
+        .rating-form textarea:focus {
+            border-color: rgba(56, 189, 248, 0.55);
+            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.12);
+        }
+
+        .rating-form .star {
+            cursor: pointer;
+            transition: transform 0.14s ease;
+        }
+
+        .rating-form .star:hover {
+            transform: translateY(-1px) scale(1.06);
+        }
+
     </style>
 }
 
 <div class="map-hero">
-    <div class="map-hero-inner">
-        <div>
-            <div class="map-eyebrow">
-                <i class="fa-solid fa-map-location-dot"></i>
-                Bản đồ POI
-            </div>
-
-            <h1>
-                Tìm điểm tham quan <span>gần bạn.</span>
-            </h1>
-
-            <p>
-                Hiển thị các POI đã được duyệt. Đăng nhập du khách để check-in bằng GPS,
-                xem chi tiết địa điểm, chọn ngôn ngữ thuyết minh và đồng bộ tiến độ với app mobile.
-            </p>
+    <div>
+        <div class="poi-chip ok" style="margin-bottom: 8px;">
+            <i class="fa-solid fa-map-location-dot"></i> Bản đồ POI
         </div>
+        <h1>Tìm điểm tham quan <span>gần bạn.</span></h1>
+        <p>Hiển thị các địa điểm đã được duyệt. Đăng nhập để check-in GPS, xem chi tiết, chọn ngôn ngữ và lưu tiến độ.</p>
+    </div>
 
-        <div class="map-stat-grid">
-            <div class="map-stat-card">
-                <strong>@Model.TotalPoiCount</strong>
-                <span>POI trên bản đồ</span>
-            </div>
-
-            <div class="map-stat-card">
-                <strong>@Model.DiscoveredCount</strong>
-                <span>Đã check-in</span>
-            </div>
-
-            <div class="map-stat-card">
-                <strong>@Model.SelectedLanguageName</strong>
-                <span>Ngôn ngữ thuyết minh</span>
-            </div>
+    <div class="map-stat-grid">
+        <div class="map-stat-card">
+            <strong>@Model.TotalPoiCount</strong>
+            <span>POI trên bản đồ</span>
+        </div>
+        <div class="map-stat-card">
+            <strong>@Model.FeaturedPoiCount</strong>
+            <span>POI nổi bật</span>
+        </div>
+        <div class="map-stat-card">
+            <strong>@Model.DiscoveredCount</strong>
+            <span>Đã check-in</span>
         </div>
     </div>
 </div>
@@ -696,16 +793,17 @@
 @if (!Model.IsTouristSignedIn)
 {
     <div class="map-login-alert">
-        <i class="fa-solid fa-circle-info"></i>
-        <span>
-            Bạn vẫn xem được bản đồ, nhưng muốn check-in nhận điểm thì cần
-            <a asp-area="DuKhach"
-               asp-controller="Account"
-               asp-action="Login"
-               asp-route-returnUrl="/DuKhach/Map">
-                đăng nhập du khách
-            </a>.
-        </span>
+        <i class="fa-solid fa-circle-info" style="color: #ef4444; margin-right: 6px;"></i>
+        Bạn đang xem ở chế độ khách. Để check-in nhận điểm, vui lòng
+        <a asp-area="DuKhach" asp-controller="Account" asp-action="Login" asp-route-returnUrl="/DuKhach/Map">đăng nhập du khách</a>.
+    </div>
+}
+else if (!Model.HasPremiumActive)
+{
+    <div class="map-login-alert" id="audioQuotaBanner">
+        <i class="fa-solid fa-headphones" style="color:#38bdf8;margin-right:6px;"></i>
+        Gói miễn phí: còn <strong id="audioQuotaRemaining">@(Model.AudioPlaysRemainingToday ?? Model.AudioDailyLimit)</strong>/@Model.AudioDailyLimit lượt nghe hôm nay.
+        <a asp-area="DuKhach" asp-controller="Payments" asp-action="Plans">Nâng cấp Premium</a> để nghe không giới hạn.
     </div>
 }
 
@@ -720,62 +818,54 @@
 
     <aside class="map-side">
         <div class="map-side-head">
-            <div class="side-eyebrow">
-                <i class="fa-solid fa-list"></i>
-                Danh sách POI
-            </div>
+            <div class="map-side-title-row">
+                <div>
+                    <div class="map-side-title">Khám phá bản đồ</div>
+                    <div class="map-side-subtitle">Chọn địa điểm để xem chi tiết hoặc check-in</div>
+                </div>
 
-            <div class="map-side-title">Khám phá trên bản đồ</div>
-
-            <div class="map-side-subtitle">
-                Chọn một địa điểm để xem mô tả, chỉ đường hoặc check-in bằng GPS.
+                <div class="dropdown map-language-dropdown compact" data-no-i18n="true">
+                    <button class="map-language-btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fa-solid fa-language"></i> <span data-map-language-current data-language-native="true">@selectedMapLanguageName</span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end map-language-menu">
+                        @foreach (var language in Model.Languages)
+                        {
+                            var isCurrentLanguage = string.Equals(language.Code, Model.SelectedLanguageCode, StringComparison.OrdinalIgnoreCase);
+                            var languageDisplayName = GetNativeLanguageDisplayName(language.Code, language.Name);
+                            <li>
+                                <button type="button" class="map-language-option @(isCurrentLanguage ? "active" : "")" data-lang="@language.Code" data-name="@languageDisplayName" data-language-native="true">
+                                    <span data-language-native="true">@languageDisplayName</span>
+                                </button>
+                            </li>
+                        }
+                    </ul>
+                </div>
             </div>
 
             <div class="map-search">
                 <i class="fa-solid fa-magnifying-glass"></i>
-                <input id="poiSearch" type="search" placeholder="Tìm POI theo tên hoặc mô tả..." />
+                <input id="poiSearch" type="search" placeholder="Tìm kiếm địa điểm..." />
             </div>
 
-            <div class="map-toolbar">
-                <button class="map-btn primary" type="button" id="btnLocate">
-                    <i class="fa-solid fa-location-crosshairs"></i>
-                    Vị trí của tôi
+            <div class="map-toolbar-chips">
+                <button class="chip-btn primary" type="button" id="btnLocate" title="Vị trí của tôi">
+                    <i class="fa-solid fa-location-crosshairs"></i> Vị trí
                 </button>
-
-                <button class="map-btn" type="button" id="btnFit">
-                    <i class="fa-solid fa-expand"></i>
-                    Xem tất cả
+                <button class="chip-btn" type="button" id="btnNearby" title="Sắp xếp POI gần tôi">
+                    <i class="fa-solid fa-arrow-down-short-wide"></i> Gần tôi
                 </button>
-
-                <label class="map-language-box" title="Chọn ngôn ngữ thuyết minh">
-                    <i class="fa-solid fa-language"></i>
-                    <select id="mapLanguageSelect" aria-label="Chọn ngôn ngữ thuyết minh">
-                        @foreach (var language in Model.Languages)
-                        {
-                            if (language.Code == Model.SelectedLanguageCode)
-                            {
-                                <option value="@language.Code" selected>
-                                    @language.Name
-                                </option>
-                            }
-                            else
-                            {
-                                <option value="@language.Code">
-                                    @language.Name
-                                </option>
-                            }
-                        }
-                    </select>
-                </label>
-                
-                <button class="map-btn bookmark" type="button" id="btnFilterBookmark" title="Chỉ hiện POI đã lưu">
-                    <i class="fa-solid fa-heart"></i>
-                    Đã lưu
+                <button class="chip-btn" type="button" id="btnFit" title="Xem tất cả">
+                    <i class="fa-solid fa-expand"></i> Tất cả
                 </button>
-                
-                <button class="map-btn" type="button" id="btnFilterRating" title="Chỉ hiện POI từ 4 sao">
-                    <i class="fa-solid fa-star" style="color: #f59e0b;"></i>
-                    4+ Sao
+                <button class="chip-btn" type="button" id="btnFilterBookmark" title="Chỉ hiện POI đã lưu">
+                    <i class="fa-solid fa-heart"></i> Đã lưu
+                </button>
+                <button class="chip-btn featured-filter" type="button" id="btnFilterFeatured" title="Chỉ hiện POI nổi bật">
+                    <i class="fa-solid fa-crown" style="color: #f59e0b;"></i> Nổi bật
+                </button>
+                <button class="chip-btn" type="button" id="btnFilterRating" title="Chỉ hiện POI từ 4 sao">
+                    <i class="fa-solid fa-star" style="color: #f59e0b;"></i> 4+ Sao
                 </button>
             </div>
 
@@ -784,11 +874,8 @@
 
         <div id="poiList" class="poi-list"></div>
 
-        <div id="poiDetail" class="detail-panel">
-            <div class="detail-title">Chọn một POI</div>
-            <div class="detail-desc">
-                Bấm marker hoặc chọn trong danh sách để xem mô tả, nghe audio và check-in khi bạn ở gần địa điểm.
-            </div>
+        <div id="poiDetail" class="detail-panel empty-detail">
+            <!-- Nội dung chi tiết sẽ được render qua JS -->
         </div>
     </aside>
 </div>
@@ -805,13 +892,16 @@
         const toggleBookmarkUrl = '@Url.Action("ToggleBookmark", "Map", new { area = "DuKhach" })';
         const submitReviewUrl = '@Url.Action("SubmitReview", "Map", new { area = "DuKhach" })';
         const logAudioUrl = '@Url.Action("LogAudio", "Map", new { area = "DuKhach" })';
+        const poiDetailUrlTemplate = '@Url.Action("Details", "Map", new { area = "DuKhach", id = "__POI_ID__" })';
+        const poiQrImageUrlTemplate = '@Url.Action("PoiImage", "Qr", new { area = "DuKhach", id = "__POI_ID__" })';
         let selectedLanguageCode = @Html.Raw(JsonSerializer.Serialize(Model.SelectedLanguageCode));
 
         const mapMessage = document.getElementById('mapMessage');
         const poiList = document.getElementById('poiList');
         const poiSearch = document.getElementById('poiSearch');
         const poiDetail = document.getElementById('poiDetail');
-        const mapLanguageSelect = document.getElementById('mapLanguageSelect');
+        const mapLanguageOptions = document.querySelectorAll('.map-language-option');
+        const mapLanguageCurrentLabels = document.querySelectorAll('[data-map-language-current]');
         const token = document.querySelector('#antiForgeryForm input[name="__RequestVerificationToken"]')?.value;
 
         let userLocation = null;
@@ -824,9 +914,10 @@
         const markers = new Map();
         const circles = new Map();
 
-        const loggedAudioPois = new Set();
         let showOnlyBookmarks = false;
         let showOnlyHighRating = false;
+        let showOnlyFeatured = false;
+        let sortByDistance = false;
 
         const escapeHtml = value => String(value ?? '')
             .replaceAll('&', '&amp;')
@@ -834,6 +925,20 @@
             .replaceAll('>', '&gt;')
             .replaceAll('"', '&quot;')
             .replaceAll("'", '&#039;');
+
+        const buildPoiDetailUrl = poiId => {
+            const raw = poiDetailUrlTemplate.replace('__POI_ID__', encodeURIComponent(poiId));
+            const url = new URL(raw, window.location.origin);
+            url.searchParams.set('lang', selectedLanguageCode);
+            return url.toString();
+        };
+
+        const buildPoiQrImageUrl = poiId => {
+            const raw = poiQrImageUrlTemplate.replace('__POI_ID__', encodeURIComponent(poiId));
+            const url = new URL(raw, window.location.origin);
+            url.searchParams.set('lang', selectedLanguageCode);
+            return url.toString();
+        };
 
         const setMessage = (message, type = '') => {
             mapMessage.textContent = message || '';
@@ -876,252 +981,281 @@
             };
         };
 
+        const cultureMap = {
+            vi: 'vi',
+            en: 'en',
+            fr: 'fr',
+            zh: 'zh-CN',
+            ja: 'ja',
+            ko: 'ko',
+            th: 'th-TH',
+            de: 'de-DE',
+            es: 'es-ES',
+            it: 'it-IT',
+            pt: 'pt-PT',
+            ru: 'ru-RU'
+        };
+
+        const persistSelectedLanguage = () => {
+            const expires = new Date();
+            expires.setFullYear(expires.getFullYear() + 1);
+
+            localStorage.setItem('versa-dukhach-lang', selectedLanguageCode);
+            document.cookie = `versa.dukhach.lang=${encodeURIComponent(selectedLanguageCode)}; expires=${expires.toUTCString()}; path=/; samesite=lax`;
+
+            const culture = cultureMap[selectedLanguageCode] || selectedLanguageCode;
+            document.cookie = `.AspNetCore.Culture=c=${encodeURIComponent(culture)}|uic=${encodeURIComponent(culture)}; expires=${expires.toUTCString()}; path=/; samesite=lax`;
+        };
+
+        const syncTouristLinks = () => {
+            document.querySelectorAll('a[href]').forEach(anchor => {
+                const rawHref = anchor.getAttribute('href');
+                if (!rawHref || rawHref.startsWith('#') || rawHref.startsWith('javascript:') || rawHref.startsWith('mailto:') || rawHref.startsWith('tel:')) return;
+
+                try {
+                    const url = new URL(rawHref, window.location.origin);
+                    if (url.origin !== window.location.origin) return;
+
+                    const isTouristLink = url.pathname === '/' || url.pathname.toLowerCase().startsWith('/dukhach');
+                    if (!isTouristLink) return;
+
+                    url.searchParams.set('lang', selectedLanguageCode);
+                    anchor.setAttribute('href', `${url.pathname}${url.search}${url.hash}`);
+                } catch (e) {
+                    // Bỏ qua href không hợp lệ.
+                }
+            });
+        };
+
         const updateUrlLanguage = () => {
             const url = new URL(window.location.href);
             url.searchParams.set('lang', selectedLanguageCode);
             history.replaceState(null, '', `${url.pathname}${url.search}${location.hash || ''}`);
-            localStorage.setItem('versa-dukhach-lang', selectedLanguageCode);
+            persistSelectedLanguage();
+            syncTouristLinks();
+        };
+
+        const applyMapLanguage = (languageCode, languageName) => {
+            const currentPageLanguage = normalizeLanguageCode(new URL(window.location.href).searchParams.get('lang') || window.VERSA_DUKHACH_LANG || selectedLanguageCode);
+            selectedLanguageCode = normalizeLanguageCode(languageCode);
+            const resolvedLanguageName = languageName || selectedLanguageCode.toUpperCase();
+            const shouldReloadPage = currentPageLanguage !== selectedLanguageCode;
+
+            mapLanguageCurrentLabels.forEach(label => {
+                label.textContent = resolvedLanguageName;
+            });
+
+            mapLanguageOptions.forEach(option => {
+                const isActive = normalizeLanguageCode(option.dataset.lang) === selectedLanguageCode;
+                option.classList.toggle('active', isActive);
+            });
+
+            document.querySelectorAll('#dkLanguageCurrent').forEach(label => {
+                label.textContent = resolvedLanguageName;
+            });
+
+            document.querySelectorAll('.dk-language-option').forEach(option => {
+                const isActive = normalizeLanguageCode(option.dataset.lang) === selectedLanguageCode;
+                option.classList.toggle('active', isActive);
+            });
+
+            window.VERSA_DUKHACH_LANG = selectedLanguageCode;
+            window.VERSA_DUKHACH_LANG_NAME = resolvedLanguageName;
+
+            updateUrlLanguage();
+
+            window.dispatchEvent(new CustomEvent('versa-dukhach-language-changed', {
+                detail: { lang: selectedLanguageCode, name: resolvedLanguageName, source: 'map' }
+            }));
+
+            setMessage(`Đã chuyển ngôn ngữ sang ${resolvedLanguageName}.`, 'ok');
+
+            if (shouldReloadPage) {
+                window.location.reload();
+                return;
+            }
+
+            markers.forEach((marker, id) => {
+                const poi = pois.find(item => Number(item.id) === Number(id));
+                if (poi) marker.bindPopup(popupHtml(poi));
+            });
+
+            const filtered = filterPois();
+            renderList(filtered);
+            updateMapMarkers(filtered);
+
+            if (activePoiId) {
+                const activePoi = pois.find(item => Number(item.id) === Number(activePoiId));
+                if (activePoi) renderDetail(activePoi);
+            }
         };
 
         const isValidLatLng = (lat, lng) => {
             const nLat = Number(lat);
             const nLng = Number(lng);
-
-            return Number.isFinite(nLat)
-                && Number.isFinite(nLng)
-                && nLat >= -90
-                && nLat <= 90
-                && nLng >= -180
-                && nLng <= 180;
+            return Number.isFinite(nLat) && Number.isFinite(nLng) && nLat >= -90 && nLat <= 90 && nLng >= -180 && nLng <= 180;
         };
 
-        const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '&copy; OpenStreetMap contributors'
-        });
+        const distanceToPoi = poi => {
+            if (!userLocation || !isValidLatLng(poi.latitude, poi.longitude)) return null;
 
-        const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-            maxZoom: 19,
-            attribution: '&copy; Esri'
-        });
+            const toRadians = value => value * Math.PI / 180;
+            const earthRadius = 6371000;
+            const lat1 = toRadians(userLocation.latitude);
+            const lat2 = toRadians(Number(poi.latitude));
+            const deltaLat = toRadians(Number(poi.latitude) - userLocation.latitude);
+            const deltaLng = toRadians(Number(poi.longitude) - userLocation.longitude);
+            const a = Math.sin(deltaLat / 2) ** 2
+                + Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLng / 2) ** 2;
 
-        const topo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-            maxZoom: 17,
-            attribution: '&copy; OpenTopoMap'
-        });
+            return earthRadius * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        };
+
+        const formatDistance = distance => {
+            if (!Number.isFinite(distance)) return '';
+            return distance >= 1000
+                ? `${(distance / 1000).toFixed(distance >= 10000 ? 0 : 1)} km`
+                : `${Math.round(distance)} m`;
+        };
+
+        const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 });
+        const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 });
+        const topo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxZoom: 17 });
 
         const firstValidPoi = pois.find(poi => isValidLatLng(poi.latitude, poi.longitude));
+        const mapCenter = firstValidPoi ? [Number(firstValidPoi.latitude), Number(firstValidPoi.longitude)] : [10.7769, 106.7009];
 
-        const mapCenter = firstValidPoi
-            ? [Number(firstValidPoi.latitude), Number(firstValidPoi.longitude)]
-            : [10.7769, 106.7009];
+        const map = L.map('touristMap', { zoomControl: true, layers: [osm] }).setView(mapCenter, firstValidPoi ? 14 : 12);
+        window.touristLeafletMap = map;
 
-        const map = L.map('touristMap', {
-            zoomControl: true,
-            layers: [osm]
-        }).setView(mapCenter, firstValidPoi ? 14 : 12);
-
-        const baseMaps = {
-            'Bản đồ tiêu chuẩn': osm,
-            'Vệ tinh': satellite,
-            'Địa hình': topo
+        const forceTouristMapResize = () => {
+            requestAnimationFrame(() => map.invalidateSize(true));
+            setTimeout(() => map.invalidateSize(true), 150);
+            setTimeout(() => map.invalidateSize(true), 450);
         };
 
-        L.control.layers(baseMaps).addTo(map);
+        map.whenReady(forceTouristMapResize);
+        window.addEventListener('load', forceTouristMapResize);
+        window.addEventListener('resize', forceTouristMapResize);
+
+        L.control.layers({'Bản đồ tiêu chuẩn': osm, 'Vệ tinh': satellite, 'Địa hình': topo}).addTo(map);
 
         const createPoiIcon = poi => {
-            const statusClass = poi.isDiscovered ? 'discovered' : 'undiscovered';
-
+            const statusClass = poi.isFeatured ? 'featured' : (poi.isDiscovered ? 'discovered' : 'undiscovered');
+            const iconClass = poi.isFeatured ? 'fa-crown' : 'fa-map-pin';
+            const iconSize = poi.isFeatured ? [46, 46] : [36, 36];
+            const iconAnchor = poi.isFeatured ? [23, 46] : [18, 36];
             return L.divIcon({
                 className: 'custom-map-icon',
-                html: `<div class="custom-marker ${statusClass}"><i class="fa-solid fa-map-pin"></i></div>`,
-                iconSize: [34, 34],
-                iconAnchor: [17, 34],
-                popupAnchor: [0, -34]
+                html: `<div class="custom-marker ${statusClass}"><i class="fa-solid ${iconClass}"></i></div>`,
+                iconSize,
+                iconAnchor,
+                popupAnchor: [0, -36]
             });
         };
 
         const popupHtml = poi => {
             const text = getPoiText(poi);
-
+            const distance = distanceToPoi(poi);
+            const distanceLine = Number.isFinite(distance)
+                ? `<div style="font-size:12px;color:#0284c7;font-weight:800;margin-bottom:8px;"><i class="fa-solid fa-person-walking"></i> Cách bạn ${formatDistance(distance)}</div>`
+                : '';
+            const featuredLine = poi.isFeatured
+                ? `<div style="display:inline-flex;align-items:center;gap:6px;margin-bottom:8px;padding:5px 8px;border-radius:999px;background:linear-gradient(135deg,#facc15,#fb923c);color:#111827;font-size:11px;font-weight:900;"><i class="fa-solid fa-crown"></i> POI nổi bật</div>`
+                : '';
+            const detailUrl = buildPoiDetailUrl(poi.id);
+            const qrUrl = buildPoiQrImageUrl(poi.id);
             return `
-                <div style="min-width:230px;">
-                    <div style="font-weight:950;font-size:15px;margin-bottom:6px;">
-                        ${escapeHtml(text.name)}
-                    </div>
-
-                    <div style="opacity:.78;font-size:13px;line-height:1.45;margin-bottom:10px;">
-                        ${escapeHtml(text.shortDescription || 'Điểm tham quan')}
-                    </div>
-
-                    <div style="opacity:.72;font-size:12px;margin-bottom:10px;">
-                        <i class="fa-solid fa-language"></i> ${escapeHtml(text.languageName)}
-                    </div>
-
-                    <button type="button"
-                            data-select-poi="${poi.id}"
-                            style="border:0;border-radius:12px;padding:9px 12px;font-weight:900;cursor:pointer;">
-                        Xem chi tiết
+                <div style="min-width:230px;max-width:260px;">
+                     ${featuredLine}
+                     <div style="font-weight:900;font-size:15px;margin-bottom:6px;color:#0f172a;">${escapeHtml(text.name)}</div>
+                     <div style="font-size:12.5px;color:#475569;margin-bottom:10px;">${escapeHtml(text.shortDescription || 'Điểm tham quan')}</div>
+                     ${distanceLine}
+                    <button type="button" data-select-poi="${poi.id}" style="width:100%;border:0;border-radius:10px;padding:8px;font-weight:800;cursor:pointer;background:#38bdf8;color:#fff;margin-bottom:8px;">
+                        Hiện QR
                     </button>
+                    <a href="${escapeHtml(detailUrl)}" style="display:flex;align-items:center;justify-content:center;gap:6px;width:100%;border-radius:10px;padding:8px;font-weight:800;text-decoration:none;background:#0f172a;color:#fff;margin-bottom:10px;box-sizing:border-box;">
+                        <i class="fa-solid fa-up-right-from-square"></i> Trang chi tiết web
+                    </a>
+                    <div style="display:grid;grid-template-columns:78px 1fr;gap:8px;align-items:center;padding:8px;border-radius:12px;background:#f8fafc;border:1px solid #e2e8f0;">
+                        <img src="${escapeHtml(qrUrl)}" alt="QR mở chi tiết POI" style="width:78px;height:78px;border-radius:8px;background:#fff;" />
+                        <div style="font-size:11.5px;line-height:1.35;color:#475569;font-weight:700;">Quét để mở trang chi tiết web trên điện thoại. QR không cộng điểm.</div>
+                    </div>
                 </div>`;
         };
 
         const renderDetail = poi => {
             activePoiId = poi.id;
             const text = getPoiText(poi);
+            const qrUrl = buildPoiQrImageUrl(poi.id);
 
-            const imageHtml = poi.coverImageUrl
-                ? `<img src="${escapeHtml(poi.coverImageUrl)}" alt="${escapeHtml(text.name)}" />`
-                : '';
-
-            const audioHtml = text.audioUrl
-                ? `<audio controls style="width:100%;margin:10px 0;" onplay="logAudioPlay(${poi.id})"><source src="${escapeHtml(text.audioUrl)}" /></audio>`
-                : text.narrationText
-                    ? `<div class="narration-note">
-                           <i class="fa-solid fa-circle-info"></i> Chưa có file audio cho ${escapeHtml(text.languageName)}. Có thể nghe thuyết minh bằng giọng đọc của trình duyệt.
-                       </div>
-                       <button class="map-btn primary" type="button" onclick="speakPoi(${poi.id})">
-                           <i class="fa-solid fa-volume-high"></i> Nghe thuyết minh ${escapeHtml(text.languageName)}
-                       </button>`
-                    : `<div class="narration-note">Chưa có nội dung thuyết minh cho ngôn ngữ này.</div>`;
-
-            const videoHtml = text.videoUrl
-                ? `<a class="map-btn" href="${escapeHtml(text.videoUrl)}" target="_blank" rel="noopener">
-                        <i class="fa-solid fa-video"></i> Xem video
-                   </a>`
-                : '';
-
-            const discoveredHtml = poi.isDiscovered
-                ? '<span class="badge-soft"><i class="fa-solid fa-circle-check"></i> Đã check-in</span>'
-                : '<span class="badge-soft badge-muted"><i class="fa-regular fa-circle"></i> Chưa check-in</span>';
-
-            const ratingHtml = `
-                <div style="display:flex; align-items:center; gap: 8px; margin-bottom: 12px;">
-                    <div class="rating-stars" style="font-size: 18px;">
-                        ${[...Array(5)].map((_, i) => `<i class="fa-${i < Math.round(poi.averageRating) ? 'solid' : 'regular'} fa-star"></i>`).join('')}
-                    </div>
-                    <span style="font-size: 13px; color: var(--muted); font-weight: 700;">
-                        ${poi.averageRating > 0 ? poi.averageRating.toFixed(1) : 'Chưa có'} (${poi.ratingCount} đánh giá)
-                    </span>
-                </div>
-            `;
-
-            const reviewFormHtml = isSignedIn ? `
-                <div id="review-form-${poi.id}" class="rating-form"></div>
-            ` : `
-                <div style="margin-top:16px;padding:14px;border:1px dashed var(--border);border-radius:16px;color:var(--muted);line-height:1.5;">
-                    <i class="fa-solid fa-right-to-bracket"></i> Đăng nhập để đánh giá và bình luận POI này.
-                </div>
-            `;
-
-            const reviewsListHtml = poi.reviews && poi.reviews.length > 0 ? `
-                <div style="margin-top: 20px; border-top: 1px solid var(--border); padding-top: 16px;">
-                    <strong style="font-size: 15px; display: block; margin-bottom: 12px;">Đánh giá của cộng đồng</strong>
-                    <div style="display: flex; flex-direction: column; gap: 12px;">
-                        ${poi.reviews.map(r => `
-                            <div style="background: var(--surface-2); padding: 12px; border-radius: 12px;">
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
-                                    <strong style="font-size: 13px;">${escapeHtml(r.touristName)}</strong>
-                                    <span style="font-size: 11px; color: var(--muted);">${new Date(r.createdAt).toLocaleDateString('vi-VN')}</span>
-                                </div>
-                                <div class="rating-stars" style="font-size: 12px; margin-bottom: 6px;">
-                                    ${[...Array(5)].map((_, i) => `<i class="fa-${i < r.rating ? 'solid' : 'regular'} fa-star"></i>`).join('')}
-                                </div>
-                                ${r.comment ? `<div style="font-size: 13px; line-height: 1.5; color: var(--text);">${escapeHtml(r.comment)}</div>` : ''}
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-            ` : '';
+            poiDetail.classList.remove('empty-detail');
 
             poiDetail.innerHTML = `
-                ${imageHtml}
-
-                <div class="detail-title">${escapeHtml(text.name)}</div>
-
-                <div class="narration-note">
-                    <i class="fa-solid fa-language"></i> Đang xem và nghe thuyết minh bằng <strong>${escapeHtml(text.languageName)}</strong>.
-                </div>
-
-                <div style="margin-bottom:10px;">
-                    ${discoveredHtml}
-                </div>
-
-                ${ratingHtml}
-
-                <div class="detail-desc">
-                    ${escapeHtml(text.fullDescription || text.shortDescription || 'Chưa có mô tả chi tiết cho ngôn ngữ này.')}
-                </div>
-
-                ${audioHtml}
-
-                <div class="detail-actions">
-                    <button class="map-btn bookmark ${poi.isBookmarked ? 'active' : ''}" type="button" onclick="handleBookmark(${poi.id}, this)">
-                        <i class="fa-solid fa-heart"></i> <span class="bm-text">${poi.isBookmarked ? 'Đã lưu' : 'Lưu lại'}</span>
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
+                    <div class="detail-title">${escapeHtml(text.name)}</div>
+                    <button type="button" onclick="closeDetail()" style="background:transparent;border:none;color:#94a3b8;cursor:pointer;font-size:18px;">
+                        <i class="fa-solid fa-xmark"></i>
                     </button>
-
-                    <button class="map-btn primary" type="button" onclick="checkInPoi(${poi.id})">
-                        <i class="fa-solid fa-circle-check"></i>
-                        Check-in GPS
-                    </button>
-
-                    <button class="map-btn" type="button" onclick="showRouteToPoi(${poi.latitude}, ${poi.longitude})">
-                        <i class="fa-solid fa-route"></i>
-                        Chỉ đường
-                    </button>
-
-                    ${videoHtml}
                 </div>
-                
-                ${reviewFormHtml}
-                ${reviewsListHtml}
-                `;
-            
-            if (isSignedIn) {
-                const reviewFormContainer = document.getElementById(`review-form-${poi.id}`);
-                if (reviewFormContainer) {
-                    renderReviewForm(reviewFormContainer, poi.id);
-                }
-            }
+
+                <div class="poi-qr-card poi-qr-only-card">
+                    <img src="${escapeHtml(qrUrl)}" alt="QR mở chi tiết POI" />
+                    <div>
+                        <div class="poi-qr-title"><i class="fa-solid fa-qrcode"></i> Quét QR để xem chi tiết</div>
+                        <div class="poi-qr-note">Dùng camera điện thoại quét mã này để mở trang chi tiết POI trên web. QR chỉ để xem chi tiết, không cộng điểm.</div>
+                    </div>
+                </div>`;
         };
 
         const renderReviewForm = (container, poiId) => {
             container.innerHTML = `
-                <strong style="font-size:15px;">Để lại đánh giá của bạn</strong>
-                <div class="rating-stars" id="submit-rating-${poiId}" style="font-size: 24px; margin-top: 8px;">
+                <strong style="font-size:15px;display:block;margin-bottom:8px;">
+                    <i class="fa-solid fa-pen-to-square"></i> Để lại đánh giá của bạn
+                </strong>
+
+                <div class="rating-stars" id="submit-rating-${poiId}" style="font-size:24px;margin-top:8px;">
                     ${[...Array(5)].map((_, i) => `<i class="star fa-regular fa-star" data-value="${i + 1}"></i>`).join('')}
                 </div>
+
                 <textarea id="comment-${poiId}" placeholder="Chia sẻ cảm nhận của bạn..."></textarea>
-                <button class="map-btn primary" style="margin-top:10px;" onclick="submitReview(${poiId})">Gửi đánh giá</button>
+
+                <button class="map-btn primary" style="width:100%;margin-top:10px;" onclick="submitReview(${poiId})">
+                    <i class="fa-solid fa-paper-plane"></i>
+                    Gửi đánh giá
+                </button>
             `;
 
             const stars = container.querySelectorAll('.star');
-            stars.forEach(star => {
-                star.addEventListener('mouseover', function() {
-                    const rating = this.dataset.value;
-                    stars.forEach(s => {
-                        s.classList.toggle('fa-solid', s.dataset.value <= rating);
-                        s.classList.toggle('fa-regular', s.dataset.value > rating);
-                    });
+
+            const paintStars = rating => {
+                stars.forEach(star => {
+                    const value = Number(star.dataset.value);
+                    star.classList.toggle('fa-solid', value <= rating);
+                    star.classList.toggle('fa-regular', value > rating);
                 });
-                star.addEventListener('click', function() {
+            };
+
+            stars.forEach(star => {
+                star.addEventListener('mouseover', function () {
+                    paintStars(Number(this.dataset.value));
+                });
+
+                star.addEventListener('click', function () {
                     container.dataset.rating = this.dataset.value;
+                    paintStars(Number(this.dataset.value));
                 });
             });
 
-            container.addEventListener('mouseleave', function() {
-                const currentRating = container.dataset.rating || 0;
-                 stars.forEach(s => {
-                    s.classList.toggle('fa-solid', s.dataset.value <= currentRating);
-                    s.classList.toggle('fa-regular', s.dataset.value > currentRating);
-                });
+            container.addEventListener('mouseleave', function () {
+                paintStars(Number(container.dataset.rating || 0));
             });
         };
 
         window.submitReview = async (poiId) => {
             const container = document.getElementById(`review-form-${poiId}`);
-            const rating = container.dataset.rating;
-            const comment = document.getElementById(`comment-${poiId}`).value;
+            const rating = Number(container?.dataset.rating || 0);
+            const comment = document.getElementById(`comment-${poiId}`)?.value || '';
 
             if (!rating) {
                 alert('Vui lòng chọn số sao để đánh giá.');
@@ -1131,115 +1265,156 @@
             try {
                 const res = await fetch(submitReviewUrl, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token },
-                    body: JSON.stringify({ poiId, rating: parseInt(rating), comment })
-                });
-                const data = await res.json();
-                setMessage(data.message, data.success ? 'ok' : 'err');
-                if (data.success) {
-                    setTimeout(() => window.location.reload(), 1500);
-                }
-            } catch (e) { 
-                setMessage('Lỗi khi gửi đánh giá.', 'err'); 
-            }
-        };
-
-        window.logAudioPlay = async (poiId) => {
-            if (!isSignedIn || loggedAudioPois.has(`${poiId}-${selectedLanguageCode}`)) return;
-            try {
-                const res = await fetch(logAudioUrl, {
-                    method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'RequestVerificationToken': token
                     },
-                    body: JSON.stringify({ poiId, languageCode: selectedLanguageCode })
+                    body: JSON.stringify({
+                        poiId,
+                        rating,
+                        comment
+                    })
                 });
-                if (res.ok) {
-                    loggedAudioPois.add(`${poiId}-${selectedLanguageCode}`);
+
+                const data = await res.json();
+
+                setMessage(data.message || (data.success ? 'Đã gửi đánh giá.' : 'Không thể gửi đánh giá.'), data.success ? 'ok' : 'err');
+
+                if (data.success) {
+                    const poi = pois.find(item => Number(item.id) === Number(poiId));
+
+                    if (poi) {
+                        poi.averageRating = data.averageRating ?? poi.averageRating;
+                        poi.ratingCount = data.ratingCount ?? poi.ratingCount;
+
+                        poi.reviews = poi.reviews || [];
+                        poi.reviews.unshift({
+                            touristName: 'Bạn',
+                            rating,
+                            comment,
+                            createdAt: new Date().toISOString()
+                        });
+
+                        renderList(filterPois());
+                        renderDetail(poi);
+                    }
                 }
             } catch (e) {
+                setMessage('Lỗi khi gửi đánh giá.', 'err');
             }
         };
 
-        window.speakPoi = (poiId) => {
+        window.closeDetail = () => {
+            activePoiId = null;
+            poiDetail.classList.add('empty-detail');
+            document.querySelectorAll('.poi-list-item').forEach(item => item.classList.remove('active'));
+            history.replaceState(null, '', `${location.pathname}${location.search}`);
+        };
+
+        const requestAudioAccess = async (poiId, isTts = false) => {
+            if (!isSignedIn) {
+                window.location.href = `/Areas/DuKhach/Account/Login?returnUrl=${encodeURIComponent('/Areas/DuKhach/Map#poi-' + poiId)}`;
+                return false;
+            }
+
+            try {
+                const res = await fetch(logAudioUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token },
+                    body: JSON.stringify({ poiId, languageCode: selectedLanguageCode, isTts })
+                });
+
+                const data = await res.json();
+                setMessage(data.message || (res.ok ? 'Được phép nghe.' : 'Không thể phát thuyết minh.'), res.ok ? 'ok' : 'err');
+
+                if (Number.isFinite(Number(data.remainingToday))) {
+                    const remainingLabel = document.getElementById('audioQuotaRemaining');
+                    if (remainingLabel) remainingLabel.textContent = String(data.remainingToday);
+                }
+
+                return res.ok && data.success;
+            } catch (e) {
+                setMessage('Không kiểm tra được lượt nghe. Vui lòng thử lại.', 'err');
+                return false;
+            }
+        };
+
+        window.authorizeAudioPlay = async (event, poiId) => {
+            const audio = event.currentTarget;
+            if (!audio || audio.dataset.quotaGranted === 'true' || audio.dataset.quotaPending === 'true') return;
+
+            audio.dataset.quotaPending = 'true';
+            audio.pause();
+            const allowed = await requestAudioAccess(poiId, false);
+            delete audio.dataset.quotaPending;
+
+            if (!allowed) {
+                audio.currentTime = 0;
+                return;
+            }
+
+            audio.dataset.quotaGranted = 'true';
+            await audio.play();
+        };
+
+        window.resetAudioAuthorization = event => {
+            const audio = event.currentTarget;
+            if (audio) delete audio.dataset.quotaGranted;
+        };
+
+        window.speakPoi = async (poiId) => {
             const poi = pois.find(item => Number(item.id) === Number(poiId));
             if (!poi) return;
-
             const text = getPoiText(poi);
-            if (!text.narrationText) {
-                setMessage('POI này chưa có nội dung thuyết minh cho ngôn ngữ đã chọn.', 'err');
-                return;
-            }
-
-            if (!('speechSynthesis' in window)) {
-                setMessage('Trình duyệt này không hỗ trợ đọc thuyết minh tự động.', 'err');
-                return;
-            }
-
+            if (!text.narrationText) return setMessage('Chưa có mô tả.', 'err');
+            if (!await requestAudioAccess(poiId, true)) return;
             window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(text.narrationText);
-            utterance.lang = text.languageCode === 'en' ? 'en-US'
-                : text.languageCode === 'zh' ? 'zh-CN'
-                : text.languageCode === 'ja' ? 'ja-JP'
-                : text.languageCode === 'ko' ? 'ko-KR'
-                : 'vi-VN';
+            utterance.lang = text.languageCode === 'en' ? 'en-US' : 'vi-VN';
             utterance.rate = 0.95;
             window.speechSynthesis.speak(utterance);
-            logAudioPlay(poiId);
-            setMessage(`Đang đọc thuyết minh bằng ${text.languageName}.`, 'ok');
+            setMessage(`Đang đọc thuyết minh...`, 'ok');
         };
 
         const focusPoi = poi => {
             activePoiId = poi.id;
+            poiDetail.classList.remove('empty-detail');
 
             const marker = markers.get(poi.id);
-
             if (markerClusterGroup && marker) {
-                markerClusterGroup.zoomToShowLayer(marker, function () {
+                markerClusterGroup.zoomToShowLayer(marker, () => {
                     marker.openPopup();
                     map.setView(marker.getLatLng(), Math.max(map.getZoom(), 16));
                 });
-            } else if (marker) {
-                map.setView([Number(poi.latitude), Number(poi.longitude)], Math.max(map.getZoom(), 16));
-                marker.openPopup();
             }
 
             renderDetail(poi);
 
             document.querySelectorAll('.poi-list-item').forEach(item => {
-                item.classList.toggle('active', Number(item.dataset.poiId) === Number(poi.id));
+                const isActive = Number(item.dataset.poiId) === Number(poi.id);
+                item.classList.toggle('active', isActive);
             });
 
+            setTimeout(() => { poiDetail.scrollTop = 0; }, 80);
             history.replaceState(null, '', `${location.pathname}${location.search}#poi-${poi.id}`);
-
-            setTimeout(() => {
-                map.invalidateSize();
-            }, 100);
+            setTimeout(() => map.invalidateSize(true), 120);
         };
 
         window.handleBookmark = async (id, btn) => {
             if (!isSignedIn) {
-                const returnUrl = encodeURIComponent('/DuKhach/Map#poi-' + id);
-                window.location.href = `/DuKhach/Account/Login?returnUrl=${returnUrl}`;
+                window.location.href = `/DuKhach/Account/Login?returnUrl=${encodeURIComponent('/DuKhach/Map#poi-' + id)}`;
                 return;
             }
-
             try {
                 const res = await fetch(toggleBookmarkUrl, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'RequestVerificationToken': token
-                    },
+                    headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token },
                     body: JSON.stringify(id)
                 });
                 const data = await res.json();
-                
                 if (data.success) {
                     const poi = pois.find(p => Number(p.id) === Number(id));
                     if (poi) poi.isBookmarked = data.isBookmarked;
-                    
                     btn.classList.toggle('active', data.isBookmarked);
                     btn.querySelector('.bm-text').textContent = data.isBookmarked ? 'Đã lưu' : 'Lưu lại';
                     if (showOnlyBookmarks) {
@@ -1248,48 +1423,37 @@
                         updateMapMarkers(filtered);
                     }
                 }
-            } catch (error) {
-                alert('Có lỗi xảy ra khi lưu địa điểm.');
-            }
+            } catch (error) { alert('Lỗi khi lưu địa điểm.'); }
         };
 
         const filterPois = () => {
             const keyword = (poiSearch.value || '').trim().toLowerCase();
-
             let filtered = pois;
             if (keyword) {
                 filtered = filtered.filter(poi => {
                     const text = getPoiText(poi);
-                    return `${text.name} ${text.shortDescription} ${text.fullDescription}`
-                        .toLowerCase()
-                        .includes(keyword);
+                    return `${text.name} ${text.shortDescription}`.toLowerCase().includes(keyword);
                 });
             }
-            
-            if (showOnlyBookmarks) {
-                filtered = filtered.filter(poi => poi.isBookmarked);
+            if (showOnlyBookmarks) filtered = filtered.filter(poi => poi.isBookmarked);
+            if (showOnlyHighRating) filtered = filtered.filter(poi => poi.averageRating >= 4);
+            if (showOnlyFeatured) filtered = filtered.filter(poi => poi.isFeatured);
+            if (sortByDistance && userLocation) {
+                filtered = [...filtered].sort((left, right) =>
+                    (distanceToPoi(left) ?? Number.MAX_VALUE) - (distanceToPoi(right) ?? Number.MAX_VALUE));
             }
-            
-            if (showOnlyHighRating) {
-                filtered = filtered.filter(poi => poi.averageRating >= 4);
-            }
-            
             return filtered;
         };
 
         const updateMapMarkers = (filteredItems) => {
             if (!markerClusterGroup) return;
             markerClusterGroup.clearLayers();
-            
             filteredItems.forEach(poi => {
                 const marker = markers.get(poi.id);
-                if (marker) {
-                    markerClusterGroup.addLayer(marker);
-                }
+                if (marker) markerClusterGroup.addLayer(marker);
             });
-            
             circles.forEach((circle, id) => {
-                if (filteredItems.find(p => p.id === id)) {
+                if (filteredItems.find(p => Number(p.id) === Number(id))) {
                     if (!map.hasLayer(circle)) map.addLayer(circle);
                 } else {
                     if (map.hasLayer(circle)) map.removeLayer(circle);
@@ -1299,88 +1463,49 @@
 
         const renderList = items => {
             poiList.innerHTML = '';
-
             if (!items.length) {
-                poiList.innerHTML = `
-                    <div class="empty-list">
-                        <strong>Không tìm thấy POI phù hợp.</strong><br />
-                        Thử nhập tên địa điểm hoặc mô tả khác.
-                    </div>`;
+                poiList.innerHTML = `<div style="text-align:center;color:#64748b;padding:20px;">Không tìm thấy kết quả.</div>`;
                 return;
             }
 
             for (const poi of items) {
                 const text = getPoiText(poi);
-                const item = document.createElement('button');
-
-                const statusBadge = poi.isDiscovered
-                    ? '<span class="badge-soft"><i class="fa-solid fa-check"></i> Done</span>'
-                    : `<span class="badge-soft badge-muted">${escapeHtml(poi.radius)}m</span>`;
-
-                const ratingHtml = `
-                    <div style="display:flex; align-items:center; gap: 6px; margin-top: 6px;">
-                        <div class="rating-stars" style="font-size: 13px;">
-                            ${[...Array(5)].map((_, i) => `<i class="fa-${i < Math.round(poi.averageRating) ? 'solid' : 'regular'} fa-star"></i>`).join('')}
-                        </div>
-                        <span style="font-size: 12px; color: var(--muted); font-weight: 700;">
-                            ${poi.averageRating > 0 ? poi.averageRating.toFixed(1) : 'Chưa có'} (${poi.ratingCount})
-                        </span>
-                    </div>
-                `;
-
-                item.type = 'button';
-                item.className = 'poi-list-item';
+                const distance = distanceToPoi(poi);
+                const distanceLine = Number.isFinite(distance)
+                    ? `<span class="badge-soft"><i class="fa-solid fa-person-walking"></i> ${formatDistance(distance)}</span>`
+                    : '';
+                const item = document.createElement('div');
+                item.className = `poi-list-item ${poi.isFeatured ? 'featured' : ''} ${activePoiId === poi.id ? 'active' : ''}`;
                 item.dataset.poiId = poi.id;
 
-                item.innerHTML = `
-                    <div class="poi-list-title">
-                        <span>${escapeHtml(text.name)}</span>
-                        ${statusBadge}
-                    </div>
+                const statusBadge = poi.isFeatured
+                    ? '<span class="badge-soft badge-featured"><i class="fa-solid fa-crown"></i> Nổi bật</span>'
+                    : poi.isDiscovered
+                        ? '<span class="badge-soft"><i class="fa-solid fa-check"></i> Done</span>'
+                        : `<span class="badge-soft badge-muted">${escapeHtml(poi.radius)}m</span>`;
 
-                    <div class="poi-list-desc">
-                        ${escapeHtml(text.shortDescription || 'Chạm để xem chi tiết và chỉ đường.')}
-                    </div>
-                    
-                    ${ratingHtml}`;
+                item.innerHTML = `
+                    <div class="poi-list-title"><span class="poi-list-title-name">${escapeHtml(text.name)}</span> ${statusBadge}</div>
+                    <div class="poi-list-desc">${escapeHtml(text.shortDescription || 'Bấm để xem chi tiết')}</div>
+                    ${distanceLine ? `<div style="margin-top:7px;">${distanceLine}</div>` : ''}
+                    ${poi.isFeatured ? `<div class="featured-owner-line"><i class="fa-solid fa-bolt"></i> Được ưu tiên hiển thị${poi.ownerBusinessName ? ' · ' + escapeHtml(poi.ownerBusinessName) : ''}</div>` : ''}
+                    <div class="poi-list-rating-row" style="display:flex; align-items:center; gap: 6px; margin-top: 8px; flex-wrap: wrap;">
+                        <div class="rating-stars" style="font-size: 12px;">
+                            ${[...Array(5)].map((_, i) => `<i class="fa-${i < Math.round(poi.averageRating) ? 'solid' : 'regular'} fa-star"></i>`).join('')}
+                        </div>
+                        <span style="font-size: 11.5px; color: #94a3b8; font-weight: 700;">
+                            ${poi.averageRating > 0 ? poi.averageRating.toFixed(1) : 'Mới'}
+                        </span>
+                    </div>`;
 
                 item.addEventListener('click', () => focusPoi(poi));
-
                 poiList.appendChild(item);
             }
         };
 
-        const refreshDiscovered = poiId => {
-            const poi = pois.find(item => Number(item.id) === Number(poiId));
+        markerClusterGroup = L.markerClusterGroup({ showCoverageOnHover: false, maxClusterRadius: 42, spiderfyOnMaxZoom: true });
 
-            if (!poi) {
-                return;
-            }
-
-            poi.isDiscovered = true;
-
-            const marker = markers.get(poiId);
-
-            if (marker) {
-                marker.setIcon(createPoiIcon(poi));
-                circles.get(poiId)?.setStyle({
-                    color: '#22c55e'
-                });
-            }
-
-            const filtered = filterPois();
-            renderList(filtered);
-            updateMapMarkers(filtered);
-            renderDetail(poi);
-        };
-
-        markerClusterGroup = L.markerClusterGroup({
-            showCoverageOnHover: false,
-            maxClusterRadius: 42,
-            spiderfyOnMaxZoom: true
-        });
-
-        document.getElementById('btnFilterBookmark')?.addEventListener('click', function() {
+        document.getElementById('btnFilterBookmark')?.addEventListener('click', function () {
             showOnlyBookmarks = !showOnlyBookmarks;
             this.classList.toggle('active', showOnlyBookmarks);
             const filtered = filterPois();
@@ -1388,7 +1513,7 @@
             updateMapMarkers(filtered);
         });
 
-        document.getElementById('btnFilterRating')?.addEventListener('click', function() {
+        document.getElementById('btnFilterRating')?.addEventListener('click', function () {
             showOnlyHighRating = !showOnlyHighRating;
             this.classList.toggle('primary', showOnlyHighRating);
             const filtered = filterPois();
@@ -1396,134 +1521,75 @@
             updateMapMarkers(filtered);
         });
 
-        mapLanguageSelect?.addEventListener('change', function () {
-            selectedLanguageCode = normalizeLanguageCode(this.value);
-            updateUrlLanguage();
-            setMessage(`Đã chuyển ngôn ngữ thuyết minh sang ${this.options[this.selectedIndex]?.text || selectedLanguageCode}.`, 'ok');
+        document.getElementById('btnFilterFeatured')?.addEventListener('click', function () {
+            showOnlyFeatured = !showOnlyFeatured;
+            this.classList.toggle('primary', showOnlyFeatured);
+            const filtered = filterPois();
+            renderList(filtered);
+            updateMapMarkers(filtered);
+        });
 
-            markers.forEach((marker, id) => {
-                const poi = pois.find(item => Number(item.id) === Number(id));
-                if (poi) {
-                    marker.bindPopup(popupHtml(poi));
-                }
-            });
+        document.getElementById('btnNearby')?.addEventListener('click', function () {
+            sortByDistance = !sortByDistance;
+            this.classList.toggle('primary', sortByDistance);
+
+            if (sortByDistance && !userLocation) {
+                setMessage('Đang lấy vị trí để tìm POI gần bạn...');
+                document.getElementById('btnLocate')?.click();
+                return;
+            }
 
             const filtered = filterPois();
             renderList(filtered);
             updateMapMarkers(filtered);
+        });
 
-            if (activePoiId) {
-                const activePoi = pois.find(item => Number(item.id) === Number(activePoiId));
-                if (activePoi) {
-                    renderDetail(activePoi);
-                }
-            }
+        mapLanguageOptions.forEach(option => {
+            option.addEventListener('click', function () {
+                applyMapLanguage(this.dataset.lang || 'vi', this.dataset.name || this.textContent.trim());
+            });
         });
 
         for (const poi of pois) {
-            if (!isValidLatLng(poi.latitude, poi.longitude)) {
-                continue;
-            }
-
-            const lat = Number(poi.latitude);
-            const lng = Number(poi.longitude);
-            const radius = Number(poi.radius) > 0 ? Number(poi.radius) : 50;
-
-            const marker = L.marker([lat, lng], {
-                icon: createPoiIcon(poi)
-            }).bindPopup(popupHtml(poi));
-
-            const circle = L.circle([lat, lng], {
-                radius: radius,
-                color: poi.isDiscovered ? '#22c55e' : '#3b82f6',
-                weight: 1,
-                fillOpacity: 0.08
-            }).addTo(map);
-
+            if (!isValidLatLng(poi.latitude, poi.longitude)) continue;
+            const marker = L.marker([Number(poi.latitude), Number(poi.longitude)], { icon: createPoiIcon(poi) }).bindPopup(popupHtml(poi));
+            const circle = L.circle([Number(poi.latitude), Number(poi.longitude)], { radius: Number(poi.radius) || 50, color: poi.isFeatured ? '#f59e0b' : (poi.isDiscovered ? '#22c55e' : '#3b82f6'), weight: 1, fillOpacity: 0.08 }).addTo(map);
             markers.set(poi.id, marker);
             circles.set(poi.id, circle);
-
             markerClusterGroup.addLayer(marker);
-
-            marker.on('click', () => {
-                renderDetail(poi);
-
-                document.querySelectorAll('.poi-list-item').forEach(item => {
-                    item.classList.toggle('active', Number(item.dataset.poiId) === Number(poi.id));
-                });
-            });
+            marker.on('click', () => focusPoi(poi));
         }
 
         map.addLayer(markerClusterGroup);
 
         map.on('popupopen', e => {
             const button = e.popup.getElement()?.querySelector('[data-select-poi]');
-
             button?.addEventListener('click', () => {
                 const poi = pois.find(item => Number(item.id) === Number(button.dataset.selectPoi));
-
-                if (poi) {
-                    focusPoi(poi);
-                }
+                if (poi) focusPoi(poi);
             });
         });
 
         const fitAllPois = () => {
-            if (!markerClusterGroup || markers.size === 0) {
-                map.setView([10.7769, 106.7009], 12);
-                return;
-            }
-
+            if (!markerClusterGroup || markers.size === 0) return map.setView([10.7769, 106.7009], 12);
             const bounds = markerClusterGroup.getBounds();
-
-            if (bounds && bounds.isValid()) {
-                map.fitBounds(bounds.pad(0.18), {
-                    maxZoom: 16
-                });
-            }
+            if (bounds && bounds.isValid()) map.fitBounds(bounds.pad(0.18), { maxZoom: 16 });
         };
 
         renderList(pois);
+        forceTouristMapResize();
+        if (markers.size > 0) setTimeout(fitAllPois, 200);
 
-        if (markers.size > 0) {
-            setTimeout(fitAllPois, 200);
-        }
-
-        document.getElementById('btnFit')?.addEventListener('click', () => {
-            fitAllPois();
-
-            setTimeout(() => {
-                map.invalidateSize();
-            }, 100);
-        });
-
-        poiSearch.addEventListener('input', () => {
-            const filtered = filterPois();
-            renderList(filtered);
-            updateMapMarkers(filtered);
-        });
+        document.getElementById('btnFit')?.addEventListener('click', () => { fitAllPois(); setTimeout(() => map.invalidateSize(), 100); });
+        poiSearch.addEventListener('input', () => { const filtered = filterPois(); renderList(filtered); updateMapMarkers(filtered); });
 
         document.getElementById('btnLocate')?.addEventListener('click', () => {
-            if (!navigator.geolocation) {
-                setMessage('Trình duyệt không hỗ trợ lấy vị trí.', 'err');
-                return;
-            }
-
-            setMessage('Đang lấy vị trí của bạn...');
-
+            if (!navigator.geolocation) return setMessage('Trình duyệt không hỗ trợ vị trí.', 'err');
+            setMessage('Đang tìm vị trí...');
             navigator.geolocation.getCurrentPosition(
                 position => {
-                    userLocation = {
-                        latitude: position.coords.latitude,
-                        longitude: position.coords.longitude,
-                        accuracyMeters: position.coords.accuracy
-                    };
-
-                    const latLng = [
-                        userLocation.latitude,
-                        userLocation.longitude
-                    ];
-
+                    userLocation = { latitude: position.coords.latitude, longitude: position.coords.longitude, accuracyMeters: position.coords.accuracy };
+                    const latLng = [userLocation.latitude, userLocation.longitude];
                     const radius = Math.min(userLocation.accuracyMeters || 30, 120);
 
                     if (userMarker) {
@@ -1531,211 +1597,93 @@
                         userCircle.setLatLng(latLng);
                         userCircle.setRadius(radius);
                     } else {
-                        const userIcon = L.divIcon({
-                            className: 'custom-map-icon',
-                            html: `<div class="custom-marker user">
-                                      <i class="fa-solid fa-user"></i>
-                                   </div>`,
-                            iconSize: [34, 34],
-                            iconAnchor: [17, 34],
-                            popupAnchor: [0, -34]
-                        });
-
-                        userMarker = L.marker(latLng, {
-                            icon: userIcon
-                        }).addTo(map).bindPopup('Vị trí của bạn');
-
-                        userCircle = L.circle(latLng, {
-                            radius: radius,
-                            color: '#f59e0b',
-                            weight: 1,
-                            fillOpacity: 0.1
-                        }).addTo(map);
+                        userMarker = L.marker(latLng, { icon: L.divIcon({ className: 'custom-map-icon', html: `<div class="custom-marker user"><i class="fa-solid fa-user"></i></div>`, iconSize: [36, 36], iconAnchor: [18, 36] }) }).addTo(map).bindPopup('Vị trí của bạn');
+                        userCircle = L.circle(latLng, { radius: radius, color: '#f59e0b', weight: 1, fillOpacity: 0.1 }).addTo(map);
                     }
-
                     map.setView(latLng, 16);
+                    setMessage(`Đã lấy vị trí. (Chính xác ~${Math.round(radius)}m)`, 'ok');
 
-                    setMessage(
-                        `Đã lấy vị trí. Độ chính xác khoảng ${Math.round(userLocation.accuracyMeters || 0)}m.`,
-                        'ok'
-                    );
+                    markers.forEach((marker, id) => {
+                        const poi = pois.find(item => Number(item.id) === Number(id));
+                        if (poi) marker.bindPopup(popupHtml(poi));
+                    });
 
-                    setTimeout(() => {
-                        map.invalidateSize();
-                    }, 100);
+                    const filtered = filterPois();
+                    renderList(filtered);
+                    updateMapMarkers(filtered);
+                    if (activePoiId) {
+                        const activePoi = pois.find(item => Number(item.id) === Number(activePoiId));
+                        if (activePoi) renderDetail(activePoi);
+                    }
                 },
                 error => {
-                    setMessage(
-                        error.message || 'Không lấy được vị trí. Hãy cấp quyền Location cho trình duyệt.',
-                        'err'
-                    );
+                    sortByDistance = false;
+                    document.getElementById('btnNearby')?.classList.remove('primary');
+                    setMessage('Vui lòng cấp quyền vị trí cho trình duyệt.', 'err');
                 },
-                {
-                    enableHighAccuracy: true,
-                    timeout: 12000,
-                    maximumAge: 10000
-                }
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
             );
         });
 
         window.checkInPoi = async poiId => {
-            if (!isSignedIn) {
-                const returnUrl = encodeURIComponent('/DuKhach/Map#poi-' + poiId);
-                window.location.href = `/DuKhach/Account/Login?returnUrl=${returnUrl}`;
-                return;
-            }
-
-            if (!navigator.geolocation) {
-                setMessage('Trình duyệt không hỗ trợ lấy vị trí.', 'err');
-                return;
-            }
-
-            setMessage('Đang kiểm tra vị trí để check-in...');
-
+            if (!isSignedIn) return window.location.href = `/DuKhach/Account/Login?returnUrl=${encodeURIComponent('/DuKhach/Map#poi-' + poiId)}`;
+            if (!navigator.geolocation) return setMessage('Không hỗ trợ GPS.', 'err');
+            setMessage('Đang xác thực tọa độ...');
             navigator.geolocation.getCurrentPosition(
                 async position => {
-                    userLocation = {
-                        latitude: position.coords.latitude,
-                        longitude: position.coords.longitude,
-                        accuracyMeters: position.coords.accuracy
-                    };
-
                     try {
                         const response = await fetch(checkInUrl, {
                             method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'RequestVerificationToken': token
-                            },
+                            headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token },
                             body: JSON.stringify({
-                                poiId: poiId,
-                                languageCode: selectedLanguageCode,
-                                latitude: userLocation.latitude,
-                                longitude: userLocation.longitude,
-                                accuracyMeters: userLocation.accuracyMeters
+                                poiId: poiId, languageCode: selectedLanguageCode,
+                                latitude: position.coords.latitude, longitude: position.coords.longitude, accuracyMeters: position.coords.accuracy
                             })
                         });
-
                         const data = await response.json();
-
-                        if (!response.ok || !data.success) {
-                            throw new Error(data.message || 'Check-in thất bại.');
-                        }
-
+                        if (!response.ok || !data.success) throw new Error(data.message || 'Check-in thất bại.');
                         setMessage(data.message, 'ok');
-
                         if (data.isNewDiscovery) {
-                            refreshDiscovered(poiId);
+                            const poi = pois.find(p => Number(p.id) === Number(poiId));
+                            if (poi) { poi.isDiscovered = true; markers.get(poiId)?.setIcon(createPoiIcon(poi)); circles.get(poiId)?.setStyle({ color: '#22c55e' }); }
+                            renderList(filterPois());
                         }
-                    } catch (error) {
-                        setMessage(error.message || 'Check-in thất bại.', 'err');
-                    }
+                    } catch (error) { setMessage(error.message, 'err'); }
                 },
-                error => {
-                    setMessage(
-                        error.message || 'Không lấy được vị trí. Hãy cấp quyền Location cho trình duyệt.',
-                        'err'
-                    );
-                },
-                {
-                    enableHighAccuracy: true,
-                    timeout: 12000,
-                    maximumAge: 5000
-                }
+                error => setMessage('Vui lòng bật GPS.', 'err'),
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
             );
         };
 
         window.showRouteToPoi = (destLat, destLng) => {
-            if (!userLocation) {
-                setMessage('Vui lòng lấy "Vị trí của tôi" trước khi chỉ đường.', 'err');
-                document.getElementById('btnLocate')?.click();
-                return;
-            }
-
-            if (routingControl) {
-                map.removeControl(routingControl);
-            }
-
-            setMessage('Đang tính toán tuyến đường...', 'ok');
-
+            if (!userLocation) return setMessage('Hãy bấm "Vị trí của tôi" trước.', 'err');
+            if (routingControl) map.removeControl(routingControl);
+            setMessage('Đang tìm đường đi...', 'ok');
             routingControl = L.Routing.control({
-                waypoints: [
-                    L.latLng(userLocation.latitude, userLocation.longitude),
-                    L.latLng(Number(destLat), Number(destLng))
-                ],
-                routeWhileDragging: false,
-                addWaypoints: false,
-                show: false,
-                lineOptions: {
-                    styles: [
-                        {
-                            color: '#3b82f6',
-                            opacity: 0.9,
-                            weight: 5,
-                            dashArray: '10, 8'
-                        }
-                    ]
-                },
-                createMarker: function () {
-                    return null;
-                }
+                waypoints: [L.latLng(userLocation.latitude, userLocation.longitude), L.latLng(Number(destLat), Number(destLng))],
+                routeWhileDragging: false, addWaypoints: false, show: false,
+                lineOptions: { styles: [{ color: '#3b82f6', opacity: 0.9, weight: 5, dashArray: '10, 8' }] },
+                createMarker: () => null
             }).addTo(map);
 
-            routingControl.on('routesfound', function (e) {
-                const routes = e.routes;
-                const summary = routes[0].summary;
-
-                const distance = summary.totalDistance > 1000
-                    ? (summary.totalDistance / 1000).toFixed(2) + ' km'
-                    : Math.round(summary.totalDistance) + ' m';
-
-                const totalMinutes = Math.round(summary.totalTime / 60);
-                const hours = Math.floor(totalMinutes / 60);
-                const mins = totalMinutes % 60;
-
-                const timeStr = hours > 0
-                    ? `${hours} giờ ${mins} phút`
-                    : `${mins} phút`;
-
-                setMessage(`📍 Tuyến đường dài ${distance}, thời gian đi dự kiến ${timeStr}.`, 'ok');
-
-                setTimeout(() => {
-                    map.invalidateSize();
-                }, 100);
+            routingControl.on('routesfound', e => {
+                const sum = e.routes[0].summary;
+                const dist = sum.totalDistance > 1000 ? (sum.totalDistance / 1000).toFixed(2) + ' km' : Math.round(sum.totalDistance) + ' m';
+                const min = Math.round(sum.totalTime / 60);
+                setMessage(`Tuyến đường dài ${dist}, thời gian dự kiến ${min > 60 ? Math.floor(min/60) + ' giờ ' + (min%60) : min} phút.`, 'ok');
             });
 
-            routingControl.on('routingerror', function () {
-                setMessage('⚠️ Không thể tìm thấy tuyến đường đến POI này.', 'err');
+            routingControl.on('routingerror', () => {
+                setMessage('Không thể tìm tuyến đường. Bạn có thể mở bằng Google Maps.', 'err');
             });
         };
-
-        const openHashPoi = () => {
-            const match = location.hash.match(/^#poi-(\d+)$/);
-
-            if (!match) {
-                document.getElementById('btnLocate')?.click();
-                return;
-            }
-
-            const poi = pois.find(item => Number(item.id) === Number(match[1]));
-
-            if (poi) {
-                focusPoi(poi);
-            } else {
-                document.getElementById('btnLocate')?.click();
-            }
-        };
-
-        setTimeout(openHashPoi, 300);
 
         setTimeout(() => {
-            map.invalidateSize();
-        }, 350);
-
-        window.addEventListener('resize', () => {
-            setTimeout(() => {
-                map.invalidateSize();
-            }, 150);
-        });
+            const match = location.hash.match(/^#poi-(\d+)$/);
+            if (match) {
+                const poi = pois.find(item => Number(item.id) === Number(match[1]));
+                if (poi) focusPoi(poi);
+            }
+        }, 300);
     </script>
 }

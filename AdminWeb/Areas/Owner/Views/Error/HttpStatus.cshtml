@@ -1,0 +1,16 @@
+@{
+    var code = ViewBag.StatusCode as int? ?? 404;
+    var title = code == 404 ? "Không tìm thấy nội dung" : $"Lỗi {code}";
+}
+
+<div class="owner-card" style="max-width:760px;margin:48px auto;text-align:center;padding:42px;">
+    <div style="width:68px;height:68px;border-radius:24px;margin:0 auto 18px;display:grid;place-items:center;background:rgba(251,113,133,.16);color:#fb7185;font-weight:950;">
+        @code
+    </div>
+    <h2 style="font-weight:950;margin-bottom:10px;">@title</h2>
+    <p style="color:var(--owner-muted);margin-bottom:24px;">Đường dẫn này không thuộc Owner Center hoặc bạn không có quyền truy cập.</p>
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+        <a class="btn owner-btn-soft" href="javascript:history.back()"><i class="fa-solid fa-arrow-left"></i> Quay lại</a>
+        <a class="btn owner-btn-primary" href="/Owner"><i class="fa-solid fa-store"></i> Về Owner Center</a>
+    </div>
+</div>

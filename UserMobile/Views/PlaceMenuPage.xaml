@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="UserMobile.Views.PlaceMenuPage"
+             Title="Menu / đặt món"
+             BackgroundColor="{StaticResource PageBackground}">
+    <Grid RowDefinitions="*,Auto">
+        <ScrollView Grid.Row="0">
+            <VerticalStackLayout Padding="20" Spacing="16">
+                <Border BackgroundColor="{StaticResource Primary}" StrokeShape="RoundRectangle 24" Stroke="Transparent" Padding="20">
+                    <VerticalStackLayout Spacing="6">
+                        <Label Text="Menu / sản phẩm" TextColor="#DAD7FF" FontSize="13" FontAttributes="Bold" />
+                        <Label Text="{Binding PoiTitle}" TextColor="White" FontSize="26" FontAttributes="Bold" />
+                        <Label Text="Chọn món/sản phẩm, nhập số điện thoại rồi gửi đơn cho chủ gian hàng xác nhận." TextColor="#ECEAFF" FontSize="13" />
+                        <Button Text="Xem đơn của tôi" Command="{Binding OpenMyOrdersCommand}" BackgroundColor="#FFFFFF" TextColor="{StaticResource Primary}" CornerRadius="16" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <Label Text="{Binding Message}" TextColor="#D64545" FontAttributes="Bold" IsVisible="{Binding HasMessage}" />
+                <Label Text="{Binding LastOrderText}" TextColor="#12805C" FontAttributes="Bold" IsVisible="{Binding HasLastOrder}" />
+
+                <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+
+                <Label Text="Chưa có menu/sản phẩm cho POI này." IsVisible="{Binding HasNoItems}" TextColor="{StaticResource Muted2}" HorizontalTextAlignment="Center" />
+
+                <CollectionView ItemsSource="{Binding Items}" SelectionMode="None">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <Border BackgroundColor="White" Stroke="{StaticResource Outline}" StrokeShape="RoundRectangle 18" Padding="12" Margin="0,0,0,12">
+                                <Grid ColumnDefinitions="86,*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="12">
+                                    <Border Grid.Row="0" Grid.RowSpan="3" Grid.Column="0" WidthRequest="86" HeightRequest="76" Stroke="Transparent" StrokeShape="RoundRectangle 16" BackgroundColor="#F0F1F6">
+                                        <Image Source="{Binding ImageUrl}" Aspect="AspectFill" />
+                                    </Border>
+
+                                    <Label Grid.Row="0" Grid.Column="1" Text="{Binding Name}" FontSize="17" FontAttributes="Bold" TextColor="{StaticResource Ink}" />
+                                    <Label Grid.Row="1" Grid.Column="1" Text="{Binding Description}" FontSize="12" TextColor="{StaticResource Muted2}" LineBreakMode="TailTruncation" />
+                                    <Label Grid.Row="2" Grid.Column="1" Text="{Binding PriceText}" FontSize="16" FontAttributes="Bold" TextColor="{StaticResource Primary}" Margin="0,6,0,0" />
+
+                                    <HorizontalStackLayout Grid.Row="0" Grid.RowSpan="3" Grid.Column="2" Spacing="8" VerticalOptions="Center">
+                                        <Button Text="-" WidthRequest="38" HeightRequest="38" CornerRadius="19" Command="{Binding DecreaseSelfCommand}" />
+                                        <Label Text="{Binding Quantity}" WidthRequest="26" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" FontAttributes="Bold" />
+                                        <Button Text="+" WidthRequest="38" HeightRequest="38" CornerRadius="19" Command="{Binding IncreaseSelfCommand}" />
+                                    </HorizontalStackLayout>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+
+                <Border BackgroundColor="White" Stroke="{StaticResource Outline}" StrokeShape="RoundRectangle 18" Padding="16">
+                    <VerticalStackLayout Spacing="12">
+                        <Label Text="Thông tin nhận đơn" FontSize="18" FontAttributes="Bold" TextColor="{StaticResource Ink}" />
+                        <Entry Placeholder="Họ tên" Text="{Binding CustomerName}" />
+                        <Entry Placeholder="Số điện thoại xác nhận đơn" Keyboard="Telephone" Text="{Binding CustomerPhone}" />
+                        <Editor Placeholder="Ghi chú: ít đá, lấy lúc 15:30..." AutoSize="TextChanges" HeightRequest="90" Text="{Binding Note}" />
+                    </VerticalStackLayout>
+                </Border>
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <Border Grid.Row="1" BackgroundColor="White" Stroke="{StaticResource Outline}" StrokeShape="RoundRectangle 22,22,0,0" Padding="18">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                <VerticalStackLayout Spacing="2">
+                    <Label Text="Tạm tính" TextColor="{StaticResource Muted2}" FontSize="12" />
+                    <Label Text="{Binding TotalText}" TextColor="{StaticResource Ink}" FontSize="20" FontAttributes="Bold" />
+                </VerticalStackLayout>
+                <Button Grid.Column="1" Text="Gửi đơn" Command="{Binding SubmitOrderCommand}" BackgroundColor="{StaticResource Primary}" TextColor="White" CornerRadius="18" Padding="22,0" />
+            </Grid>
+        </Border>
+    </Grid>
+</ContentPage>

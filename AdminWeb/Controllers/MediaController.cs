@@ -114,6 +114,7 @@ public class MediaController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> DeleteMedia(int id)
     {
         var media = await _context.MediaAssets.FindAsync(id);

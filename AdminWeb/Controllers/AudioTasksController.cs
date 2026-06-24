@@ -8,6 +8,8 @@ namespace AdminWeb.Controllers;
 
 [Authorize(Roles = "Admin,Editor")]
 [Route("AudioTasks")]
+[Route("Admin/AudioTasks")]
+[Route("Editor/AudioTasks")]
 public sealed class AudioTasksController : Controller
 {
     private readonly AppDbContext _context;
@@ -21,6 +23,10 @@ public sealed class AudioTasksController : Controller
     [HttpGet("Index")]
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
     {
+        var portalRedirect = RedirectToRoleSpecificAudioTasksPath();
+        if (portalRedirect != null)
+            return portalRedirect;
+
         var tasks = await _context.MediaTasks
             .AsNoTracking()
             .Include(task => task.Poi)
@@ -78,7 +84,7 @@ public sealed class AudioTasksController : Controller
         if (task.Status is MediaTaskStatus.Pending or MediaTaskStatus.Processing)
         {
             TempData["ErrorMessage"] = "Tác vụ đang chờ hoặc đang xử lý.";
-            return RedirectToAction(nameof(Index));
+            return RedirectToCurrentPortalIndex();
         }
 
         task.Status = MediaTaskStatus.Pending;
@@ -93,7 +99,7 @@ public sealed class AudioTasksController : Controller
         await _context.SaveChangesAsync(cancellationToken);
 
         TempData["SuccessMessage"] = "Đã đưa tác vụ vào hàng chờ xử lý lại.";
-        return RedirectToAction(nameof(Index));
+        return RedirectToCurrentPortalIndex();
     }
 
     [HttpPost("QueueMissingTextToAudio")]
@@ -109,7 +115,7 @@ public sealed class AudioTasksController : Controller
         if (activeLanguageCodes.Count == 0)
         {
             TempData["ErrorMessage"] = "Chưa có ngôn ngữ nào đang bật.";
-            return RedirectToAction(nameof(Index));
+            return RedirectToCurrentPortalIndex();
         }
 
         var pois = await _context.Pois
@@ -122,7 +128,7 @@ public sealed class AudioTasksController : Controller
         if (pois.Count == 0)
         {
             TempData["ErrorMessage"] = "Chưa có POI đã duyệt để tạo audio.";
-            return RedirectToAction(nameof(Index));
+            return RedirectToCurrentPortalIndex();
         }
 
         var runningPoiIds = await _context.MediaTasks
@@ -200,7 +206,7 @@ public sealed class AudioTasksController : Controller
             $"{skippedAlreadyEnoughAudio} POI đã đủ audio, " +
             $"{skippedNoVietnameseSource} POI thiếu nội dung tiếng Việt.";
 
-        return RedirectToAction(nameof(Index));
+        return RedirectToCurrentPortalIndex();
     }
 
     [HttpPost("RegenerateAllTextToAudio")]
@@ -214,7 +220,7 @@ public sealed class AudioTasksController : Controller
         if (activeLanguageCount == 0)
         {
             TempData["ErrorMessage"] = "Chưa có ngôn ngữ nào đang bật.";
-            return RedirectToAction(nameof(Index));
+            return RedirectToCurrentPortalIndex();
         }
 
         var poiIds = await _context.Pois
@@ -266,7 +272,46 @@ public sealed class AudioTasksController : Controller
             await _context.SaveChangesAsync(cancellationToken);
 
         TempData["SuccessMessage"] = $"Đã đưa {queuedCount} POI vào hàng chờ tạo lại audio cho toàn bộ ngôn ngữ active.";
-        return RedirectToAction(nameof(Index));
+        return RedirectToCurrentPortalIndex();
+    }
+
+    private IActionResult? RedirectToRoleSpecificAudioTasksPath()
+    {
+        var path = Request.Path;
+
+        if (path.StartsWithSegments("/Admin/AudioTasks"))
+        {
+            if (!User.IsInRole("Admin"))
+                return Redirect("/Admin/Login");
+
+            return null;
+        }
+
+        if (path.StartsWithSegments("/Editor/AudioTasks"))
+        {
+            if (!User.IsInRole("Editor"))
+                return User.IsInRole("Admin")
+                    ? Redirect("/Admin/AudioTasks")
+                    : Redirect("/Editor/Login");
+
+            return null;
+        }
+
+        if (User.IsInRole("Admin"))
+            return Redirect("/Admin/AudioTasks");
+
+        if (User.IsInRole("Editor"))
+            return Redirect("/Editor/AudioTasks");
+
+        return Redirect("/Admin/Login");
+    }
+
+    private IActionResult RedirectToCurrentPortalIndex()
+    {
+        if (Request.Path.StartsWithSegments("/Editor/AudioTasks"))
+            return Redirect("/Editor/AudioTasks");
+
+        return Redirect("/Admin/AudioTasks");
     }
 
 }

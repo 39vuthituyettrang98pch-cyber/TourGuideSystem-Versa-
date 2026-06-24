@@ -9,8 +9,8 @@
         <div class="page-subtitle">@Model.Tourist.FullName · @Model.Tourist.Email</div>
     </div>
     <div class="page-actions">
-        <a asp-action="Edit" asp-route-id="@Model.Tourist.Id" class="btn btn-secondary"><i class="fa-solid fa-pen"></i> Sửa hồ sơ</a>
-        <a asp-action="Index" class="btn btn-secondary"><i class="fa-solid fa-arrow-left"></i> Quay lại</a>
+        <a asp-area="" asp-action="Edit" asp-route-id="@Model.Tourist.Id" class="btn btn-secondary"><i class="fa-solid fa-pen"></i> Sửa hồ sơ</a>
+        <a asp-area="" asp-action="Index" class="btn btn-secondary"><i class="fa-solid fa-arrow-left"></i> Quay lại</a>
     </div>
 </div>
 
@@ -63,7 +63,7 @@
     <div class="card-header" style="padding:18px;">
         <div>
             <div class="card-title"><i class="fa-solid fa-route"></i> Lịch sử khám phá</div>
-            <div class="card-subtitle">Các POI đã check-in bằng GPS hoặc QR.</div>
+            <div class="card-subtitle">Các POI đã check-in bằng GPS.</div>
         </div>
     </div>
     <table class="data-table">
@@ -78,7 +78,7 @@
                         <td><span class="badge @(discovery.Method == "QR" ? "blue" : "green")">@(discovery.Method == "QR" ? "Quét QR" : "Check-in GPS")</span></td>
                         <td style="font-weight:700;color:var(--accent)">+@discovery.Points</td>
                         <td>@discovery.DiscoveredAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
-                        <td><a asp-controller="Poi" asp-action="QrCode" asp-route-id="@discovery.PoiId" class="btn btn-secondary btn-sm" title="Xem QR POI"><i class="fa-solid fa-qrcode"></i></a></td>
+                        <td><a asp-area="" asp-controller="Poi" asp-action="QrCode" asp-route-id="@discovery.PoiId" class="btn btn-secondary btn-sm" title="Xem QR POI"><i class="fa-solid fa-qrcode"></i></a></td>
                     </tr>
                 }
             }

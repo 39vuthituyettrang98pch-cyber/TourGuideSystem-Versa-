@@ -1,0 +1,58 @@
+@model IEnumerable<AdminWeb.Models.Poi>
+@{
+    ViewData["Title"] = "Gian hàng / POI của tôi";
+    var pendingRequestCount = ViewBag.PendingRequestCount as int? ?? 0;
+}
+
+<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px;">
+    <div>
+        <h2 style="margin:0;font-weight:950;">Gian hàng / POI của tôi</h2>
+        <div style="color:var(--text-muted);font-weight:750;">Quản lý các địa điểm đang thuộc quyền chủ gian hàng.</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <a asp-area="Owner" asp-controller="Map" asp-action="Index" class="btn btn-secondary">
+            <i class="fa-solid fa-map-location-dot"></i> Xem bản đồ POI của tôi
+        </a>
+        <a asp-area="Owner" asp-controller="Poi" asp-action="Requests" class="btn btn-secondary">
+            <i class="fa-solid fa-inbox"></i> Yêu cầu của tôi
+            @if (pendingRequestCount > 0) { <span class="badge bg-warning text-dark ms-1">@pendingRequestCount</span> }
+        </a>
+        <a asp-area="Owner" asp-controller="Poi" asp-action="Claim" class="btn btn-secondary"><i class="fa-solid fa-handshake"></i> Nhận POI có sẵn</a>
+        <a asp-area="Owner" asp-controller="Poi" asp-action="Create" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Gửi POI mới</a>
+    </div>
+</div>
+
+<div class="owner-card">
+    <table class="owner-table">
+        <thead>
+            <tr>
+                <th>POI</th>
+                <th>Trạng thái</th>
+                <th>Ngôn ngữ</th>
+                <th>Lượt nghe</th>
+                <th>Hành động</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var poi in Model)
+        {
+            var name = poi.Translations.FirstOrDefault(t => t.LanguageCode == "vi")?.Name
+                ?? poi.Translations.FirstOrDefault()?.Name
+                ?? $"POI #{poi.Id}";
+            <tr>
+                <td><strong>@name</strong><br /><small>#@poi.Id · QR: @poi.QrCodeToken</small></td>
+                <td><span class="badge-soft @(poi.Status == "Approved" ? "badge-green" : poi.Status == "Rejected" ? "badge-red" : "badge-yellow")">@poi.Status</span></td>
+                <td>@poi.Translations.Count</td>
+                <td>@poi.PlaybackLogs.Count</td>
+                <td>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                        <a asp-area="Owner" asp-controller="Poi" asp-action="Details" asp-route-id="@poi.Id" class="btn btn-sm btn-secondary">Chi tiết</a>
+                        <a asp-area="Owner" asp-controller="Map" asp-action="Index" asp-route-focusPoiId="@poi.Id" class="btn btn-sm btn-secondary">Xem map</a>
+                        <a asp-area="Owner" asp-controller="MenuItems" asp-action="Index" asp-route-poiId="@poi.Id" class="btn btn-sm btn-secondary">Menu/Sản phẩm</a>
+                    </div>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>

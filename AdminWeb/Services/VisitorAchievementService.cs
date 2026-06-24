@@ -63,13 +63,11 @@ public sealed class VisitorAchievementService
             .Include(item => item.Poi)
                 .ThenInclude(poi => poi!.Translations)
             .OrderByDescending(item => item.DiscoveredAt)
-            .AsSplitQuery()
             .ToListAsync(cancellationToken);
         var totalPoiCount = await _context.Pois
             .CountAsync(item => item.Status == "Approved", cancellationToken);
         var totalPoints = discoveries.Sum(item => item.PointsAwarded);
         var discoveredCount = discoveries.Count;
-        var qrCount = discoveries.Count(item => item.DiscoveryMethod == "QR");
         var currentRank = GetRank(totalPoints);
         var nextRank = Ranks.FirstOrDefault(item => item.MinimumPoints > totalPoints);
 
@@ -85,7 +83,7 @@ public sealed class VisitorAchievementService
             RankName = currentRank.Name,
             NextRankName = nextRank?.Name ?? "Đã đạt hạng cao nhất",
             PointsToNextRank = nextRank == null ? 0 : nextRank.MinimumPoints - totalPoints,
-            Achievements = BuildAchievements(discoveredCount, qrCount),
+            Achievements = BuildAchievements(discoveredCount),
             Discoveries = discoveries.Select(item => new VisitorDiscoveryViewModel
             {
                 PoiId = item.PoiId,
@@ -99,17 +97,16 @@ public sealed class VisitorAchievementService
         };
     }
 
-    private static List<VisitorAchievementBadgeViewModel> BuildAchievements(int discoveredCount, int qrCount)
+    private static List<VisitorAchievementBadgeViewModel> BuildAchievements(int discoveredCount)
     {
         return
         [
-            Badge("Bước chân đầu tiên", "Khám phá POI đầu tiên.", "★", 1, discoveredCount),
-            Badge("Lữ khách tò mò", "Khám phá 3 POI.", "✦", 3, discoveredCount),
-            Badge("Nhà khám phá thành phố", "Khám phá 5 POI.", "◆", 5, discoveredCount),
-            Badge("Người mở đường", "Khám phá 10 POI.", "▲", 10, discoveredCount),
-            Badge("Thợ săn di sản", "Khám phá 20 POI.", "♛", 20, discoveredCount),
-            Badge("Bậc thầy khám phá", "Khám phá 50 POI.", "✺", 50, discoveredCount),
-            Badge("Thợ săn QR", "Khám phá 3 POI bằng mã QR.", "▦", 3, qrCount)
+            Badge("Bước chân đầu tiên", "Check-in GPS POI đầu tiên.", "★", 1, discoveredCount),
+            Badge("Lữ khách tò mò", "Check-in GPS 3 POI.", "✦", 3, discoveredCount),
+            Badge("Nhà khám phá thành phố", "Check-in GPS 5 POI.", "◆", 5, discoveredCount),
+            Badge("Người mở đường", "Check-in GPS 10 POI.", "▲", 10, discoveredCount),
+            Badge("Thợ săn di sản", "Check-in GPS 20 POI.", "♛", 20, discoveredCount),
+            Badge("Bậc thầy khám phá", "Check-in GPS 50 POI.", "✺", 50, discoveredCount)
         ];
     }
 

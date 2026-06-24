@@ -2,15 +2,21 @@ using AdminWeb.Contracts.Api;
 using AdminWeb.Data;
 using AdminWeb.Models;
 using AdminWeb.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Security.Claims;
 
 namespace AdminWeb.Controllers.Api;
 
 [ApiController]
 [Route("api/ai-chat")]
+[EnableRateLimiting("AiPerIp")]
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public sealed class AiChatApiController : ControllerBase
 {
     private readonly AppDbContext _context;
@@ -32,6 +38,12 @@ public sealed class AiChatApiController : ControllerBase
         [FromBody] AiChatRequestDto request,
         CancellationToken cancellationToken = default)
     {
+        if (!await HasActivePremiumAsync(cancellationToken))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden,
+                ApiResponse<AiChatReplyDto>.Fail("AI hướng dẫn viên là tính năng Premium. Hãy mở Gói Premium để tiếp tục."));
+        }
+
         var question = NormalizeQuestion(request.Message);
         if (string.IsNullOrWhiteSpace(question))
         {
@@ -248,6 +260,27 @@ Câu hỏi của du khách:
         var text = (message ?? string.Empty).Trim();
         text = Regex.Replace(text, @"\s+", " ");
         return text.Length > 700 ? text[..700] : text;
+    }
+
+    private async Task<bool> HasActivePremiumAsync(CancellationToken cancellationToken)
+    {
+        var touristIdText = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!int.TryParse(touristIdText, out var touristId))
+            return false;
+
+        var now = DateTime.UtcNow;
+        return await _context.TouristSubscriptions
+            .AsNoTracking()
+            .Include(item => item.PaymentPlan)
+            .AnyAsync(item =>
+                item.TouristId == touristId &&
+                item.Status == "Active" &&
+                item.ExpiresAt > now &&
+                item.PaymentPlan != null &&
+                (item.PaymentPlan.PlanCode == "USER_PREMIUM" ||
+                 item.PaymentPlan.Audience == "Tourist" ||
+                 item.PaymentPlan.Audience == "Both"),
+                cancellationToken);
     }
 
     private static string? FirstNonEmpty(params string?[] values)

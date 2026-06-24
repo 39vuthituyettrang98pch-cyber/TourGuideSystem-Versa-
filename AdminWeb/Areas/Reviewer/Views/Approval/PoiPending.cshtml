@@ -1,0 +1,98 @@
+@model ReviewerApprovalQueueViewModel
+@{
+    ViewData["Title"] = "Hàng chờ kiểm duyệt";
+    string Level(int score) => score >= 85 ? "green" : score >= 60 ? "amber" : "red";
+}
+
+<div class="page-heading">
+    <div>
+        <div class="page-title">Hàng chờ kiểm duyệt POI</div>
+        <div class="page-subtitle">Xem nhanh chất lượng từng POI, mở trang chi tiết hoặc duyệt/từ chối hàng loạt.</div>
+    </div>
+    <div class="page-actions">
+        <a asp-area="Reviewer" asp-controller="Approval" asp-action="History" class="btn btn-secondary"><i class="fa-solid fa-clock-rotate-left"></i> Lịch sử</a>
+    </div>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card"><span class="stat-icon"><i class="fa-solid fa-hourglass-half"></i></span><span><span class="stat-value">@Model.PendingCount</span><span class="stat-label">Đang chờ</span></span></div>
+    <div class="stat-card"><span class="stat-icon"><i class="fa-solid fa-circle-check"></i></span><span><span class="stat-value">@Model.ApprovedCount</span><span class="stat-label">Đã duyệt</span></span></div>
+    <div class="stat-card"><span class="stat-icon"><i class="fa-solid fa-circle-xmark"></i></span><span><span class="stat-value">@Model.RejectedCount</span><span class="stat-label">Đã từ chối</span></span></div>
+    <div class="stat-card"><span class="stat-icon"><i class="fa-solid fa-calendar-xmark"></i></span><span><span class="stat-value">@Model.StalePendingCount</span><span class="stat-label">Chờ quá 3 ngày</span></span></div>
+</div>
+
+<form method="get" class="card" style="margin-top:18px;padding:18px;">
+    <div style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:end;">
+        <div>
+            <label class="form-label">Tìm POI</label>
+            <input class="form-control" name="q" value="@Model.Search" placeholder="Nhập tên hoặc #ID" />
+        </div>
+        <button class="btn btn-primary" type="submit"><i class="fa-solid fa-magnifying-glass"></i> Tìm</button>
+    </div>
+</form>
+
+<section class="card" style="margin-top:18px">
+    <form asp-area="Reviewer" asp-controller="Approval" asp-action="BulkApprove" method="post" id="bulkApproveForm">
+        @Html.AntiForgeryToken()
+    </form>
+    <form asp-area="Reviewer" asp-controller="Approval" asp-action="BulkReject" method="post" id="bulkRejectForm">
+        @Html.AntiForgeryToken()
+    </form>
+
+    <div class="card-header">
+        <div>
+            <div class="card-title"><i class="fa-solid fa-list-check"></i> Danh sách chờ duyệt</div>
+            <div class="card-subtitle">Chọn nhiều POI rồi duyệt nhanh hoặc trả lại cùng một lý do.</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <input class="form-control" name="adminNote" form="bulkRejectForm" placeholder="Lý do từ chối hàng loạt" style="width:260px" />
+            <button class="btn btn-secondary btn-sm" type="submit" form="bulkRejectForm"><i class="fa-solid fa-xmark"></i> Từ chối đã chọn</button>
+            <button class="btn btn-primary btn-sm" type="submit" form="bulkApproveForm"><i class="fa-solid fa-check"></i> Duyệt đã chọn</button>
+        </div>
+    </div>
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead><tr><th></th><th>POI</th><th>Điểm</th><th>Lỗi phát hiện</th><th>Người tạo/Owner</th><th>Thao tác</th></tr></thead>
+            <tbody>
+            @if (Model.Items.Count == 0)
+            {
+                <tr><td colspan="6"><div class="empty-state"><i class="fa-solid fa-circle-check"></i><h2>Không có POI chờ duyệt</h2><p>Hàng chờ đang trống hoặc không khớp từ khóa.</p></div></td></tr>
+            }
+            else
+            {
+                foreach (var item in Model.Items)
+                {
+                    <tr>
+                        <td><input type="checkbox" name="selectedIds" value="@item.Id" form="bulkApproveForm" onchange="document.querySelectorAll('input[data-mirror=\'@item.Id\']').forEach(x=>x.checked=this.checked)" /><input data-mirror="@item.Id" type="checkbox" name="selectedIds" value="@item.Id" form="bulkRejectForm" hidden /></td>
+                        <td><strong>@item.Name</strong><br /><small style="color:var(--text-soft)">#@item.Id · @item.CreatedAt.ToString("dd/MM/yyyy HH:mm") · @item.Latitude, @item.Longitude</small></td>
+                        <td><span class="badge @Level(item.QualityScore)">@item.QualityScore%</span><br /><small style="color:var(--text-soft)">@item.TranslationCount ngôn ngữ</small></td>
+                        <td>
+                            @if (item.Issues.Count == 0)
+                            {
+                                <span class="badge green">Không phát hiện lỗi lớn</span>
+                            }
+                            else
+                            {
+                                foreach (var issue in item.Issues.Take(3))
+                                {
+                                    <span class="badge amber" style="margin:2px">@issue</span>
+                                }
+                            }
+                        </td>
+                        <td><span>@(item.CreatorName ?? "-")</span><br /><small style="color:var(--text-soft)">@(item.OwnerName ?? "Chưa gắn owner")</small></td>
+                        <td>
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                                <a class="btn btn-secondary btn-sm" asp-area="Reviewer" asp-controller="Approval" asp-action="Details" asp-route-id="@item.Id"><i class="fa-solid fa-eye"></i> Chi tiết</a>
+                                <form asp-area="Reviewer" asp-controller="Approval" asp-action="PoiApprove" asp-route-id="@item.Id" method="post">
+                                    @Html.AntiForgeryToken()
+                                    <button class="btn btn-primary btn-sm" type="submit"><i class="fa-solid fa-check"></i></button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            }
+            </tbody>
+        </table>
+    </div>
+</section>

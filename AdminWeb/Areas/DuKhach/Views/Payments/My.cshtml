@@ -1,0 +1,100 @@
+@model IEnumerable<AdminWeb.Models.PaymentTransaction>
+@{
+    ViewData["Title"] = "Ví & thanh toán";
+    var payments = Model.ToList();
+    var activeSub = ViewBag.ActiveSubscription as AdminWeb.Models.TouristSubscription;
+    var paidTotal = payments.Where(p => p.Status == "Paid").Sum(p => p.Amount);
+    var pendingCount = payments.Count(p => p.Status == "Pending");
+    var daysLeft = activeSub == null ? 0 : Math.Max(0, (int)Math.Ceiling((activeSub.ExpiresAt.ToUniversalTime() - DateTime.UtcNow).TotalDays));
+    string Money(decimal value) => value.ToString("N0") + " đ";
+}
+
+@section Styles{
+<style>
+    .wallet-hero{border:1px solid var(--border);border-radius:34px;padding:30px;background:linear-gradient(135deg,rgba(52,211,153,.18),rgba(56,189,248,.12) 52%,rgba(167,139,250,.16)),var(--surface);box-shadow:var(--shadow);margin-bottom:20px}.wallet-grid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(280px,.8fr);gap:20px;align-items:stretch}.wallet-kicker{display:inline-flex;align-items:center;gap:8px;color:var(--accent);font-size:12px;font-weight:950;letter-spacing:.16em;text-transform:uppercase}.wallet-title{font-size:clamp(36px,5vw,60px);font-weight:1000;letter-spacing:-.07em;line-height:.95;margin:12px 0}.wallet-sub{max-width:760px;color:var(--muted);font-weight:740}.wallet-active{border:1px solid var(--border);border-radius:28px;background:rgba(4,15,28,.36);padding:20px}.wallet-active small{display:block;color:var(--muted);font-weight:850}.wallet-active h3{font-size:24px;font-weight:1000;letter-spacing:-.04em;margin:8px 0}.wallet-days{font-size:52px;font-weight:1000;letter-spacing:-.08em;color:var(--accent)}.wallet-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:20px}.wallet-stat{border:1px solid var(--border);border-radius:24px;background:var(--card);box-shadow:var(--shadow);padding:18px}.wallet-stat small{display:block;color:var(--muted);font-weight:850;margin-bottom:8px}.wallet-stat strong{font-size:24px;font-weight:1000;letter-spacing:-.04em}.wallet-history{border:1px solid var(--border);border-radius:30px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}.wallet-history-head{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;padding:20px 22px;border-bottom:1px solid var(--border)}.wallet-history-head h2{font-size:28px;font-weight:1000;letter-spacing:-.05em;margin:0}.wallet-status{display:inline-flex;align-items:center;gap:7px;padding:7px 10px;border-radius:999px;font-size:12px;font-weight:950}.wallet-status.paid{background:rgba(52,211,153,.14);color:#86efac}.wallet-status.pending{background:rgba(251,191,36,.14);color:#fde68a}.wallet-status.cancelled,.wallet-status.rejected{background:rgba(251,113,133,.14);color:#fecdd3}.wallet-empty{padding:34px;text-align:center;color:var(--muted)}.wallet-empty i{font-size:42px;color:var(--accent);margin-bottom:14px}@@media(max-width:900px){.wallet-grid,.wallet-stats{grid-template-columns:1fr}.wallet-title{font-size:40px}}
+</style>
+}
+
+<section>
+    <div class="wallet-hero">
+        <div class="wallet-grid">
+            <div>
+                <div class="wallet-kicker"><i class="fa-solid fa-wallet"></i> Travel wallet</div>
+                <h1 class="wallet-title">Ví & thanh toán của tôi</h1>
+                <p class="wallet-sub">Theo dõi gói premium, giao dịch VNPay/MoMo, yêu cầu thủ công và link tiếp tục thanh toán nếu giao dịch còn chờ xử lý.</p>
+                <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;">
+                    <a asp-action="Plans" class="dk-btn dk-btn-primary"><i class="fa-solid fa-crown"></i> Mua hoặc gia hạn gói</a>
+                    <a asp-area="DuKhach" asp-controller="Home" asp-action="Index" class="dk-btn dk-btn-ghost"><i class="fa-solid fa-map-location-dot"></i> Về trang khám phá</a>
+                </div>
+            </div>
+            <aside class="wallet-active">
+                <small>Gói đang hoạt động</small>
+                @if (activeSub?.PaymentPlan != null)
+                {
+                    <h3>@activeSub.PaymentPlan.PlanName</h3>
+                    <div class="wallet-days">@daysLeft</div>
+                    <p style="color:var(--muted);margin:0;">ngày còn lại · hết hạn @activeSub.ExpiresAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p>
+                }
+                else
+                {
+                    <h3>Chưa có gói premium</h3>
+                    <p style="color:var(--muted);margin:0;">Chọn một gói để mở trải nghiệm nâng cao trong hệ thống du lịch.</p>
+                }
+            </aside>
+        </div>
+    </div>
+
+    <div class="wallet-stats">
+        <div class="wallet-stat"><small>Tổng đã thanh toán</small><strong>@Money(paidTotal)</strong></div>
+        <div class="wallet-stat"><small>Giao dịch đang chờ</small><strong>@pendingCount</strong></div>
+        <div class="wallet-stat"><small>Tổng giao dịch</small><strong>@payments.Count</strong></div>
+    </div>
+
+    <div class="wallet-history">
+        <div class="wallet-history-head">
+            <div>
+                <h2>Lịch sử giao dịch</h2>
+                <p style="color:var(--muted);margin:6px 0 0;">Mã giao dịch, trạng thái, gateway và link thanh toán được lưu tại đây.</p>
+            </div>
+            <a asp-action="Plans" class="dk-btn dk-btn-ghost"><i class="fa-solid fa-plus"></i> Tạo giao dịch mới</a>
+        </div>
+        @if (payments.Count == 0)
+        {
+            <div class="wallet-empty"><i class="fa-solid fa-receipt"></i><h3 style="font-weight:950;color:var(--text);">Chưa có giao dịch</h3><p>Mua gói premium hoặc tạo yêu cầu thủ công, giao dịch sẽ xuất hiện tại đây.</p></div>
+        }
+        else
+        {
+            <div style="overflow:auto;">
+                <table class="table table-dark table-hover align-middle" style="margin:0;min-width:980px;">
+                    <thead><tr><th>Mã</th><th>Gói</th><th>Số tiền</th><th>Phương thức</th><th>Gateway</th><th>Trạng thái</th><th>Ngày tạo</th><th>Ngày xác nhận</th><th>Thao tác</th></tr></thead>
+                    <tbody>
+                    @foreach (var payment in payments)
+                    {
+                        var statusClass = (payment.Status ?? "").ToLowerInvariant();
+                        <tr>
+                            <td><code>@payment.TransactionCode</code></td>
+                            <td>@payment.PaymentPlan?.PlanName</td>
+                            <td><strong>@Money(payment.Amount)</strong></td>
+                            <td>@payment.PaymentMethod</td>
+                            <td>@(payment.GatewayStatus ?? "-")</td>
+                            <td><span class="wallet-status @statusClass">@payment.Status</span></td>
+                            <td>@payment.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                            <td>@(payment.PaidAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "-")</td>
+                            <td>
+                                @if (payment.Status == "Pending" && !string.IsNullOrWhiteSpace(payment.CheckoutUrl))
+                                {
+                                    <a href="@payment.CheckoutUrl" target="_blank" rel="noopener" class="dk-btn dk-btn-ghost" style="padding:8px 10px;"><i class="fa-solid fa-arrow-up-right-from-square"></i> Tiếp tục trả</a>
+                                }
+                                else
+                                {
+                                    <span style="color:var(--muted);">-</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</section>

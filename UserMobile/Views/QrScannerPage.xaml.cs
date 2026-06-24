@@ -10,18 +10,18 @@ public partial class QrScannerPage : ContentPage
 {
     private QrScannerViewModel ViewModel => BindingContext as QrScannerViewModel ?? throw new InvalidOperationException();
 
+    private bool _eventsSubscribed;
+
     public QrScannerPage()
     {
         InitializeComponent();
         BindingContext = App.Services.GetRequiredService<QrScannerViewModel>();
-        ViewModel.PlaceScanned += OnPlaceScanned;
-        
-        BarcodeReader.BarcodesDetected += OnBarcodesDetected;
     }
 
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        SubscribeEvents();
         var status = await Permissions.RequestAsync<Permissions.Camera>();
         BarcodeReader.IsDetecting = status == PermissionStatus.Granted;
         if (status != PermissionStatus.Granted)
@@ -32,6 +32,27 @@ public partial class QrScannerPage : ContentPage
     {
         base.OnDisappearing();
         BarcodeReader.IsDetecting = false;
+        UnsubscribeEvents();
+    }
+
+    private void SubscribeEvents()
+    {
+        if (_eventsSubscribed)
+            return;
+
+        ViewModel.PlaceScanned += OnPlaceScanned;
+        BarcodeReader.BarcodesDetected += OnBarcodesDetected;
+        _eventsSubscribed = true;
+    }
+
+    private void UnsubscribeEvents()
+    {
+        if (!_eventsSubscribed)
+            return;
+
+        ViewModel.PlaceScanned -= OnPlaceScanned;
+        BarcodeReader.BarcodesDetected -= OnBarcodesDetected;
+        _eventsSubscribed = false;
     }
 
     private async void OnBarcodesDetected(object? sender, BarcodeDetectionEventArgs e)
@@ -60,22 +81,12 @@ public partial class QrScannerPage : ContentPage
 
     private async void OnPlaceScanned(object? sender, PlaceItem place)
     {
-        string? discoveryMessage = null;
-        try
-        {
-            var achievementService = App.Services.GetRequiredService<IAchievementService>();
-            var result = await achievementService.DiscoverByQrAsync(place.Id, place.QrCodeToken);
-            discoveryMessage = result.BuildDisplayMessage();
-        }
-        catch (InvalidOperationException exception)
-        {
-            discoveryMessage = exception.Message;
-        }
-
         var detailPage = App.Services.GetRequiredService<PlaceDetailPage>();
         await detailPage.LoadPlaceAsync(place);
         await Navigation.PushAsync(detailPage);
-        if (!string.IsNullOrWhiteSpace(discoveryMessage))
-            await DisplayAlertAsync("Khám phá POI", discoveryMessage, "Tuyệt");
+        await DisplayAlertAsync(
+            "QR POI",
+            "QR chỉ dùng để mở chi tiết POI. Muốn nhận điểm, hãy bấm Check-in bằng GPS khi bạn đang ở gần địa điểm.",
+            "Đã hiểu");
     }
 }

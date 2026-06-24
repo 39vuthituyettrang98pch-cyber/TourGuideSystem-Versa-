@@ -9,7 +9,7 @@
 <div class="page-subtitle">Thêm thiết bị phát sóng Bluetooth (iBeacon) vào hệ thống.</div>
 
 <div class="card" style="padding:28px;">
-    <form asp-action="Create" method="post">
+    <form asp-area="" asp-action="Create" method="post">
         @Html.AntiForgeryToken()
         
         <div class="form-grid">
@@ -55,7 +55,7 @@
 
         <div style="display:flex;gap:12px;margin-top:24px;">
             <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Lưu thiết bị</button>
-            <a asp-action="Index" class="btn btn-secondary">Quay lại</a>
+            <a asp-area="" asp-action="Index" class="btn btn-secondary">Quay lại</a>
         </div>
     </form>
 </div>

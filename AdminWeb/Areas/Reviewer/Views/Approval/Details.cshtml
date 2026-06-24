@@ -1,0 +1,179 @@
+@model ReviewerPoiDetailsViewModel
+@{
+    ViewData["Title"] = $"Duyệt POI #{Model.Poi.Id}";
+    string Level(int score) => score >= 85 ? "green" : score >= 60 ? "amber" : "red";
+    string Badge(string status) => status switch { "Approved" => "green", "Rejected" => "red", "Draft" => "gray", _ => "amber" };
+}
+
+<div class="page-heading">
+    <div>
+        <div class="page-title">@Model.Name</div>
+        <div class="page-subtitle">Kiểm tra toàn bộ nội dung trước khi phê duyệt hoặc trả lại cho Editor.</div>
+    </div>
+    <div class="page-actions">
+        <a asp-area="Reviewer" asp-controller="Approval" asp-action="PoiPending" class="btn btn-secondary"><i class="fa-solid fa-arrow-left"></i> Hàng chờ</a>
+        @if (string.Equals(Model.Poi.Status, "Pending", StringComparison.OrdinalIgnoreCase))
+        {
+            <form asp-area="Reviewer" asp-controller="Approval" asp-action="PoiApprove" asp-route-id="@Model.Poi.Id" method="post">
+                @Html.AntiForgeryToken()
+                <button class="btn btn-primary" type="submit"><i class="fa-solid fa-check"></i> Phê duyệt</button>
+            </form>
+        }
+    </div>
+</div>
+
+<div class="detail-grid">
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <div class="card-title"><i class="fa-solid fa-clipboard-check"></i> Checklist duyệt</div>
+                <div class="card-subtitle">Điểm chất lượng chỉ hỗ trợ Reviewer ra quyết định, không tự động duyệt.</div>
+            </div>
+            <span class="badge @Level(Model.QualityScore)">@Model.QualityScore%</span>
+        </div>
+        <div class="editor-task-summary">
+            <div><span class="badge @Badge(Model.Poi.Status)">@Model.Poi.Status</span><strong>Trạng thái hiện tại</strong><p>POI #@Model.Poi.Id · @Model.Poi.CreatedAt.ToString("dd/MM/yyyy HH:mm")</p></div>
+            <div><span class="badge blue">@Model.Poi.Translations.Count/@Model.ActiveLanguages.Count</span><strong>Ngôn ngữ</strong><p>@(Model.MissingLanguages.Count == 0 ? "Đủ ngôn ngữ đang bật." : $"Thiếu: {string.Join(", ", Model.MissingLanguages)}")</p></div>
+            <div><span class="badge purple">@Model.Poi.MediaAssets.Count</span><strong>Media</strong><p>@(string.IsNullOrWhiteSpace(Model.Poi.CoverImageUrl) ? "Chưa có ảnh bìa riêng." : "Đã có ảnh bìa.")</p></div>
+        </div>
+
+        <div style="margin-top:18px">
+            @if (Model.Issues.Count == 0)
+            {
+                <span class="badge green">Không phát hiện lỗi lớn</span>
+            }
+            else
+            {
+                foreach (var issue in Model.Issues)
+                {
+                    <span class="badge amber" style="margin:2px">@issue</span>
+                }
+            }
+        </div>
+    </section>
+
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <div class="card-title"><i class="fa-solid fa-location-dot"></i> Thông tin POI</div>
+                <div class="card-subtitle">Tọa độ, QR, chủ sở hữu và danh mục.</div>
+            </div>
+        </div>
+        <div class="editor-task-summary">
+            <div><strong>Tọa độ</strong><p><code>@Model.Poi.Latitude, @Model.Poi.Longitude</code> · bán kính @Model.Poi.Radius m</p></div>
+            <div><strong>QR token</strong><p><code>@(string.IsNullOrWhiteSpace(Model.Poi.QrCodeToken) ? "Chưa có" : Model.Poi.QrCodeToken)</code></p></div>
+            <div><strong>Owner</strong><p>@(Model.Poi.OwnerProfile?.BusinessName ?? "Chưa gắn chủ POI")</p></div>
+            <div><strong>Danh mục</strong><p>@(Model.Poi.PoiCategories.Count == 0 ? "Chưa gắn danh mục" : string.Join(", ", Model.Poi.PoiCategories.Select(pc => pc.Category?.Translations.FirstOrDefault(t => t.LanguageCode == "vi")?.Name ?? $"Danh mục #{pc.CategoryId}")))</p></div>
+        </div>
+    </section>
+</div>
+
+<section class="card" style="margin-top:18px">
+    <div class="card-header">
+        <div>
+            <div class="card-title"><i class="fa-solid fa-language"></i> Nội dung theo ngôn ngữ</div>
+            <div class="card-subtitle">Reviewer có thể đọc mô tả, script TTS, audio/video từng bản dịch.</div>
+        </div>
+    </div>
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead><tr><th>Ngôn ngữ</th><th>Tên/Mô tả ngắn</th><th>Mô tả chi tiết</th><th>Audio/TTS</th></tr></thead>
+            <tbody>
+            @foreach (var translation in Model.Poi.Translations.OrderBy(t => t.LanguageCode == "vi" ? 0 : 1).ThenBy(t => t.LanguageCode))
+            {
+                <tr>
+                    <td><span class="badge blue">@translation.LanguageCode</span></td>
+                    <td><strong>@translation.Name</strong><br /><small style="color:var(--text-soft)">@translation.ShortDescription</small></td>
+                    <td style="max-width:460px"><small>@translation.FullDescription</small></td>
+                    <td>
+                        @if (!string.IsNullOrWhiteSpace(translation.AudioUrl))
+                        {
+                            <audio controls style="width:220px" src="@translation.AudioUrl"></audio>
+                        }
+                        else
+                        {
+                            <span class="badge amber">Thiếu audio</span>
+                        }
+                        <br />
+                        <small style="color:var(--text-soft)">@(string.IsNullOrWhiteSpace(translation.TtsScript) ? "Thiếu script TTS" : "Có script TTS")</small>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<div class="detail-grid" style="margin-top:18px">
+    <section class="card">
+        <div class="card-header"><div><div class="card-title"><i class="fa-solid fa-photo-film"></i> Media</div><div class="card-subtitle">Ảnh/video hiện có của POI.</div></div></div>
+        @if (Model.Poi.MediaAssets.Count == 0 && string.IsNullOrWhiteSpace(Model.Poi.CoverImageUrl))
+        {
+            <div class="empty-state compact"><i class="fa-solid fa-image"></i><p>Chưa có media.</p></div>
+        }
+        else
+        {
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;">
+                @if (!string.IsNullOrWhiteSpace(Model.Poi.CoverImageUrl))
+                {
+                    <a href="@Model.Poi.CoverImageUrl" target="_blank" class="card" style="padding:12px"><strong>Ảnh bìa</strong><small style="color:var(--text-soft);word-break:break-all">@Model.Poi.CoverImageUrl</small></a>
+                }
+                @foreach (var media in Model.Poi.MediaAssets.OrderBy(item => item.SortOrder))
+                {
+                    <a href="@media.MediaUrl" target="_blank" class="card" style="padding:12px"><strong>@media.MediaType</strong><small style="color:var(--text-soft);word-break:break-all">@media.MediaUrl</small></a>
+                }
+            </div>
+        }
+    </section>
+
+    <section class="card">
+        <div class="card-header"><div><div class="card-title"><i class="fa-solid fa-reply"></i> Trả lại cho Editor</div><div class="card-subtitle">Bắt buộc nhập lý do rõ ràng khi từ chối.</div></div></div>
+        @if (string.Equals(Model.Poi.Status, "Pending", StringComparison.OrdinalIgnoreCase))
+        {
+            <form asp-area="Reviewer" asp-controller="Approval" asp-action="PoiReject" asp-route-id="@Model.Poi.Id" method="post">
+                @Html.AntiForgeryToken()
+                <label class="form-label">Lý do từ chối</label>
+                <textarea class="form-control" name="adminNote" rows="5" required placeholder="Ví dụ: Thiếu audio tiếng Anh và mô tả chi tiết chưa đủ thông tin lịch sử.">@Model.Poi.AdminNote</textarea>
+                <button class="btn btn-secondary" type="submit" style="margin-top:12px"><i class="fa-solid fa-xmark"></i> Từ chối và trả lại</button>
+            </form>
+        }
+        else
+        {
+            <div class="empty-state compact">
+                <i class="fa-solid fa-lock"></i>
+                <p>Quyết định đã được chốt. POI trong lịch sử chỉ có thể xem, không thể duyệt lại.</p>
+            </div>
+        }
+    </section>
+</div>
+
+<section class="card" style="margin-top:18px">
+    <div class="card-header">
+        <div>
+            <div class="card-title"><i class="fa-solid fa-star"></i> Đánh giá gần đây</div>
+            <div class="card-subtitle">Các đánh giá mới nhất của du khách dành cho POI này.</div>
+        </div>
+    </div>
+    @if (Model.RecentReviews.Count == 0)
+    {
+        <div class="empty-state compact"><i class="fa-regular fa-star"></i><p>POI chưa có đánh giá.</p></div>
+    }
+    else
+    {
+        <div class="table-wrapper">
+            <table class="data-table">
+                <thead><tr><th>Điểm</th><th>Nội dung</th><th>Thời gian</th></tr></thead>
+                <tbody>
+                @foreach (var review in Model.RecentReviews)
+                {
+                    <tr>
+                        <td><span class="badge amber">@review.Rating/5</span></td>
+                        <td>@(string.IsNullOrWhiteSpace(review.Comment) ? "Không có nhận xét" : review.Comment)</td>
+                        <td>@review.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>

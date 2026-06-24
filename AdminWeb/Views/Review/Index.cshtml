@@ -1,6 +1,7 @@
 @model IReadOnlyList<AdminWeb.Models.PoiReview>
 
 @{
+    var isAdmin = User.IsInRole("Admin");
     ViewData["Title"] = "Đánh giá POI";
     var searchString = ViewBag.SearchString as string ?? "";
     var currentPage = (int?)ViewBag.CurrentPage ?? 1;
@@ -14,14 +15,14 @@
         <div class="page-subtitle">Quản lý số sao và bình luận của du khách cho từng điểm tham quan.</div>
     </div>
     <div class="page-actions">
-        <a asp-controller="Analytics" asp-action="Index" class="btn btn-secondary">
+        <a asp-area="" asp-controller="Analytics" asp-action="Index" class="btn btn-secondary">
             <i class="fa-solid fa-chart-line"></i> Xem phân tích
         </a>
     </div>
 </div>
 
 <div class="toolbar" style="margin-top:18px">
-    <form asp-action="Index" method="get" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+    <form asp-area="" asp-action="Index" method="get" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
         <input type="search"
                name="searchString"
                value="@searchString"
@@ -33,7 +34,7 @@
         </button>
         @if (!string.IsNullOrWhiteSpace(searchString))
         {
-            <a asp-action="Index" class="btn btn-secondary btn-sm">
+            <a asp-area="" asp-action="Index" class="btn btn-secondary btn-sm">
                 <i class="fa-solid fa-xmark"></i> Xóa lọc
             </a>
         }
@@ -99,7 +100,7 @@
                             }
                         </td>
                         <td>
-                            <form asp-action="Delete" method="post" onsubmit="return confirm('Xóa đánh giá này?');">
+                            <form asp-area="" asp-action="Delete" method="post" onsubmit="return confirm('Xóa đánh giá này?');">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="id" value="@review.Id" />
                                 <button type="submit" class="btn btn-secondary btn-sm text-danger">
@@ -130,14 +131,14 @@
     <div style="display:flex;justify-content:center;gap:8px;margin-top:20px;align-items:center;">
         @if (currentPage > 1)
         {
-            <a asp-action="Index" asp-route-page="@(currentPage - 1)" asp-route-searchString="@searchString" class="btn btn-secondary btn-sm">Trang trước</a>
+            <a asp-area="" asp-action="Index" asp-route-page="@(currentPage - 1)" asp-route-searchString="@searchString" class="btn btn-secondary btn-sm">Trang trước</a>
         }
         <span style="display:inline-flex;align-items:center;padding:0 12px;background:rgba(255,255,255,.05);border-radius:8px;font-size:14px;font-weight:700;">
             Trang @currentPage / @totalPages
         </span>
         @if (currentPage < totalPages)
         {
-            <a asp-action="Index" asp-route-page="@(currentPage + 1)" asp-route-searchString="@searchString" class="btn btn-secondary btn-sm">Trang sau</a>
+            <a asp-area="" asp-action="Index" asp-route-page="@(currentPage + 1)" asp-route-searchString="@searchString" class="btn btn-secondary btn-sm">Trang sau</a>
         }
     </div>
 }

@@ -1,0 +1,277 @@
+@model AdminWeb.ViewModels.AdminRevenueDashboardViewModel
+@using AdminWeb.Models
+
+@{
+    ViewData["Title"] = "Quản lý doanh thu";
+    var maxDaily = Math.Max(1m, Model.Last14Days.Any() ? Math.Max(Model.Last14Days.Max(day => day.PlatformRevenue), Model.Last14Days.Max(day => day.MenuSales)) : 1m);
+
+    var exportFrom = Model.FromDate.ToString("yyyy-MM-dd");
+    var exportTo = Model.ToDate.ToString("yyyy-MM-dd");
+    string Money(decimal value) => value.ToString("N0") + " VND";
+    string Percent(decimal value) => value.ToString("P0");
+    decimal Commission(decimal amount) => Math.Round(amount * Model.PlatformCommissionRate, 0, MidpointRounding.AwayFromZero);
+    string NormalizeStatusText(string text) => text.Trim().Replace(" ", "").Replace("_", "").Replace("-", "").ToLowerInvariant();
+    bool IsAny(string? value, params string[] expectedValues)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return false;
+        var normalized = NormalizeStatusText(value);
+        return expectedValues.Any(expected => normalized == NormalizeStatusText(expected));
+    }
+    bool IsCancelled(MenuOrder order) => IsAny(order.Status, "Cancelled", "Canceled", "Cancel", "Huy", "Huỷ", "DaHuy", "Đã hủy", "Đã huỷ");
+    bool IsCompleted(MenuOrder order) => IsAny(order.Status, "Completed", "Complete", "Done", "Delivered", "Paid", "HoanThanh", "Hoàn thành", "DaHoanThanh", "Đã hoàn thành");
+    bool IsPaid(MenuOrder order) => !IsCancelled(order) && (IsCompleted(order) || IsAny(order.PaymentStatus, "Paid", "Success", "Completed", "Confirmed", "DaThanhToan", "Đã thanh toán", "Thanh toán", "Da thu tien", "Đã thu tiền"));
+    string PoiName(MenuOrder order) => order.Poi?.Translations.FirstOrDefault(t => t.LanguageCode == "vi")?.Name
+        ?? order.Poi?.Translations.FirstOrDefault()?.Name
+        ?? $"POI #{order.PoiId}";
+    string CustomerName(PaymentTransaction payment) => payment.PayerType == "Owner"
+        ? payment.OwnerProfile?.BusinessName ?? payment.OwnerProfile?.User?.Username ?? "Owner"
+        : payment.Tourist?.FullName ?? payment.Tourist?.Email ?? "Du khách";
+}
+
+<style>
+    .revenue-hero { border:1px solid rgba(255,255,255,.1); border-radius:28px; padding:26px; margin-bottom:18px; background:radial-gradient(circle at top left, rgba(91,140,255,.32), transparent 42%), linear-gradient(135deg, rgba(18,25,45,.98), rgba(10,14,25,.98)); box-shadow:0 22px 80px rgba(0,0,0,.25); }
+    .revenue-hero h1 { margin:0; font-size:34px; font-weight:950; letter-spacing:-.04em; }
+    .revenue-hero p { color:var(--text-muted); margin:10px 0 0; max-width:850px; font-weight:700; }
+    .revenue-filter { display:flex; flex-wrap:wrap; gap:10px; margin-top:18px; align-items:end; }
+    .revenue-filter label { display:block; color:var(--text-muted); font-size:12px; font-weight:900; margin-bottom:6px; }
+    .revenue-filter input { border-radius:14px; border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.06); color:var(--text-primary); padding:11px 12px; }
+    .revenue-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; margin-bottom:18px; }
+    .revenue-stat { border:1px solid rgba(255,255,255,.1); border-radius:24px; padding:20px; background:rgba(255,255,255,.055); }
+    .revenue-stat span { display:block; color:var(--text-muted); font-size:12px; font-weight:900; text-transform:uppercase; letter-spacing:.04em; }
+    .revenue-stat strong { display:block; margin-top:8px; font-size:27px; font-weight:950; letter-spacing:-.035em; }
+    .revenue-stat small { color:var(--text-muted); font-weight:750; }
+    .revenue-card { border:1px solid rgba(255,255,255,.1); border-radius:26px; padding:22px; background:rgba(255,255,255,.055); margin-bottom:18px; }
+    .revenue-card h2 { font-size:24px; font-weight:950; letter-spacing:-.035em; margin-bottom:6px; }
+    .revenue-card p { color:var(--text-muted); font-weight:700; }
+    .revenue-two { display:grid; grid-template-columns:1.15fr .85fr; gap:18px; }
+    .revenue-bars { display:grid; gap:12px; margin-top:16px; }
+    .revenue-bar-row { display:grid; grid-template-columns:80px 1fr 155px; gap:12px; align-items:center; }
+    .revenue-track { height:12px; border-radius:999px; background:rgba(255,255,255,.08); overflow:hidden; }
+    .revenue-track span { display:block; height:100%; border-radius:999px; background:linear-gradient(90deg,#5b8cff,#48d6a8); }
+    .revenue-track.secondary span { background:linear-gradient(90deg,#f59e0b,#ef4444); }
+    .revenue-table { width:100%; border-collapse:separate; border-spacing:0 10px; }
+    .revenue-table th { color:var(--text-muted); font-size:12px; text-transform:uppercase; letter-spacing:.04em; padding:0 12px; }
+    .revenue-table td { background:rgba(255,255,255,.045); border-top:1px solid rgba(255,255,255,.08); border-bottom:1px solid rgba(255,255,255,.08); padding:14px 12px; vertical-align:middle; }
+    .revenue-table td:first-child { border-left:1px solid rgba(255,255,255,.08); border-radius:16px 0 0 16px; }
+    .revenue-table td:last-child { border-right:1px solid rgba(255,255,255,.08); border-radius:0 16px 16px 0; }
+    .revenue-pill { display:inline-flex; align-items:center; border-radius:999px; padding:6px 10px; font-weight:900; font-size:12px; background:rgba(72,214,168,.13); color:#8ff5d2; border:1px solid rgba(72,214,168,.22); }
+    @@media (max-width:1100px){ .revenue-grid{grid-template-columns:repeat(2,1fr)} .revenue-two{grid-template-columns:1fr} }
+    @@media (max-width:700px){ .revenue-grid{grid-template-columns:1fr} .revenue-bar-row{grid-template-columns:1fr} }
+</style>
+
+<section class="revenue-hero">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div>
+            <h1>Quản lý doanh thu</h1>
+            <p>Tách rõ doanh thu nền tảng với tiền bán đồ ăn của chủ cửa hàng: Admin chỉ ghi nhận gói dịch vụ và hoa hồng, còn GMV menu là doanh số tham khảo.</p>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="/Admin/Payment" class="btn btn-primary"><i class="fa-solid fa-wallet"></i> Giao dịch gói</a>
+            <a href="/Admin/OwnerAdmin" class="btn btn-outline-light"><i class="fa-solid fa-store"></i> Chủ gian hàng</a>
+        </div>
+    </div>
+
+    <form method="get" action="/Admin/Revenue" class="revenue-filter">
+        <input type="hidden" name="rangePreset" value="custom" />
+        <div>
+            <label>Từ ngày</label>
+            <input id="adminRevenueFrom" type="date" name="from" value="@Model.FromDate.ToString("yyyy-MM-dd")" />
+        </div>
+        <div>
+            <label>Đến ngày</label>
+            <input id="adminRevenueTo" type="date" name="to" value="@Model.ToDate.ToString("yyyy-MM-dd")" min="@Model.FromDate.ToString("yyyy-MM-dd")" />
+        </div>
+        <button class="btn btn-primary" type="submit"><i class="fa-solid fa-filter"></i> Lọc doanh thu</button>
+        <a class="btn btn-outline-light" href="/Admin/Revenue/ExportExcel?rangePreset=@Model.RangePreset&from=@exportFrom&to=@exportTo">
+            <i class="fa-solid fa-file-excel"></i> Xuất Excel
+        </a>
+    </form>
+</section>
+
+<section class="revenue-grid">
+    <div class="revenue-stat">
+        <span>Doanh thu nền tảng</span>
+        <strong>@Money(Model.PlatformRevenueTotal)</strong>
+        <small>Gói dịch vụ + hoa hồng đơn hàng</small>
+    </div>
+    <div class="revenue-stat">
+        <span>Doanh thu gói</span>
+        <strong>@Money(Model.PlatformSubscriptionRevenue)</strong>
+        <small>Owner: @Money(Model.OwnerSubscriptionRevenue) · Du khách: @Money(Model.TouristSubscriptionRevenue)</small>
+    </div>
+    <div class="revenue-stat">
+        <span>Hoa hồng đơn hàng</span>
+        <strong>@Money(Model.PlatformCommissionRevenue)</strong>
+        <small>@Percent(Model.PlatformCommissionRate) trên đơn hoàn tất hoặc đã thanh toán</small>
+    </div>
+    <div class="revenue-stat">
+        <span>Chủ cửa hàng thực nhận</span>
+        <strong>@Money(Model.OwnerNetMenuRevenue)</strong>
+        <small>Doanh số đã thanh toán sau khi trừ phí</small>
+    </div>
+</section>
+
+<section class="revenue-grid">
+    <div class="revenue-stat">
+        <span>GMV đơn đồ ăn</span>
+        <strong>@Money(Model.GrossMenuSales)</strong>
+        <small>Tổng giá trị đơn không bị hủy, không tính là doanh thu Admin</small>
+    </div>
+    <div class="revenue-stat">
+        <span>Đơn đồ ăn đã thanh toán</span>
+        <strong>@Money(Model.PaidMenuSales)</strong>
+        <small>@Model.CompletedOrderCount đơn hoàn tất / được tính phí</small>
+    </div>
+    <div class="revenue-stat">
+        <span>Đơn đang xử lý</span>
+        <strong>@Model.PendingOrderCount</strong>
+        <small>@Money(Model.PendingMenuSales)</small>
+    </div>
+    <div class="revenue-stat">
+        <span>Giao dịch gói</span>
+        <strong>@Model.PaidPaymentCount</strong>
+        <small>@Model.PendingPaymentCount giao dịch gói đang chờ</small>
+    </div>
+</section>
+
+<section class="revenue-two">
+    <div class="revenue-card">
+        <h2>Biểu đồ @Model.RangeLabel</h2>
+        <p>So sánh doanh thu nền tảng và GMV đồ ăn theo khoảng ngày đã lọc.</p>
+        <div class="revenue-bars">
+            @foreach (var day in Model.Last14Days)
+            {
+                var platformWidth = Math.Max(3, (int)Math.Round(day.PlatformRevenue * 100m / maxDaily));
+                var menuWidth = Math.Max(3, (int)Math.Round(day.MenuSales * 100m / maxDaily));
+                <div>
+                    <div class="revenue-bar-row">
+                        <strong>@day.Label</strong>
+                        <div class="revenue-track"><span style="width:@platformWidth%"></span></div>
+                        <small>Nền tảng: @Money(day.PlatformRevenue)</small>
+                    </div>
+                    <div class="revenue-bar-row mt-1">
+                        <span></span>
+                        <div class="revenue-track secondary"><span style="width:@menuWidth%"></span></div>
+                        <small>GMV: @Money(day.MenuSales) · thực nhận @Money(day.OwnerNetSales)</small>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="revenue-card">
+        <h2>Top chủ gian hàng</h2>
+        <p>Xếp theo GMV và phần thực nhận sau phí nền tảng.</p>
+        @if (Model.TopOwners.Count == 0)
+        {
+            <div class="text-muted fw-bold">Chưa có dữ liệu đơn hàng trong khoảng thời gian này.</div>
+        }
+        else
+        {
+            <table class="revenue-table">
+                <thead><tr><th>Chủ gian hàng</th><th>Đơn</th><th>GMV</th><th>Phí</th><th>Thực nhận</th></tr></thead>
+                <tbody>
+                    @foreach (var owner in Model.TopOwners)
+                    {
+                        <tr>
+                            <td><strong>@owner.BusinessName</strong><br /><small class="text-muted">Gói đã trả: @Money(owner.SubscriptionPaid)</small></td>
+                            <td>@owner.CompletedOrders</td>
+                            <td><strong>@Money(owner.PaidSales > 0 ? owner.PaidSales : owner.GrossSales)</strong></td>
+                            <td>@Money(owner.CommissionAmount)</td>
+                            <td><strong>@Money(owner.OwnerNetSales)</strong></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</section>
+
+<section class="revenue-card">
+    <h2>Đơn menu/sản phẩm mới nhất</h2>
+    <p>Admin xem GMV để thống kê, nhưng chỉ hoa hồng mới là doanh thu nền tảng.</p>
+    @if (Model.RecentOrders.Count == 0)
+    {
+        <div class="text-muted fw-bold">Chưa có đơn hàng.</div>
+    }
+    else
+    {
+        <table class="revenue-table">
+            <thead>
+                <tr><th>Mã đơn</th><th>Chủ gian hàng</th><th>POI</th><th>GMV</th><th>Phí</th><th>Thực nhận</th><th>Trạng thái</th><th>Ngày</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var order in Model.RecentOrders)
+                {
+                    var paidOrder = IsPaid(order);
+                    var orderCommission = paidOrder ? Commission(order.TotalAmount) : 0;
+                    var ownerNet = paidOrder ? Math.Max(0, order.TotalAmount - orderCommission) : 0;
+                    <tr>
+                        <td><strong>@order.OrderCode</strong><br /><small class="text-muted">@order.Items.Count món</small></td>
+                        <td>@(order.OwnerProfile?.BusinessName ?? $"Owner #{order.OwnerProfileId}")</td>
+                        <td>@PoiName(order)</td>
+                        <td><strong>@Money(order.TotalAmount)</strong></td>
+                        <td>@Money(orderCommission)</td>
+                        <td><strong>@Money(ownerNet)</strong></td>
+                        <td><span class="revenue-pill">@order.Status · @order.PaymentStatus</span></td>
+                        <td>@order.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</section>
+
+<section class="revenue-card">
+    <h2>Giao dịch gói mới nhất</h2>
+    <p>Các khoản thanh toán gói dịch vụ đã xác nhận trong khoảng thời gian lọc.</p>
+    @if (Model.RecentPayments.Count == 0)
+    {
+        <div class="text-muted fw-bold">Chưa có giao dịch gói đã thanh toán.</div>
+    }
+    else
+    {
+        <table class="revenue-table">
+            <thead>
+                <tr><th>Mã giao dịch</th><th>Người trả</th><th>Loại</th><th>Gói</th><th>Số tiền</th><th>Ngày trả</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var payment in Model.RecentPayments)
+                {
+                    <tr>
+                        <td><strong>@payment.TransactionCode</strong><br /><small class="text-muted">@payment.PaymentMethod</small></td>
+                        <td>@CustomerName(payment)</td>
+                        <td>@payment.PayerType</td>
+                        <td>@(payment.PaymentPlan?.PlanName ?? payment.Purpose)</td>
+                        <td><strong>@Money(payment.Amount)</strong></td>
+                        <td>@(payment.PaidAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "-")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</section>
+
+<script>
+    (() => {
+        const fromInput = document.getElementById('adminRevenueFrom');
+        const toInput = document.getElementById('adminRevenueTo');
+        if (!fromInput || !toInput) return;
+
+        const syncMinDate = () => {
+            if (!fromInput.value) return;
+            toInput.min = fromInput.value;
+            if (!toInput.value || toInput.value < fromInput.value) {
+                toInput.value = fromInput.value;
+            }
+        };
+
+        fromInput.addEventListener('change', syncMinDate);
+        toInput.addEventListener('change', () => {
+            if (fromInput.value && toInput.value < fromInput.value) {
+                toInput.value = fromInput.value;
+            }
+        });
+        syncMinDate();
+    })();
+</script>

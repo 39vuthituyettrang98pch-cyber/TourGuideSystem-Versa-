@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AdminWeb.Controllers;
 
-[Authorize(Roles = "Admin,Reviewer")]
+[Authorize(Roles = "Admin")]
 public class ApprovalController : Controller
 {
     private readonly AppDbContext _context;
@@ -39,11 +39,36 @@ public class ApprovalController : Controller
 
         poi.Status = "Approved";
         poi.AdminNote = null;
+        await SyncOwnerRequestsAfterPoiReviewAsync(poi.Id, "Approved", null);
         _context.Update(poi);
         await _context.SaveChangesAsync();
 
         TempData["SuccessMessage"] = $"Đã phê duyệt POI #{id}.";
-        return RedirectToAction(nameof(PoiPending));
+        return Redirect("/Admin/Approval/PoiPending");
+    }
+
+    private async Task SyncOwnerRequestsAfterPoiReviewAsync(int poiId, string status, string? note)
+    {
+        var requests = await _context.PoiOwnerRequests
+            .Where(item => item.PoiId == poiId && item.Status == "Pending")
+            .ToListAsync();
+
+        if (requests.Count == 0)
+            return;
+
+        var reviewedAt = DateTime.UtcNow;
+        foreach (var request in requests)
+        {
+            request.Status = status;
+            request.ReviewedAt = reviewedAt;
+
+            if (status == "Rejected" && !string.IsNullOrWhiteSpace(note))
+            {
+                request.Note = string.IsNullOrWhiteSpace(request.Note)
+                    ? note.Trim()
+                    : $"{request.Note}{System.Environment.NewLine}Admin/Reviewer: {note.Trim()}";
+            }
+        }
     }
 
     // POST: /Approval/PoiReject/5
@@ -56,11 +81,12 @@ public class ApprovalController : Controller
 
         poi.Status = "Rejected";
         poi.AdminNote = string.IsNullOrWhiteSpace(adminNote) ? null : adminNote;
+        await SyncOwnerRequestsAfterPoiReviewAsync(poi.Id, "Rejected", poi.AdminNote);
         _context.Update(poi);
         await _context.SaveChangesAsync();
 
         TempData["SuccessMessage"] = $"Đã từ chối POI #{id}.";
-        return RedirectToAction(nameof(PoiPending));
+        return Redirect("/Admin/Approval/PoiPending");
     }
 }
 

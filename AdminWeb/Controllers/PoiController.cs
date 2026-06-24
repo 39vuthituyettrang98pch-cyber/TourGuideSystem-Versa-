@@ -16,7 +16,7 @@ using System.Threading.Tasks;
 
 namespace AdminWeb.Controllers;
 
-[Authorize(Roles = "Admin,Editor")]
+[Authorize(AuthenticationSchemes = "AdminScheme,EditorScheme", Roles = "Admin,Editor")]
 public class PoiController : Controller
 {
     private readonly AppDbContext _context;
@@ -61,12 +61,23 @@ public class PoiController : Controller
         ViewBag.TotalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
         ViewBag.SearchString = searchString;
 
+        // Dữ liệu map được nạp sẵn vào view để trang /Admin/Poi không phụ thuộc AJAX.
+        // Trước đây nếu route /Admin/Poi/MapData bị cookie/route cũ chặn thì bản đồ báo lỗi.
+        var mapPois = await _context.Pois
+            .Include(p => p.Translations)
+            .OrderByDescending(p => p.CreatedAt)
+            .ToListAsync();
+
+        ViewBag.PoiMapData = mapPois.Select(ToMapItem).ToList();
+
         return View(pois);
     }
 
-    // API cho bản đồ tổng quan Admin
-    // GET: /Poi/MapData
-    [HttpGet]
+    // API cho bản đồ tổng quan Admin/Editor.
+    // Explicit routes keep map loading stable for both friendly and /Areas URLs.
+    [HttpGet("/Admin/Poi/MapData")]
+    [HttpGet("/Editor/Poi/MapData")]
+    [HttpGet("/Poi/MapData")]
     public async Task<IActionResult> MapData()
     {
         var pois = await _context.Pois
@@ -74,26 +85,28 @@ public class PoiController : Controller
             .OrderByDescending(p => p.CreatedAt)
             .ToListAsync();
 
-        var data = pois.Select(poi =>
-        {
-            var vi = poi.Translations.FirstOrDefault(t => t.LanguageCode == "vi");
-            var first = poi.Translations.FirstOrDefault();
-
-            return new
-            {
-                id = poi.Id,
-                name = vi?.Name ?? first?.Name ?? $"POI #{poi.Id}",
-                shortDescription = vi?.ShortDescription ?? first?.ShortDescription,
-                latitude = poi.Latitude,
-                longitude = poi.Longitude,
-                radius = poi.Radius,
-                status = poi.Status,
-                coverImageUrl = poi.CoverImageUrl,
-                createdAt = poi.CreatedAt.ToString("yyyy-MM-dd HH:mm")
-            };
-        });
+        var data = pois.Select(ToMapItem).ToList();
 
         return Json(data);
+    }
+
+    private static object ToMapItem(Poi poi)
+    {
+        var vi = poi.Translations.FirstOrDefault(t => t.LanguageCode == "vi");
+        var first = poi.Translations.FirstOrDefault();
+
+        return new
+        {
+            id = poi.Id,
+            name = vi?.Name ?? first?.Name ?? $"POI #{poi.Id}",
+            shortDescription = vi?.ShortDescription ?? first?.ShortDescription,
+            latitude = poi.Latitude,
+            longitude = poi.Longitude,
+            radius = poi.Radius,
+            status = string.IsNullOrWhiteSpace(poi.Status) ? "Pending" : poi.Status,
+            coverImageUrl = poi.CoverImageUrl,
+            createdAt = poi.CreatedAt.ToString("yyyy-MM-dd HH:mm")
+        };
     }
 
     // GET: /Poi/Create
@@ -178,7 +191,7 @@ public class PoiController : Controller
             Longitude = model.Longitude,
             Radius = model.Radius,
             QrCodeToken = Guid.NewGuid().ToString("N"),
-            Status = User.IsInRole("Admin") ? "Approved" : "Pending",
+            Status = IsAdminPortalRequest() ? "Approved" : "Pending",
             AdminNote = null,
             CoverImageUrl = coverImage.WebUrl,
             CreatedAt = DateTime.Now,
@@ -263,7 +276,7 @@ public class PoiController : Controller
             existing.CoverImageUrl = savedCover.WebUrl;
         }
 
-        if (User.IsInRole("Admin"))
+        if (IsAdminPortalRequest())
         {
             existing.Status = poi.Status;
         }
@@ -281,8 +294,14 @@ public class PoiController : Controller
     }
 
     // GET: /Poi/Delete/5
+    [Authorize(AuthenticationSchemes = "AdminScheme", Roles = "Admin")]
     public async Task<IActionResult> Delete(int? id)
     {
+        if (!IsAdminPortalRequest())
+        {
+            return Forbid();
+        }
+
         if (id == null)
         {
             return NotFound();
@@ -300,10 +319,16 @@ public class PoiController : Controller
     }
 
     // POST: /Poi/Delete/5
+    [Authorize(AuthenticationSchemes = "AdminScheme", Roles = "Admin")]
     [HttpPost, ActionName("Delete")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteConfirmed(int id)
     {
+        if (!IsAdminPortalRequest())
+        {
+            return Forbid();
+        }
+
         var poi = await _context.Pois.FindAsync(id);
 
         if (poi != null)
@@ -341,7 +366,7 @@ public class PoiController : Controller
             PoiId = poi.Id,
             PoiName = name,
             QrCodeToken = poi.QrCodeToken,
-            QrPayload = BuildQrPayload(poi.QrCodeToken)
+            QrPayload = BuildQrPayload(poi.Id)
         });
     }
 
@@ -361,7 +386,7 @@ public class PoiController : Controller
         using var generator = new QRCodeGenerator();
 
         using var qrData = generator.CreateQrCode(
-            BuildQrPayload(poi.QrCodeToken),
+            BuildQrPayload(poi.Id),
             QRCodeGenerator.ECCLevel.Q);
 
         using var qrCode = new PngByteQRCode(qrData);
@@ -376,9 +401,14 @@ public class PoiController : Controller
     // POST: /Poi/RegenerateQr/5
     [HttpPost]
     [ValidateAntiForgeryToken]
-    [Authorize(Roles = "Admin")]
+    [Authorize(AuthenticationSchemes = "AdminScheme", Roles = "Admin")]
     public async Task<IActionResult> RegenerateQr(int id)
     {
+        if (!IsAdminPortalRequest())
+        {
+            return Forbid();
+        }
+
         var poi = await _context.Pois.FindAsync(id);
 
         if (poi == null)
@@ -495,6 +525,19 @@ public class PoiController : Controller
         return RedirectToAction(nameof(ManageCategories), new { id = poiId });
     }
 
+
+    private bool IsAdminPortalRequest()
+    {
+        var area = RouteData.Values["area"]?.ToString();
+        var path = HttpContext.Request.Path;
+
+        var isEditorPortal = string.Equals(area, "Editor", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWithSegments("/Editor")
+            || path.StartsWithSegments("/Areas/Editor");
+
+        return User.IsInRole("Admin") && !isEditorPortal;
+    }
+
     private async Task<(string? WebUrl, string? PhysicalPath)> SaveUploadedFileAsync(
         IFormFile? file,
         string subfolder,
@@ -541,8 +584,13 @@ public class PoiController : Controller
         await _context.SaveChangesAsync();
     }
 
-    private static string BuildQrPayload(string token)
+    private string BuildQrPayload(int poiId)
     {
-        return $"versa://poi/{token}";
+        return Url.Action(
+                "Details",
+                "Map",
+                new { area = "DuKhach", id = poiId, lang = "vi" },
+                Request.Scheme)
+            ?? $"{Request.Scheme}://{Request.Host}{Request.PathBase}/DuKhach/Map/Details/{poiId}?lang=vi";
     }
 }

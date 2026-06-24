@@ -19,7 +19,7 @@
             </div>
         </div>
 
-        <form asp-action="Edit" method="post">
+        <form asp-area="" asp-action="Edit" method="post">
             @Html.AntiForgeryToken()
             <input type="hidden" asp-for="Id" />
             <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
@@ -43,7 +43,7 @@
             </div>
 
             <div class="form-actions">
-                <a asp-action="Index" class="btn btn-secondary">Hủy</a>
+                <a asp-area="" asp-action="Index" class="btn btn-secondary">Hủy</a>
                 <button type="submit" class="btn btn-primary">
                     <i class="fa-solid fa-floppy-disk"></i> Lưu thay đổi
                 </button>

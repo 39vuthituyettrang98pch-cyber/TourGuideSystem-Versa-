@@ -1,0 +1,103 @@
+@{
+    ViewData["Title"] = "Đăng nhập Editor";
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Đăng nhập Editor - VERSA Editor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px; background: radial-gradient(circle at 15% 10%, #183363, transparent 35%), radial-gradient(circle at 90% 90%, #30205d, transparent 32%), #080b12; color: #f4f7fb; font-family: "Be Vietnam Pro", sans-serif; }
+        .shell { display: grid; width: min(980px, 100%); grid-template-columns: 1.1fr .9fr; overflow: hidden; border: 1px solid rgba(148,163,184,.16); border-radius: 24px; background: rgba(15,20,32,.92); box-shadow: 0 30px 90px rgba(0,0,0,.38); }
+        .intro { display: grid; align-content: end; min-height: 560px; padding: 46px; background: linear-gradient(155deg, rgba(91,140,255,.18), rgba(139,92,246,.08)), url('/uploads/poi_covers/login-cover.jpg') center/cover; }
+        .brand { display: flex; align-items: center; gap: 12px; margin-bottom: auto; }
+        .brand-icon { display: grid; width: 46px; height: 46px; place-items: center; border-radius: 15px; background: linear-gradient(135deg,#5b8cff,#8b5cf6); box-shadow: 0 14px 35px rgba(91,140,255,.28); }
+        .brand strong { display: block; font-size: 15px; }
+        .brand span { color: #a8b3c7; font-size: 11px; }
+        .intro h1 { max-width: 520px; margin: 0 0 14px; font-size: clamp(28px,4vw,46px); line-height: 1.15; letter-spacing: -.05em; }
+        .intro p { max-width: 520px; margin: 0; color: #a8b3c7; font-size: 13px; line-height: 1.8; }
+        .login { display: grid; align-content: center; padding: 44px; }
+        .login h2 { margin: 0 0 7px; font-size: 24px; letter-spacing: -.03em; }
+        .login > p { margin: 0 0 28px; color: #a8b3c7; font-size: 12px; }
+        .field { display: grid; gap: 8px; margin-bottom: 16px; }
+        label { color: #a8b3c7; font-size: 11px; font-weight: 700; }
+        .input { position: relative; }
+        .input i { position: absolute; top: 50%; left: 14px; color: #748198; transform: translateY(-50%); }
+        input { width: 100%; padding: 13px 14px 13px 40px; border: 1px solid rgba(148,163,184,.16); border-radius: 12px; outline: 0; background: #151c2b; color: #f4f7fb; font: inherit; font-size: 13px; }
+        input:focus { border-color: #5b8cff; box-shadow: 0 0 0 4px rgba(91,140,255,.13); }
+        button { width: 100%; margin-top: 8px; padding: 13px; border: 0; border-radius: 12px; background: #5b8cff; color: #fff; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+        button:hover { background: #3f72ed; }
+        .error { margin-bottom: 18px; padding: 11px 12px; border: 1px solid rgba(255,101,119,.25); border-radius: 10px; background: rgba(255,101,119,.12); color: #ff8b99; font-size: 11px; line-height: 1.6; }
+        .success { margin-bottom: 18px; padding: 11px 12px; border: 1px solid rgba(52,211,153,.25); border-radius: 10px; background: rgba(52,211,153,.12); color: #86efac; font-size: 11px; line-height: 1.6; }
+        .quick-links { display: grid; gap: 9px; margin-top: 15px; }
+        .quick-link { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 42px; border: 1px solid rgba(148,163,184,.16); border-radius: 12px; color: #d7e2f5; background: rgba(148,163,184,.08); text-decoration: none; font-size: 12px; font-weight: 800; }
+        .quick-link:hover { border-color: #5b8cff; color: #fff; background: rgba(91,140,255,.12); }
+        .note { margin-top: 22px; color: #748198; font-size: 10px; line-height: 1.6; }
+        @@media (max-width: 800px) { .shell { grid-template-columns: 1fr; } .intro { display: none; } .login { min-height: 520px; padding: 30px; } }
+    </style>
+</head>
+<body>
+    <main class="shell">
+        <section class="intro">
+            <div class="brand">
+                <span class="brand-icon"><i class="fa-solid fa-pen-nib"></i></span>
+                <span><strong>VERSA Editor</strong><span>Cổng biên tập nội dung</span></span>
+            </div>
+            <h1>Cổng đăng nhập riêng dành cho Editor.</h1>
+            <p>Editor tạo và chỉnh sửa POI, tour, danh mục, bản dịch và media trước khi gửi sang quy trình duyệt.</p>
+        </section>
+        <section class="login">
+            <h2>Đăng nhập Editor</h2>
+            <p>Trang này chỉ nhận tài khoản có vai trò Editor.</p>
+            @if (TempData["SuccessMessage"] is string successMessage)
+            {
+                <div class="success"><i class="fa-solid fa-circle-check"></i> @successMessage</div>
+            }
+            @if (ViewBag.SwitchRoleMessage is string switchRoleMessage)
+            {
+                <div class="success"><i class="fa-solid fa-right-left"></i> @switchRoleMessage</div>
+            }
+
+            @if (!ViewData.ModelState.IsValid)
+            {
+                <div class="error">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    @foreach (var error in ViewData.ModelState.Values.SelectMany(item => item.Errors))
+                    {
+                        <div>@error.ErrorMessage</div>
+                    }
+                    @if (ViewBag.CorrectLoginUrl is string correctLoginUrl)
+                    {
+                        <div style="margin-top:10px;">
+                            <a href="@correctLoginUrl" style="color:#93c5fd;font-weight:900;">
+                                @(ViewBag.CorrectLoginText ?? "Đi tới trang đăng nhập đúng vai trò")
+                            </a>
+                        </div>
+                    }
+                </div>
+            }
+            <form action="/Editor/Login" method="post">
+                @Html.AntiForgeryToken()
+                <div class="field">
+                    <label for="username">Tên đăng nhập hoặc email</label>
+                    <div class="input"><i class="fa-solid fa-user"></i><input type="text" id="username" name="username" autocomplete="username" required autofocus /></div>
+                </div>
+                <div class="field">
+                    <label for="password">Mật khẩu</label>
+                    <div class="input"><i class="fa-solid fa-lock"></i><input type="password" id="password" name="password" autocomplete="current-password" required /></div>
+                </div>
+                <button type="submit"><i class="fa-solid fa-arrow-right-to-bracket"></i> Đăng nhập Editor</button>
+            </form>
+
+            <div class="note">Trang này chỉ dành cho tài khoản Editor. Không hiển thị các cổng đăng nhập vai trò khác để tránh nhầm quyền.</div>
+        </section>
+    </main>
+</body>
+</html>

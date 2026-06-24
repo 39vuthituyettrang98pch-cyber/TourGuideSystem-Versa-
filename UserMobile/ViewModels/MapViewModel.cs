@@ -8,6 +8,8 @@ namespace UserMobile.ViewModels;
 public sealed class MapViewModel : BaseViewModel
 {
     private readonly IPoiCatalogService _catalogService;
+    private readonly IUserPoiStateService _stateService;
+    private readonly List<PlaceItem> _allPlaces = [];
     private bool _isLoading;
     private bool _isEmpty;
     private string _message = string.Empty;
@@ -35,9 +37,10 @@ public sealed class MapViewModel : BaseViewModel
         set => SetProperty(ref _message, value);
     }
 
-    public MapViewModel(IPoiCatalogService catalogService)
+    public MapViewModel(IPoiCatalogService catalogService, IUserPoiStateService stateService)
     {
         _catalogService = catalogService;
+        _stateService = stateService;
         SelectPlaceCommand = new Command<PlaceItem>(SelectPlace);
     }
 
@@ -50,10 +53,14 @@ public sealed class MapViewModel : BaseViewModel
         {
             IsLoading = true;
             var places = await _catalogService.GetAllAsync(forceRefresh);
-            Places.Clear();
+            var favorites = await _stateService.GetFavoriteIdsAsync();
+            _allPlaces.Clear();
             foreach (var place in places)
-                Places.Add(place);
-            IsEmpty = Places.Count == 0;
+            {
+                place.IsFavorite = favorites.Contains(place.Id);
+                _allPlaces.Add(place);
+            }
+            ApplyFilters();
             Message = IsEmpty
                 ? "Tạo POI trên Web và duyệt trạng thái Approved để hiển thị tại đây."
                 : string.Empty;
@@ -74,5 +81,32 @@ public sealed class MapViewModel : BaseViewModel
     public void SelectPlace(PlaceItem place)
     {
         PlaceSelected?.Invoke(this, place);
+    }
+
+    public void ApplyFilters(
+        string? searchText = null,
+        bool featuredOnly = false,
+        bool highRatedOnly = false,
+        bool favoritesOnly = false)
+    {
+        var query = _allPlaces.AsEnumerable();
+        if (!string.IsNullOrWhiteSpace(searchText))
+        {
+            var keyword = searchText.Trim();
+            query = query.Where(item =>
+                item.Title.Contains(keyword, StringComparison.CurrentCultureIgnoreCase) ||
+                item.Description.Contains(keyword, StringComparison.CurrentCultureIgnoreCase));
+        }
+        if (featuredOnly) query = query.Where(item => item.IsFeatured);
+        if (highRatedOnly) query = query.Where(item => item.AverageRating >= 4);
+        if (favoritesOnly) query = query.Where(item => item.IsFavorite);
+
+        Places.Clear();
+        foreach (var place in query
+                     .OrderByDescending(item => item.IsFeatured)
+                     .ThenByDescending(item => item.AverageRating))
+            Places.Add(place);
+        IsEmpty = Places.Count == 0;
+        Message = IsEmpty ? "Không có địa điểm phù hợp với bộ lọc hiện tại." : string.Empty;
     }
 }

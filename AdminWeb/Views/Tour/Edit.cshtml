@@ -1,6 +1,7 @@
 @model AdminWeb.Models.Tour
 
 @{
+    var currentArea = ViewContext.RouteData.Values["area"]?.ToString() ?? "";
     ViewData["Title"] = "Chỉnh sửa tour";
 
     var status = Model.Status?.Trim().ToLowerInvariant() ?? "draft";
@@ -315,7 +316,7 @@
         </div>
 
         <div class="edit-actions">
-            <a asp-controller="TourTranslation"
+            <a asp-area="@currentArea" asp-controller="TourTranslation"
                asp-action="Index"
                asp-route-tourId="@Model.Id"
                class="btn btn-primary">
@@ -323,14 +324,14 @@
                 Bản dịch
             </a>
 
-            <a asp-action="ManagePois"
+            <a asp-area="@currentArea" asp-action="ManagePois"
                asp-route-id="@Model.Id"
                class="btn btn-secondary">
                 <i class="fa-solid fa-list-ol"></i>
                 POI trong tour
             </a>
 
-            <a asp-action="Index" class="btn btn-secondary">
+            <a asp-area="@currentArea" asp-action="Index" class="btn btn-secondary">
                 <i class="fa-solid fa-arrow-left"></i>
                 Quay lại
             </a>
@@ -353,7 +354,7 @@
         </div>
 
         <div class="edit-card-body">
-            <form asp-action="Edit" asp-route-id="@Model.Id" method="post">
+            <form asp-area="@currentArea" asp-action="Edit" asp-route-id="@Model.Id" method="post">
                 @Html.AntiForgeryToken()
 
                 <input type="hidden" asp-for="Id" />
@@ -423,7 +424,7 @@
                         Lưu thay đổi
                     </button>
 
-                    <a asp-controller="TourTranslation"
+                    <a asp-area="@currentArea" asp-controller="TourTranslation"
                        asp-action="Index"
                        asp-route-tourId="@Model.Id"
                        class="btn btn-secondary">
@@ -431,7 +432,7 @@
                         Sửa tên / mô tả
                     </a>
 
-                    <a asp-action="Index" class="btn btn-secondary">
+                    <a asp-area="@currentArea" asp-action="Index" class="btn btn-secondary">
                         Hủy
                     </a>
                 </div>
@@ -450,7 +451,7 @@
 
             <div class="edit-card-body">
                 <div class="quick-list">
-                    <a asp-controller="TourTranslation"
+                    <a asp-area="@currentArea" asp-controller="TourTranslation"
                        asp-action="Index"
                        asp-route-tourId="@Model.Id"
                        class="quick-link">
@@ -458,14 +459,14 @@
                         Bản dịch tour
                     </a>
 
-                    <a asp-action="ManagePois"
+                    <a asp-area="@currentArea" asp-action="ManagePois"
                        asp-route-id="@Model.Id"
                        class="quick-link">
                         <i class="fa-solid fa-map-location-dot"></i>
                         Sắp xếp POI trong tour
                     </a>
 
-                    <a asp-action="Index" class="quick-link">
+                    <a asp-area="@currentArea" asp-action="Index" class="quick-link">
                         <i class="fa-solid fa-table-list"></i>
                         Danh sách tour
                     </a>

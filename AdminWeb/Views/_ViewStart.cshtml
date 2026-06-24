@@ -1,7 +1,22 @@
-﻿@{
-    Layout = User.IsInRole("Editor")
-        ? "~/Areas/Editor/Views/Shared/_EditorLayout.cshtml"
-        : User.IsInRole("Reviewer")
-            ? "~/Areas/Reviewer/Views/Shared/_ReviewerLayout.cshtml"
-            : "_Layout";
+@{
+    var requestPath = Context.Request.Path.Value ?? string.Empty;
+    var currentArea = ViewContext.RouteData.Values["area"]?.ToString() ?? string.Empty;
+
+    if (string.Equals(currentArea, "Editor", StringComparison.OrdinalIgnoreCase) ||
+        requestPath.StartsWith("/Editor", StringComparison.OrdinalIgnoreCase))
+    {
+        Layout = "~/Areas/Editor/Views/Shared/_EditorLayout.cshtml";
+    }
+    else if (string.Equals(currentArea, "Reviewer", StringComparison.OrdinalIgnoreCase) ||
+             requestPath.StartsWith("/Reviewer", StringComparison.OrdinalIgnoreCase))
+    {
+        Layout = "~/Areas/Reviewer/Views/Shared/_ReviewerLayout.cshtml";
+    }
+    else
+    {
+        // Root /Views are also used by Admin alias routes such as /Admin/Poi.
+        // Do not choose layout by User.IsInRole(), because one browser can now
+        // be logged into multiple portals at the same time.
+        Layout = "_Layout";
+    }
 }

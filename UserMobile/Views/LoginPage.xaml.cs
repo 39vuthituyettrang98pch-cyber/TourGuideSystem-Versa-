@@ -1,6 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
 using UserMobile.ViewModels;
-using UserMobile.Services;
 
 namespace UserMobile.Views;
 
@@ -27,19 +26,8 @@ public partial class LoginPage : ContentPage
 
     private async void OnForgotPasswordClicked(object? sender, EventArgs e)
     {
-        var email = await DisplayPromptAsync(
-            "Quên mật khẩu",
-            "Nhập email tài khoản du khách",
-            initialValue: ViewModel.Email,
-            keyboard: Keyboard.Email,
-            maxLength: 160);
-
-        if (email is null)
-            return;
-
-        var result = await App.Services.GetRequiredService<IAuthService>()
-            .RequestPasswordResetAsync(email);
-
-        await DisplayAlert("Quên mật khẩu", result.Message, "OK");
+        var page = App.Services.GetRequiredService<ResetPasswordPage>();
+        page.Prepare(ViewModel.Email);
+        await Navigation.PushAsync(page);
     }
 }

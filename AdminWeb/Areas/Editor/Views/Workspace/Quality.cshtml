@@ -1,0 +1,67 @@
+@model EditorQualityReportViewModel
+@{
+    ViewData["Title"] = "Báo cáo chất lượng nội dung";
+    string Level(int score) => score >= 85 ? "green" : score >= 60 ? "amber" : "red";
+}
+
+<div class="page-heading">
+    <div>
+        <div class="page-title">Báo cáo chất lượng nội dung</div>
+        <div class="page-subtitle">Tự động kiểm tra tên, mô tả, ngôn ngữ, audio, QR, ảnh và danh mục trước khi gửi Reviewer.</div>
+    </div>
+    <div class="page-actions">
+        <a asp-area="Editor" asp-controller="Workspace" asp-action="Board" class="btn btn-secondary"><i class="fa-solid fa-table-list"></i> Bảng làm việc</a>
+    </div>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card"><span class="stat-icon"><i class="fa-solid fa-layer-group"></i></span><span><span class="stat-value">@Model.TotalPois</span><span class="stat-label">Tổng POI kiểm tra</span></span></div>
+    <div class="stat-card"><span class="stat-icon"><i class="fa-solid fa-circle-check"></i></span><span><span class="stat-value">@Model.GoodPois</span><span class="stat-label">Đạt tốt</span></span></div>
+    <div class="stat-card"><span class="stat-icon"><i class="fa-solid fa-triangle-exclamation"></i></span><span><span class="stat-value">@Model.WarningPois</span><span class="stat-label">Cần bổ sung</span></span></div>
+    <div class="stat-card"><span class="stat-icon"><i class="fa-solid fa-circle-xmark"></i></span><span><span class="stat-value">@Model.CriticalPois</span><span class="stat-label">Thiếu nhiều</span></span></div>
+</div>
+
+<section class="card" style="margin-top:18px">
+    <div class="card-header">
+        <div>
+            <div class="card-title"><i class="fa-solid fa-magnifying-glass-chart"></i> Checklist chất lượng</div>
+            <div class="card-subtitle">Ngôn ngữ đang bật: @string.Join(", ", Model.ActiveLanguages)</div>
+        </div>
+    </div>
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead><tr><th>POI</th><th>Điểm</th><th>Vấn đề cần sửa</th><th>Hành động</th></tr></thead>
+            <tbody>
+            @foreach (var item in Model.Items)
+            {
+                <tr>
+                    <td><strong>@item.Name</strong><br /><small style="color:var(--text-soft)">#@item.Id · @item.Status · @item.TranslationCount/@item.RequiredLanguageCount ngôn ngữ</small></td>
+                    <td><span class="badge @Level(item.QualityScore)">@item.QualityScore%</span></td>
+                    <td>
+                        @if (item.Issues.Count == 0)
+                        {
+                            <span class="badge green">Sẵn sàng gửi duyệt</span>
+                        }
+                        else
+                        {
+                            foreach (var issue in item.Issues)
+                            {
+                                <span class="badge amber" style="margin:2px">@issue</span>
+                            }
+                        }
+                    </td>
+                    <td>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                            <a class="btn btn-secondary btn-sm" asp-area="Editor" asp-controller="Poi" asp-action="Edit" asp-route-id="@item.Id"><i class="fa-solid fa-pen"></i> Sửa</a>
+                            <form asp-area="Editor" asp-controller="Workspace" asp-action="SubmitForReview" asp-route-id="@item.Id" method="post">
+                                @Html.AntiForgeryToken()
+                                <button class="btn btn-primary btn-sm" type="submit"><i class="fa-solid fa-paper-plane"></i> Gửi duyệt</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</section>
