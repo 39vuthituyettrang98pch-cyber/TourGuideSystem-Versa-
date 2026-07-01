@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="UserMobile.Views.LeaderboardPage"
+             Title="Bảng xếp hạng"
+             BackgroundColor="{StaticResource PageBackground}">
+    <Grid RowDefinitions="Auto,*" Padding="18">
+        <Border Padding="20" BackgroundColor="#182033" Stroke="Transparent" StrokeShape="RoundRectangle 24" Margin="0,0,0,14">
+            <VerticalStackLayout Spacing="5">
+                <Label Text="VINH DANH NHÀ KHÁM PHÁ" TextColor="#F8D66D" FontAttributes="Bold" FontSize="12" />
+                <Label Text="Bảng xếp hạng VERSA" TextColor="White" FontSize="25" FontAttributes="Bold" />
+                <Label Text="Check-in POI để tích điểm và tiến lên thứ hạng mới." TextColor="#C8D1E2" FontSize="13" />
+            </VerticalStackLayout>
+        </Border>
+        <Grid Grid.Row="1">
+            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+            <Label Text="{Binding Message}" IsVisible="{Binding HasMessage}" TextColor="{StaticResource Muted}" HorizontalTextAlignment="Center" VerticalOptions="Center" />
+            <CollectionView ItemsSource="{Binding Items}">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Border Padding="15" Margin="0,0,0,10" BackgroundColor="{Binding CardColor}" Stroke="{StaticResource Outline}" StrokeShape="RoundRectangle 18">
+                            <Grid ColumnDefinitions="48,*,Auto" ColumnSpacing="12">
+                                <Label Text="{Binding RankText}" FontSize="21" FontAttributes="Bold" TextColor="{StaticResource Primary}" VerticalTextAlignment="Center" HorizontalTextAlignment="Center" />
+                                <VerticalStackLayout Grid.Column="1" Spacing="3" VerticalOptions="Center">
+                                    <Label Text="{Binding DisplayName}" FontAttributes="Bold" TextColor="{StaticResource Ink}" />
+                                    <Label Text="{Binding RankName}" FontSize="11" TextColor="{StaticResource Muted}" />
+                                </VerticalStackLayout>
+                                <VerticalStackLayout Grid.Column="2" Spacing="1" VerticalOptions="Center">
+                                    <Label Text="{Binding TotalPoints, StringFormat='{0} điểm'}" FontAttributes="Bold" TextColor="#12805C" HorizontalTextAlignment="End" />
+                                    <Label Text="{Binding DiscoveryText}" FontSize="10" TextColor="{StaticResource Muted2}" HorizontalTextAlignment="End" />
+                                </VerticalStackLayout>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </Grid>
+    </Grid>
+</ContentPage>

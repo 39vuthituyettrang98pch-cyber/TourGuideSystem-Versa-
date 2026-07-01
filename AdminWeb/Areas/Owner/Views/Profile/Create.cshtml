@@ -1,0 +1,5 @@
+@model AdminWeb.Models.OwnerProfile
+@{
+    ViewData["Title"] = "Tạo hồ sơ chủ gian hàng";
+}
+<div class="owner-card"><p>Tài khoản của bạn là Owner nhưng chưa có hồ sơ gian hàng. Tạo hồ sơ để admin duyệt và gán POI.</p><form asp-action="Create" method="post">@Html.AntiForgeryToken()<div class="row g-3"><div class="col-md-6"><label class="form-label">Tên gian hàng</label><input asp-for="BusinessName" class="form-control" required /></div><div class="col-md-6"><label class="form-label">Người đại diện</label><input asp-for="RepresentativeName" class="form-control" /></div><div class="col-md-6"><label class="form-label">Điện thoại</label><input asp-for="Phone" class="form-control" /></div><div class="col-md-6"><label class="form-label">Địa chỉ</label><input asp-for="Address" class="form-control" /></div></div><button class="btn btn-primary mt-3">Gửi hồ sơ</button></form></div>

@@ -1,12 +1,16 @@
 using AdminWeb.Contracts.Api;
 using AdminWeb.Data;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace AdminWeb.Controllers.Api;
 
 [Route("api/tour")]
 [ApiController]
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public sealed class TourApiController : ControllerBase
 {
     private readonly AppDbContext _context;
@@ -23,6 +27,10 @@ public sealed class TourApiController : ControllerBase
         [FromQuery] int? categoryId = null,
         CancellationToken cancellationToken = default)
     {
+        if (!await HasActivePremiumAsync(cancellationToken))
+            return StatusCode(StatusCodes.Status403Forbidden,
+                ApiResponse<IReadOnlyList<TourDto>>.Fail("Tour là tính năng Premium. Hãy mở Gói Premium để tiếp tục."));
+
         lang = NormalizeLanguage(lang);
         var query = _context.Tours
             .AsNoTracking()
@@ -33,7 +41,6 @@ public sealed class TourApiController : ControllerBase
             .Include(tour => tour.TourPois)
                 .ThenInclude(item => item.Poi)
                     .ThenInclude(poi => poi!.PoiCategories)
-            .AsSplitQuery()
             .Where(tour => tour.Status == "active");
 
         if (categoryId.HasValue)
@@ -76,6 +83,10 @@ public sealed class TourApiController : ControllerBase
         [FromQuery] string lang = "vi",
         CancellationToken cancellationToken = default)
     {
+        if (!await HasActivePremiumAsync(cancellationToken))
+            return StatusCode(StatusCodes.Status403Forbidden,
+                ApiResponse<IReadOnlyList<TourPoiDto>>.Fail("Chi tiết tour là tính năng Premium."));
+
         lang = NormalizeLanguage(lang);
         var tour = await _context.Tours
             .AsNoTracking()
@@ -148,5 +159,26 @@ public sealed class TourApiController : ControllerBase
 
         var normalized = path.StartsWith('/') ? path : $"/{path}";
         return $"{Request.Scheme}://{Request.Host}{Request.PathBase}{normalized}";
+    }
+
+    private async Task<bool> HasActivePremiumAsync(CancellationToken cancellationToken)
+    {
+        var touristIdText = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!int.TryParse(touristIdText, out var touristId))
+            return false;
+
+        var now = DateTime.UtcNow;
+        return await _context.TouristSubscriptions
+            .AsNoTracking()
+            .Include(item => item.PaymentPlan)
+            .AnyAsync(item =>
+                item.TouristId == touristId &&
+                item.Status == "Active" &&
+                item.ExpiresAt > now &&
+                item.PaymentPlan != null &&
+                (item.PaymentPlan.PlanCode == "USER_PREMIUM" ||
+                 item.PaymentPlan.Audience == "Tourist" ||
+                 item.PaymentPlan.Audience == "Both"),
+                cancellationToken);
     }
 }

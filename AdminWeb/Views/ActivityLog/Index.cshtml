@@ -9,17 +9,17 @@
 
 <div class="toolbar">
     <div>
-        <form asp-action="Index" method="get" style="display: flex; gap: 8px;">
+        <form asp-area="" asp-action="Index" method="get" style="display: flex; gap: 8px;">
             <input type="text" name="searchString" value="@ViewBag.SearchString" class="form-control" placeholder="Tìm kiếm ID Thiết bị..." style="padding: 6px 12px; width: 250px; font-size: 13px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: var(--text); border-radius: 8px;" />
             <button type="submit" class="btn btn-secondary btn-sm" title="Tìm kiếm"><i class="fa-solid fa-magnifying-glass"></i></button>
             @if (!string.IsNullOrEmpty(ViewBag.SearchString as string))
             {
-                <a asp-action="Index" class="btn btn-secondary btn-sm" title="Xóa tìm kiếm"><i class="fa-solid fa-xmark"></i></a>
+                <a asp-area="" asp-action="Index" class="btn btn-secondary btn-sm" title="Xóa tìm kiếm"><i class="fa-solid fa-xmark"></i></a>
             }
         </form>
     </div>
     <div>
-        <a asp-action="ExportExcel" class="btn btn-secondary btn-sm"><i class="fa-solid fa-file-excel"></i> Xuất Excel</a>
+        <a asp-area="" asp-action="ExportExcel" class="btn btn-secondary btn-sm"><i class="fa-solid fa-file-excel"></i> Xuất Excel</a>
     </div>
 </div>
 
@@ -61,14 +61,14 @@
     <div style="display:flex; justify-content:center; gap:8px; margin-top:20px;">
         @if (ViewBag.CurrentPage > 1)
         {
-            <a asp-action="Index" asp-route-page="@(ViewBag.CurrentPage - 1)" asp-route-searchString="@ViewBag.SearchString" class="btn btn-secondary btn-sm">Trang trước</a>
+            <a asp-area="" asp-action="Index" asp-route-page="@(ViewBag.CurrentPage - 1)" asp-route-searchString="@ViewBag.SearchString" class="btn btn-secondary btn-sm">Trang trước</a>
         }
         <span style="display:inline-flex; align-items:center; padding:0 12px; background:rgba(255,255,255,0.05); border-radius:8px; font-size:14px; font-weight: 600;">
             Trang @ViewBag.CurrentPage / @ViewBag.TotalPages
         </span>
         @if (ViewBag.CurrentPage < ViewBag.TotalPages)
         {
-            <a asp-action="Index" asp-route-page="@(ViewBag.CurrentPage + 1)" asp-route-searchString="@ViewBag.SearchString" class="btn btn-secondary btn-sm">Trang sau</a>
+            <a asp-area="" asp-action="Index" asp-route-page="@(ViewBag.CurrentPage + 1)" asp-route-searchString="@ViewBag.SearchString" class="btn btn-secondary btn-sm">Trang sau</a>
         }
     </div>
 }

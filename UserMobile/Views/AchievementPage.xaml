@@ -39,7 +39,7 @@
                         </VerticalStackLayout>
                         <Border Grid.Column="1"
                                 Padding="14,8"
-                                BackgroundColor="#5B3FE4"
+                                BackgroundColor="{StaticResource Primary}"
                                 Stroke="Transparent"
                                 StrokeShape="RoundRectangle 16">
                             <Label Text="{Binding Summary.TotalPoints, StringFormat='{0} điểm'}"
@@ -117,7 +117,7 @@
             </CollectionView>
 
             <Label Text="KHÁM PHÁ GẦN ĐÂY" Style="{StaticResource Eyebrow}" Margin="2,4,0,0" />
-            <Label Text="Chưa có lần check-in nào. Hãy đến một POI hoặc quét mã QR để bắt đầu."
+            <Label Text="Chưa có lần check-in nào. Hãy đến gần một POI và bấm Check-in bằng GPS để nhận điểm."
                    IsVisible="{Binding Summary.HasNoRecentDiscoveries}"
                    Style="{StaticResource PageSubtitle}"
                    HorizontalTextAlignment="Center"

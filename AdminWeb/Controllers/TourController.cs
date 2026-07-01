@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Text;
+using System.Security.Claims;
 
 namespace AdminWeb.Controllers;
 
@@ -28,7 +29,6 @@ public class TourController : Controller
         var query = _context.Tours
             .Include(t => t.Translations)
             .Include(t => t.TourPois).ThenInclude(tp => tp.Poi).ThenInclude(p => p!.Translations)
-            .AsSplitQuery()
             .AsQueryable();
 
         if (!string.IsNullOrEmpty(searchString))
@@ -94,9 +94,24 @@ public class TourController : Controller
                     LanguageCode = "vi"
                 };
                 _context.TourTranslations.Add(translation);
-                await _context.SaveChangesAsync();
             }
 
+            var userId = int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var parsedUserId)
+                ? parsedUserId
+                : (int?)null;
+            var action = User.IsInRole("Editor") ? "EditorCreateTour" : "AdminCreateTour";
+            _context.AdminActivityLogs.Add(new AdminActivityLog
+            {
+                UserId = userId,
+                Action = action,
+                TargetTable = "tours",
+                TargetId = tour.Id,
+                Description = $"{User.Identity?.Name ?? "Nhân sự"} tạo tour #{tour.Id}.",
+                IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
+                CreatedAt = DateTime.Now
+            });
+
+            await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
         return View(tour);
@@ -134,6 +149,7 @@ public class TourController : Controller
 
     [HttpPost, ActionName("Delete")]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> DeleteConfirmed(int id)
     {
         var tour = await _context.Tours.FindAsync(id);

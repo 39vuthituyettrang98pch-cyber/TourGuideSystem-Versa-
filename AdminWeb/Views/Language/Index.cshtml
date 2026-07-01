@@ -6,10 +6,10 @@
 <div class="page-heading">
     <div>
         <div class="page-title">Ngôn ngữ và giọng đọc</div>
-        <div class="page-subtitle">Danh sách này đồng bộ với app. Tiếng Việt là nội dung nguồn; các ngôn ngữ đang bật còn lại sẽ được AI dịch và tạo audio Edge-TTS.</div>
+        <div class="page-subtitle">Danh sách này đồng bộ với app. Tiếng Việt là nội dung nguồn; các ngôn ngữ đang bật sẽ được AI dịch POI/tour/danh mục. Audio chỉ tạo khi có Edge-TTS voice.</div>
     </div>
     <div class="page-actions">
-        <a asp-action="Create" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Thêm ngôn ngữ</a>
+        <a asp-area="" asp-action="Create" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Thêm ngôn ngữ</a>
     </div>
 </div>
 
@@ -22,12 +22,21 @@
                 <tr>
                     <td><code>@language.LanguageCode</code></td>
                     <td><strong>@language.LanguageName</strong></td>
-                    <td><code>@language.EdgeTtsVoice</code></td>
+                    <td>
+                        @if (string.IsNullOrWhiteSpace(language.EdgeTtsVoice))
+                        {
+                            <span class="badge gray">Chưa có voice</span>
+                        }
+                        else
+                        {
+                            <code>@language.EdgeTtsVoice</code>
+                        }
+                    </td>
                     <td><span class="badge @(language.IsActive ? "green" : "gray")">@(language.IsActive ? "Đang bật" : "Đã tắt")</span></td>
                     <td>
                         <div class="actions">
-                            <a asp-action="Edit" asp-route-id="@language.LanguageCode" class="btn btn-secondary btn-sm"><i class="fa-solid fa-pen"></i> Sửa</a>
-                            <form asp-action="Toggle" asp-route-id="@language.LanguageCode" method="post">
+                            <a asp-area="" asp-action="Edit" asp-route-id="@language.LanguageCode" class="btn btn-secondary btn-sm"><i class="fa-solid fa-pen"></i> Sửa</a>
+                            <form asp-area="" asp-action="Toggle" asp-route-id="@language.LanguageCode" method="post">
                                 @Html.AntiForgeryToken()
                                 <button type="submit" class="btn @(language.IsActive ? "btn-danger" : "btn-primary") btn-sm">
                                     <i class="fa-solid @(language.IsActive ? "fa-pause" : "fa-play")"></i>

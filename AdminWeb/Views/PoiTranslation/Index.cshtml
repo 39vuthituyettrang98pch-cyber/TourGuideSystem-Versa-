@@ -1,5 +1,8 @@
 @model IEnumerable<AdminWeb.Models.PoiTranslation>
 @{
+    var currentArea = ViewContext.RouteData.Values["area"]?.ToString() ?? "";
+    var isAdmin = User.IsInRole("Admin");
+    var missingLanguages = (IEnumerable<AdminWeb.Models.SupportedLanguage>)(ViewBag.MissingLanguages ?? Array.Empty<AdminWeb.Models.SupportedLanguage>());
     ViewData["Title"] = "Quản lý bản dịch POI";
 }
 
@@ -8,15 +11,41 @@
 
 <div class="toolbar">
     <div>
-        <a asp-controller="Poi" asp-action="Index" class="btn btn-secondary btn-sm"><i class="fa-solid fa-arrow-left"></i> Quay lại danh sách POI</a>
+        <a asp-area="@currentArea" asp-controller="Poi" asp-action="Index" class="btn btn-secondary btn-sm"><i class="fa-solid fa-arrow-left"></i> Quay lại danh sách POI</a>
     </div>
-    <div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
         @if (ViewBag.PoiId != null)
         {
-            <a asp-controller="PoiTranslation" asp-action="Create" asp-route-poiId="@ViewBag.PoiId" class="btn btn-primary btn-sm"><i class="fa-solid fa-plus"></i> Thêm ngôn ngữ</a>
+            <a asp-area="@currentArea" asp-controller="PoiTranslation" asp-action="Create" asp-route-poiId="@ViewBag.PoiId" class="btn btn-primary btn-sm"><i class="fa-solid fa-plus"></i> Thêm ngôn ngữ</a>
         }
     </div>
 </div>
+
+@if (ViewBag.PoiId != null && missingLanguages.Any())
+{
+    <section class="card" style="padding:16px 18px;margin-bottom:18px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+            <div>
+                <strong>Ngôn ngữ còn thiếu</strong>
+                <div style="color:var(--text2);font-size:13px;margin-top:4px;">Bấm AI dịch nhanh để tạo bản dịch từ nội dung gốc.</div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
+                @foreach (var language in missingLanguages.Take(8))
+                {
+                    <form asp-area="@currentArea" asp-controller="PoiTranslation" asp-action="AutoCreate" method="post" style="display:inline;">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="poiId" value="@ViewBag.PoiId" />
+                        <input type="hidden" name="languageCode" value="@language.LanguageCode" />
+                        <button type="submit" class="btn btn-secondary btn-sm">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i>
+                            @language.LanguageName (@language.LanguageCode.ToUpper())
+                        </button>
+                    </form>
+                }
+            </div>
+        </div>
+    </section>
+}
 
 <div class="table-wrapper">
     <table class="data-table">
@@ -41,13 +70,16 @@
                         <td style="color: var(--text2);">@item.UpdatedAt.ToString("dd/MM/yyyy HH:mm")</td>
                         <td>
                             <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                                <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-info text-white" title="Chi tiết"><i class="fa-solid fa-eye"></i> Chi tiết</a>
-                                <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning text-dark" title="Sửa"><i class="fa-solid fa-pen"></i> Chỉnh sửa</a>
-                                <form asp-action="Delete" asp-route-id="@item.Id" method="post" style="display:inline;" onsubmit="return confirm('Bạn có chắc chắn muốn xóa bản dịch này?');">
+                                <a asp-area="@currentArea" asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-info text-white" title="Chi tiết"><i class="fa-solid fa-eye"></i> Chi tiết</a>
+                                <a asp-area="@currentArea" asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning text-dark" title="Sửa"><i class="fa-solid fa-pen"></i> Chỉnh sửa</a>
+                                @if (isAdmin)
+                                {
+                                <form asp-area="@currentArea" asp-action="Delete" asp-route-id="@item.Id" method="post" style="display:inline;" onsubmit="return confirm('Bạn có chắc chắn muốn xóa bản dịch này?');">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="poiId" value="@item.PoiId" />
                                     <button type="submit" class="btn btn-sm btn-danger" title="Xóa"><i class="fa-solid fa-trash"></i> Xóa</button>
                                 </form>
+                                }
                             </div>
                         </td>
                     </tr>
@@ -58,7 +90,7 @@
                 <tr>
                     <td colspan="5" style="text-align: center; padding: 40px 20px; color: var(--text2);">
                         <i class="fa-solid fa-language" style="font-size: 32px; margin-bottom: 12px; opacity: 0.5; display: block;"></i>
-                        <em>Hiện tại chưa có bản dịch nào. Hãy bấm "Thêm ngôn ngữ mới".</em>
+                        <em>Hiện tại chưa có bản dịch nào. Hãy bấm "Thêm ngôn ngữ".</em>
                     </td>
                 </tr>
             }

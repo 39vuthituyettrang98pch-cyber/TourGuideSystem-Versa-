@@ -2,6 +2,13 @@
 @using AdminWeb.Models
 
 @{
+    var isEditorPortal = Context.Request.Path.StartsWithSegments("/Editor/AudioTasks");
+    if (isEditorPortal)
+    {
+        Layout = "~/Areas/Editor/Views/Shared/_EditorLayout.cshtml";
+    }
+
+    var audioTasksBasePath = isEditorPortal ? "/Editor/AudioTasks" : "/Admin/AudioTasks";
     ViewData["Title"] = "Tác vụ AI Media";
     var hasActiveTasks = Model.Any(task =>
         task.Status is MediaTaskStatus.Pending or MediaTaskStatus.Processing);
@@ -17,14 +24,14 @@
         Hiển thị tối đa 100 tác vụ gần nhất. Bấm <strong>Tạo audio còn thiếu</strong> để hệ thống tạo task mới.
     </div>
 
-    <form asp-action="QueueMissingTextToAudio" method="post" style="display:inline;">
+    <form action="@(audioTasksBasePath + "/QueueMissingTextToAudio")" method="post" style="display:inline;">
         @Html.AntiForgeryToken()
         <button class="btn btn-primary btn-sm" type="submit">
             <i class="fa-solid fa-wand-magic-sparkles"></i> Tạo audio còn thiếu
         </button>
     </form>
 
-    <form asp-action="RegenerateAllTextToAudio" method="post" style="display:inline;"
+    <form action="@(audioTasksBasePath + "/RegenerateAllTextToAudio")" method="post" style="display:inline;"
           onsubmit="return confirm('Chạy lại toàn bộ audio sẽ tạo task mới cho tất cả POI. Bạn chắc chắn muốn chạy?');">
         @Html.AntiForgeryToken()
         <button class="btn btn-secondary btn-sm" type="submit">
@@ -32,7 +39,7 @@
         </button>
     </form>
 
-    <a asp-action="Index" class="btn btn-secondary btn-sm">
+    <a href="@audioTasksBasePath" class="btn btn-secondary btn-sm">
         <i class="fa-solid fa-rotate"></i> Làm mới
     </a>
 </div>
@@ -104,7 +111,7 @@
                         <td>
                             @if (task.Status is MediaTaskStatus.Failed or MediaTaskStatus.CompletedWithErrors)
                             {
-                                <form asp-action="Retry" method="post">
+                                <form action="@(audioTasksBasePath + "/Retry")" method="post">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="taskId" value="@task.Id" />
                                     <button class="btn btn-primary btn-sm" type="submit">

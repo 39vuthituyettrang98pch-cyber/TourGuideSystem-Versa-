@@ -5,28 +5,34 @@
         <label asp-for="LanguageCode" class="form-label">Mã ngôn ngữ</label>
         @if (string.IsNullOrWhiteSpace(Model.LanguageCode))
         {
-            <input asp-for="LanguageCode" class="form-control" placeholder="Ví dụ: en, ja, ko" required />
+            <input asp-for="LanguageCode" class="form-control" placeholder="Ví dụ: th, de, es, it" required />
         }
         else
         {
             <input asp-for="LanguageCode" class="form-control" readonly />
         }
         <span asp-validation-for="LanguageCode" class="field-validation-error"></span>
+        <small style="color:var(--text2);font-size:12px;margin-top:6px;display:block;">
+            Nên dùng mã ISO ngắn: en, vi, ja, ko, zh, th, de, es...
+        </small>
     </div>
     <div class="form-group">
         <label asp-for="LanguageName" class="form-label">Tên ngôn ngữ</label>
-        <input asp-for="LanguageName" class="form-control" placeholder="Ví dụ: English" required />
+        <input asp-for="LanguageName" class="form-control" placeholder="Ví dụ: Thai, Deutsch, Español" required />
         <span asp-validation-for="LanguageName" class="field-validation-error"></span>
     </div>
     <div class="form-group full">
         <label asp-for="EdgeTtsVoice" class="form-label">Edge-TTS voice</label>
-        <input asp-for="EdgeTtsVoice" class="form-control" placeholder="Ví dụ: en-US-AriaNeural" required />
+        <input asp-for="EdgeTtsVoice" class="form-control" placeholder="Ví dụ: th-TH-PremwadeeNeural, de-DE-KatjaNeural. Có thể để trống nếu chưa có voice." />
         <span asp-validation-for="EdgeTtsVoice" class="field-validation-error"></span>
+        <small style="color:var(--text2);font-size:12px;margin-top:6px;display:block;">
+            Không bắt buộc. Nếu để trống, hệ thống vẫn tạo bản dịch chữ nhưng sẽ bỏ qua tạo audio để không làm crash tác vụ.
+        </small>
     </div>
     <div class="form-group full">
         <label style="display:flex;align-items:center;gap:8px">
             <input asp-for="IsActive" type="checkbox" />
-            Bật dịch và tạo media cho ngôn ngữ này
+            Bật ngôn ngữ này cho web/app và dịch tự động nội dung còn thiếu
         </label>
     </div>
 </div>

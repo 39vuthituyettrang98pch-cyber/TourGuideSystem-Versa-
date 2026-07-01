@@ -1,13 +1,17 @@
 @model AdminWeb.ViewModels.PoiCreateViewModel
 
 @{
-    ViewData["Title"] = "Thêm POI mới";
+    
+    var currentArea = ViewContext.RouteData.Values["area"]?.ToString() ?? "";
+    var isEditorArea = string.Equals(currentArea, "Editor", StringComparison.OrdinalIgnoreCase);
+    var isAdmin = User.IsInRole("Admin") && !isEditorArea;
+ViewData["Title"] = "Thêm POI mới";
 }
 
 <div class="page-title">Thêm POI mới</div>
 <div class="page-subtitle">Tạo điểm tham quan mới trên hệ thống để du khách khám phá.</div>
 <div class="card" style="padding:28px;">
-    <form asp-action="Create" method="post" enctype="multipart/form-data">
+    <form asp-area="@currentArea" asp-action="Create" method="post" enctype="multipart/form-data">
         @Html.AntiForgeryToken()
         <div class="form-grid">
             <div class="form-group full">
@@ -33,7 +37,7 @@
 
             <div class="form-group">
                 <label class="form-label">Trạng thái</label>
-                @if (User.IsInRole("Admin"))
+                @if (isAdmin)
                 {
                     <input class="form-control" value="Approved" readonly />
                     <small style="color:var(--text2);font-size:12px;margin-top:6px;display:block;">Là Admin, POI của bạn sẽ tự động được phê duyệt.</small>
@@ -84,7 +88,7 @@
 
         <div style="display:flex;gap:12px;flex-wrap:wrap; margin-top:24px;">
             <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Lưu POI</button>
-            <a asp-action="Index" class="btn btn-secondary">Quay lại</a>
+            <a asp-area="@currentArea" asp-action="Index" class="btn btn-secondary">Quay lại</a>
         </div>
     </form>
 </div>

@@ -29,6 +29,12 @@
                     <Label Text="{Binding DurationText}" TextColor="#B9AEF7" />
                     <Label Text="{Binding PoiCountText}" TextColor="#B9AEF7" />
                 </HorizontalStackLayout>
+                <Button Text="Mở lộ trình trên bản đồ"
+                        Clicked="OnOpenRouteClicked"
+                        BackgroundColor="#FFFFFF"
+                        TextColor="{StaticResource Primary}"
+                        Padding="14,8"
+                        MinimumHeightRequest="42" />
             </VerticalStackLayout>
         </Border>
 

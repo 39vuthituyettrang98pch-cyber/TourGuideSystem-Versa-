@@ -1,5 +1,6 @@
 @model IEnumerable<AdminWeb.ViewModels.VisitorListItemViewModel>
 @{
+    var isAdmin = User.IsInRole("Admin");
     ViewData["Title"] = "Quản lý Du khách";
 }
 
@@ -9,18 +10,18 @@
         <div class="page-subtitle">Theo dõi điểm khám phá, cấp hạng và hoạt động của người dùng ứng dụng.</div>
     </div>
     <div class="page-actions">
-        <a asp-action="Create" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Thêm du khách</a>
+        <a asp-area="" asp-action="Create" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Thêm du khách</a>
     </div>
 </div>
 
 <div class="toolbar">
-    <form asp-action="Index" method="get">
+    <form asp-area="" asp-action="Index" method="get">
         <input type="search" name="searchString" value="@ViewData["CurrentFilter"]"
                class="form-control" placeholder="Tìm theo tên hoặc email..." />
         <button type="submit" class="btn btn-secondary"><i class="fa-solid fa-magnifying-glass"></i> Tìm</button>
         @if (!string.IsNullOrWhiteSpace(ViewData["CurrentFilter"] as string))
         {
-            <a asp-action="Index" class="btn btn-secondary"><i class="fa-solid fa-xmark"></i></a>
+            <a asp-area="" asp-action="Index" class="btn btn-secondary"><i class="fa-solid fa-xmark"></i></a>
         }
     </form>
 </div>
@@ -53,13 +54,13 @@
                         <td>@item.Tourist.CreatedAt.ToString("dd/MM/yyyy")</td>
                         <td>
                             <div class="actions">
-                                <a asp-action="Details" asp-route-id="@item.Tourist.Id" class="btn btn-secondary btn-sm" title="Xem thành tựu">
+                                <a asp-area="" asp-action="Details" asp-route-id="@item.Tourist.Id" class="btn btn-secondary btn-sm" title="Xem thành tựu">
                                     <i class="fa-solid fa-trophy"></i>
                                 </a>
-                                <a asp-action="Edit" asp-route-id="@item.Tourist.Id" class="btn btn-secondary btn-sm" title="Sửa">
+                                <a asp-area="" asp-action="Edit" asp-route-id="@item.Tourist.Id" class="btn btn-secondary btn-sm" title="Sửa">
                                     <i class="fa-solid fa-pen"></i>
                                 </a>
-                                <form asp-action="Delete" asp-route-id="@item.Tourist.Id" method="post"
+                                <form asp-area="" asp-action="Delete" asp-route-id="@item.Tourist.Id" method="post"
                                       onsubmit="return confirm('Xóa tài khoản và toàn bộ dữ liệu thành tựu của du khách này?');">
                                     @Html.AntiForgeryToken()
                                     <button type="submit" class="btn btn-danger btn-sm" title="Xóa"><i class="fa-solid fa-trash"></i></button>

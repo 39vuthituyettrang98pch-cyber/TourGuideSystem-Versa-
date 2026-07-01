@@ -1,0 +1,37 @@
+@model IEnumerable<AdminWeb.Models.PoiOwnerRequest>
+@{
+    ViewData["Title"] = "Yêu cầu POI của tôi";
+}
+
+<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px;">
+    <div>
+        <h2 style="margin:0;font-weight:950;">Yêu cầu POI của tôi</h2>
+        <div style="color:var(--text-muted);font-weight:750;">Theo dõi yêu cầu tạo POI mới hoặc nhận quyền quản lý POI.</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <a asp-area="Owner" asp-controller="Poi" asp-action="Claim" class="btn btn-secondary">Nhận POI</a>
+        <a asp-area="Owner" asp-controller="Poi" asp-action="Create" class="btn btn-primary">Gửi POI mới</a>
+    </div>
+</div>
+
+<div class="owner-card">
+    <table class="owner-table">
+        <thead><tr><th>Loại</th><th>POI</th><th>Ghi chú</th><th>Trạng thái</th><th>Ngày gửi</th><th>Ngày duyệt</th></tr></thead>
+        <tbody>
+        @foreach (var request in Model)
+        {
+            var name = request.Poi?.Translations.FirstOrDefault(t => t.LanguageCode == "vi")?.Name
+                ?? request.Poi?.Translations.FirstOrDefault()?.Name
+                ?? (request.PoiId.HasValue ? $"POI #{request.PoiId}" : "POI mới");
+            <tr>
+                <td><strong>@request.RequestType</strong></td>
+                <td>@name</td>
+                <td style="white-space:pre-wrap;">@request.Note</td>
+                <td><span class="badge-soft @(request.Status == "Approved" ? "badge-green" : request.Status == "Rejected" ? "badge-red" : "badge-yellow")">@request.Status</span></td>
+                <td>@request.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                <td>@(request.ReviewedAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "-")</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>

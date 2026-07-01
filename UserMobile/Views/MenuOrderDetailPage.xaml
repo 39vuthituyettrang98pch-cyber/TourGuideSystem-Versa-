@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="UserMobile.Views.MenuOrderDetailPage"
+             Title="Chi tiết đơn"
+             BackgroundColor="#F6F7FB">
+    <ScrollView>
+        <VerticalStackLayout Padding="18,18,18,36" Spacing="14">
+            <Border Padding="20" BackgroundColor="#182033" Stroke="Transparent" StrokeShape="RoundRectangle 24">
+                <VerticalStackLayout Spacing="5">
+                    <Label Text="{Binding Order.Status}" TextColor="#F8D66D" FontAttributes="Bold" FontSize="12" />
+                    <Label Text="{Binding Order.OrderCode}" TextColor="White" FontSize="24" FontAttributes="Bold" />
+                    <Label Text="{Binding Order.PoiName}" TextColor="#C8D1E2" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Label Text="{Binding Message}" IsVisible="{Binding HasMessage}" TextColor="#12805C" HorizontalTextAlignment="Center" />
+            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+
+            <Label Text="MÓN / SẢN PHẨM" FontAttributes="Bold" FontSize="12" TextColor="#68748A" />
+            <VerticalStackLayout BindableLayout.ItemsSource="{Binding Order.Items}" Spacing="9">
+                <BindableLayout.ItemTemplate>
+                    <DataTemplate>
+                        <Border Padding="14" BackgroundColor="White" Stroke="#E4E8F0" StrokeShape="RoundRectangle 16">
+                            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+                                <Label Text="{Binding ItemName}" FontAttributes="Bold" TextColor="#172033" />
+                                <Label Grid.Column="1" Text="{Binding LineTotal, StringFormat='{0:N0} đ'}" FontAttributes="Bold" TextColor="#12805C" />
+                                <Label Grid.Row="1" Text="{Binding Quantity, StringFormat='Số lượng: {0}'}" FontSize="11" TextColor="#8B95A7" />
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </BindableLayout.ItemTemplate>
+            </VerticalStackLayout>
+
+            <Border Padding="17" BackgroundColor="White" Stroke="#E4E8F0" StrokeShape="RoundRectangle 20">
+                <VerticalStackLayout Spacing="10">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Text="Tổng thanh toán" TextColor="#68748A" />
+                        <Label Grid.Column="1" Text="{Binding Order.TotalAmount, StringFormat='{0:N0} đ'}" FontSize="20" FontAttributes="Bold" TextColor="#5B3FE4" />
+                    </Grid>
+                    <Label Text="{Binding Order.PaymentStatus, StringFormat='Trạng thái thanh toán: {0}'}" TextColor="#172033" FontAttributes="Bold" />
+                    <Label Text="{Binding Order.PaymentMethod, StringFormat='Phương thức: {0}'}" TextColor="#68748A" />
+                    <Label Text="{Binding Order.CustomerName, StringFormat='Người nhận: {0}'}" TextColor="#172033" />
+                    <Label Text="{Binding Order.CustomerPhone, StringFormat='Số điện thoại: {0}'}" TextColor="#172033" />
+                    <Label Text="{Binding Order.Note, StringFormat='Ghi chú: {0}'}" TextColor="#68748A" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Padding="17" BackgroundColor="White" Stroke="#E4E8F0" StrokeShape="RoundRectangle 20" IsVisible="{Binding CanPayOnline}">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Thanh toán online" TextColor="#172033" FontAttributes="Bold" FontSize="18" />
+                    <Label Text="Chọn VNPay hoặc MoMo. Sau khi thanh toán xong, quay lại app và bấm Làm mới." TextColor="#68748A" FontSize="12" />
+                    <Button Text="Thanh toán VNPay" Command="{Binding PayVnPayCommand}" BackgroundColor="#0EA5E9" TextColor="White" />
+                    <Button Text="Thanh toán MoMo" Command="{Binding PayMomoCommand}" BackgroundColor="#A50064" TextColor="White" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Button Text="Làm mới trạng thái" Command="{Binding RefreshCommand}" BackgroundColor="#F0EDFF" TextColor="#5B3FE4" />
+            <Button Text="Hủy đơn" Command="{Binding CancelCommand}" IsVisible="{Binding CanCancel}" BackgroundColor="#FDECEF" TextColor="#C83B55" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

@@ -1,9 +1,13 @@
 @{
     var currentController = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
+    var currentAction = ViewContext.RouteData.Values["action"]?.ToString() ?? "";
     var pageTitle = ViewData["Title"]?.ToString() ?? currentController;
     var isPoiSection = currentController is "Poi" or "PoiTranslation";
     var isTourSection = currentController is "Tour" or "TourTranslation";
     var isCategorySection = currentController is "Category" or "CategoryTranslation";
+    var isWorkspaceBoard = currentController == "Workspace" && currentAction == "Board";
+    var isWorkspaceQuality = currentController == "Workspace" && currentAction == "Quality";
+    var isMyContent = currentController == "MyContent";
 }
 <!DOCTYPE html>
 <html lang="vi">
@@ -17,6 +21,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="~/css/admin-theme.css" asp-append-version="true" />
+    <!-- V17: render page-specific CSS sections -->
+    @RenderSection("Styles", required: false)
 </head>
 <body class="editor-shell">
     <div class="app-layout">
@@ -32,6 +38,15 @@
                     <div class="sidebar-section-label">Không gian làm việc</div>
                     <a class="nav-item @(currentController == "Dashboard" ? "active" : "")" asp-area="Editor" asp-controller="Dashboard" asp-action="Index">
                         <i class="fa-solid fa-house"></i><span>Tổng quan biên tập</span>
+                    </a>
+                    <a class="nav-item @(isWorkspaceBoard ? "active" : "")" asp-area="Editor" asp-controller="Workspace" asp-action="Board">
+                        <i class="fa-solid fa-table-list"></i><span>Bảng làm việc</span>
+                    </a>
+                    <a class="nav-item @(isWorkspaceQuality ? "active" : "")" asp-area="Editor" asp-controller="Workspace" asp-action="Quality">
+                        <i class="fa-solid fa-shield-heart"></i><span>Kiểm tra chất lượng</span>
+                    </a>
+                    <a class="nav-item @(isMyContent ? "active" : "")" asp-area="Editor" asp-controller="MyContent" asp-action="Index">
+                        <i class="fa-solid fa-folder-tree"></i><span>Nội dung của tôi</span>
                     </a>
                 </div>
                 <div class="sidebar-section">
@@ -51,7 +66,7 @@
                 </div>
                 <div class="sidebar-section">
                     <div class="sidebar-section-label">AI hỗ trợ</div>
-                    <a class="nav-item @(currentController == "AudioTasks" ? "active" : "")" asp-area="" asp-controller="AudioTasks" asp-action="Index">
+                    <a class="nav-item @(currentController == "AudioTasks" ? "active" : "")" href="/Editor/AudioTasks">
                         <i class="fa-solid fa-wand-magic-sparkles"></i><span>Tác vụ AI Media</span>
                     </a>
                 </div>
@@ -67,11 +82,10 @@
                     <i class="fa-solid fa-chevron-up user-chevron"></i>
                 </button>
                 <ul class="dropdown-menu app-dropdown">
-                    <li><a class="dropdown-item" asp-area="" asp-controller="Account" asp-action="Profile"><i class="fa-solid fa-id-badge"></i> Hồ sơ</a></li>
-                    <li><a class="dropdown-item" asp-area="" asp-controller="Account" asp-action="ChangePassword"><i class="fa-solid fa-key"></i> Đổi mật khẩu</a></li>
+                    <li><span class="dropdown-item-text small text-muted">Tài khoản nhân sự chỉ dùng trong cổng này.</span></li>
                     <li><hr class="dropdown-divider"></li>
                     <li>
-                        <form asp-area="" asp-controller="Account" asp-action="Logout" method="post">
+                        <form action="/Editor/Logout" method="post">
                             @Html.AntiForgeryToken()
                             <button class="dropdown-item text-danger" type="submit"><i class="fa-solid fa-right-from-bracket"></i> Đăng xuất</button>
                         </form>
@@ -87,13 +101,14 @@
                     <span class="header-kicker">Không gian biên tập</span>
                     <strong>@pageTitle</strong>
                 </div>
-                <form class="global-search" asp-area="Editor" asp-controller="Poi" asp-action="Index" method="get">
+                <form class="global-search" asp-area="Editor" asp-controller="Workspace" asp-action="Board" method="get">
                     <i class="fa-solid fa-magnifying-glass"></i>
-                    <input type="search" name="searchString" placeholder="Tìm nhanh điểm tham quan..." aria-label="Tìm POI" />
+                    <input type="search" name="q" placeholder="Tìm nhanh điểm tham quan..." aria-label="Tìm POI" />
                     <kbd>Enter</kbd>
                 </form>
                 <div class="header-actions">
                     <button type="button" class="icon-btn" id="theme-toggle" title="Đổi giao diện sáng/tối" aria-label="Đổi giao diện"><i class="fa-solid fa-moon"></i></button>
+                    <a class="icon-btn" title="Bảng làm việc" asp-area="Editor" asp-controller="Workspace" asp-action="Board"><i class="fa-solid fa-table-list"></i></a>
                     <a class="icon-btn" title="Tạo POI" asp-area="Editor" asp-controller="Poi" asp-action="Create"><i class="fa-solid fa-plus"></i></a>
                 </div>
             </header>
@@ -132,9 +147,52 @@
                 localStorage.setItem('versa-theme', next);
                 applyTheme(next);
             });
+            const sidebarNav = sidebar?.querySelector('.sidebar-nav');
+            const sidebarScrollKey = 'versa-editor-sidebar-scroll';
+            const normalizePath = value => value.replace(/\/+$/, '') || '/';
+            const saveSidebarScroll = () => {
+                if (sidebarNav) {
+                    sessionStorage.setItem(sidebarScrollKey, String(sidebarNav.scrollTop));
+                }
+            };
+            const restoreSidebarScroll = () => {
+                if (!sidebarNav) return;
+
+                const saved = Number(sessionStorage.getItem(sidebarScrollKey) || '0');
+                if (!Number.isNaN(saved) && saved > 0) {
+                    sidebarNav.scrollTop = saved;
+                }
+            };
+
+            requestAnimationFrame(restoreSidebarScroll);
+            window.addEventListener('pageshow', restoreSidebarScroll);
+            window.addEventListener('beforeunload', saveSidebarScroll);
+            sidebarNav?.addEventListener('scroll', saveSidebarScroll, { passive: true });
+
             document.querySelector('[data-sidebar-toggle]')?.addEventListener('click', () => document.body.classList.toggle('sidebar-open'));
             document.querySelectorAll('[data-sidebar-close]').forEach(target => target.addEventListener('click', () => document.body.classList.remove('sidebar-open')));
-            sidebar?.querySelectorAll('a').forEach(link => link.addEventListener('click', () => document.body.classList.remove('sidebar-open')));
+            sidebar?.querySelectorAll('a').forEach(link => {
+                link.addEventListener('click', event => {
+                    const rawHref = link.getAttribute('href');
+                    document.body.classList.remove('sidebar-open');
+                    saveSidebarScroll();
+
+                    if (!rawHref || rawHref === '#' || link.target === '_blank') {
+                        return;
+                    }
+
+                    const nextUrl = new URL(link.href, window.location.href);
+                    const currentUrl = new URL(window.location.href);
+                    const isSamePage = nextUrl.origin === currentUrl.origin
+                        && normalizePath(nextUrl.pathname) === normalizePath(currentUrl.pathname)
+                        && nextUrl.search === currentUrl.search
+                        && nextUrl.hash === currentUrl.hash;
+
+                    if (isSamePage) {
+                        event.preventDefault();
+                    }
+                });
+            });
         })();
     </script>
     @await RenderSectionAsync("Scripts", required: false)

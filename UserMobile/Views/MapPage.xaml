@@ -1,76 +1,257 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:i18n="clr-namespace:UserMobile.Markup"
              x:Class="UserMobile.Views.MapPage"
-             Title="Khám phá"
-             BackgroundColor="#EEF1F5">
+             Title="{i18n:T Tab_Explore}"
+             BackgroundColor="{StaticResource PageBackground}">
+
     <Grid>
         <WebView x:Name="MapWebView"
                  Navigating="OnMapNavigating"
                  VerticalOptions="Fill"
                  HorizontalOptions="Fill" />
 
-        <Border Margin="14"
+        <!-- Header -->
+        <Border Margin="14,12,14,0"
                 Padding="14,11"
                 VerticalOptions="Start"
-                BackgroundColor="#F4FFFFFF"
-                Stroke="#E4E8F0"
-                StrokeShape="RoundRectangle 18">
+                BackgroundColor="#F8FFFFFF"
+                Stroke="#DCE3EF"
+                StrokeShape="RoundRectangle 22"
+                ZIndex="5">
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
-                <VerticalStackLayout Spacing="1">
-                    <Label Text="Khám phá quanh bạn"
+                <VerticalStackLayout Spacing="2">
+                    <Label Text="{i18n:T Map_Title}"
                            FontAttributes="Bold"
-                           FontSize="16"
+                           FontSize="17"
                            TextColor="{StaticResource Ink}" />
-                    <Label Text="Chạm marker để xem thuyết minh"
+                    <Label Text="{i18n:T Map_Subtitle}"
                            FontSize="11"
-                           TextColor="{StaticResource Muted}" />
+                           TextColor="{StaticResource Muted}"
+                           MaxLines="1" />
                 </VerticalStackLayout>
+
                 <Button Grid.Column="1"
                         Text="↻"
-                        FontSize="21"
+                        FontSize="20"
                         Clicked="OnRefreshClicked"
                         Style="{StaticResource SecondaryButton}"
                         Padding="12,4"
                         MinimumWidthRequest="44"
-                        MinimumHeightRequest="40" />
+                        MinimumHeightRequest="42" />
             </Grid>
         </Border>
 
-        <Border BackgroundColor="#F8FAFD"
-                Stroke="#E5EAF2"
+        <!-- Search and filters -->
+        <Border Margin="14,86,14,0"
+                Padding="10"
+                VerticalOptions="Start"
+                BackgroundColor="#F8FFFFFF"
+                Stroke="#DCE3EF"
                 StrokeShape="RoundRectangle 22"
-                Padding="15"
-                Margin="14"
-                VerticalOptions="End">
-            <Grid RowDefinitions="Auto,180">
-                <Grid ColumnDefinitions="*,Auto" Margin="2,0,2,10">
+                ZIndex="5">
+            <VerticalStackLayout Spacing="9">
+                <Border Style="{StaticResource InputCard}"
+                        Padding="12,0"
+                        MinimumHeightRequest="48">
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                        <Label Text="⌕"
+                               FontSize="18"
+                               TextColor="{StaticResource Primary}"
+                               VerticalTextAlignment="Center" />
+                        <Entry x:Name="SearchEntry"
+                               Grid.Column="1"
+                               Placeholder="Tìm tên hoặc mô tả địa điểm"
+                               TextChanged="OnSearchTextChanged"
+                               ClearButtonVisibility="WhileEditing" />
+                    </Grid>
+                </Border>
+
+                <ScrollView Orientation="Horizontal" HorizontalScrollBarVisibility="Never">
+                    <HorizontalStackLayout Spacing="8">
+                        <Button x:Name="FeaturedFilterButton"
+                                Text="♛ Nổi bật"
+                                Clicked="OnFeaturedFilterClicked"
+                                Style="{StaticResource PillButton}" />
+                        <Button x:Name="RatingFilterButton"
+                                Text="★ 4+ sao"
+                                Clicked="OnRatingFilterClicked"
+                                Style="{StaticResource PillButton}" />
+                        <Button x:Name="FavoriteFilterButton"
+                                Text="♥ Đã lưu"
+                                Clicked="OnFavoriteFilterClicked"
+                                Style="{StaticResource PillButton}" />
+                    </HorizontalStackLayout>
+                </ScrollView>
+            </VerticalStackLayout>
+        </Border>
+
+        <!-- Floating actions: kept above the POI panel so they do not cover zoom or cards -->
+        <VerticalStackLayout x:Name="FloatingActions"
+                             Spacing="10"
+                             VerticalOptions="Center"
+                             HorizontalOptions="End"
+                             Margin="0,80,14,0"
+                             ZIndex="10">
+            <Button Text="⌖ Vị trí"
+                    FontAttributes="Bold"
+                    FontSize="12"
+                    TextColor="White"
+                    BackgroundColor="#0EA5E9"
+                    WidthRequest="82"
+                    HeightRequest="42"
+                    CornerRadius="21"
+                    Padding="0"
+                    SemanticProperties.Description="Hiển thị vị trí của tôi trên bản đồ"
+                    Clicked="OnLocateClicked" />
+
+            <Button x:Name="RoutePlannerButton"
+                    Text="Lộ trình"
+                    FontAttributes="Bold"
+                    FontSize="11"
+                    TextColor="White"
+                    BackgroundColor="#F59E0B"
+                    WidthRequest="82"
+                    HeightRequest="42"
+                    CornerRadius="21"
+                    Padding="0"
+                    SemanticProperties.Description="Chọn nhiều POI để tính lộ trình trong app"
+                    Clicked="OnRoutePlannerClicked" />
+
+            <Button x:Name="ClearRouteButton"
+                    Text="Tắt đường"
+                    FontAttributes="Bold"
+                    FontSize="11"
+                    TextColor="White"
+                    BackgroundColor="#EF4444"
+                    WidthRequest="82"
+                    HeightRequest="42"
+                    CornerRadius="21"
+                    Padding="0"
+                    IsVisible="False"
+                    SemanticProperties.Description="Tắt tuyến đường đang hiển thị"
+                    Clicked="OnClearRouteClicked" />
+
+            <Button Text="AI"
+                    FontAttributes="Bold"
+                    FontSize="15"
+                    TextColor="White"
+                    BackgroundColor="{StaticResource Primary}"
+                    WidthRequest="56"
+                    HeightRequest="56"
+                    CornerRadius="28"
+                    Padding="0"
+                    HorizontalOptions="End"
+                    SemanticProperties.Description="Mở trợ lý AI"
+                    Clicked="OnAiClicked" />
+        </VerticalStackLayout>
+
+        <Border x:Name="RoutePlannerPanel"
+                Margin="14,0,14,232"
+                Padding="12"
+                VerticalOptions="End"
+                BackgroundColor="#F8FFFFFF"
+                Stroke="#DCE3EF"
+                StrokeShape="RoundRectangle 20"
+                IsVisible="False"
+                ZIndex="9">
+            <VerticalStackLayout Spacing="8">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                     <VerticalStackLayout Spacing="2">
-                        <Label Text="Điểm tham quan"
-                               FontSize="17"
+                        <Label Text="Lộ trình POI"
                                FontAttributes="Bold"
-                               TextColor="#172033" />
-                        <Label Text="Chạm marker hoặc thẻ để mở chi tiết"
+                               FontSize="14"
+                               TextColor="{StaticResource Ink}" />
+                        <Label x:Name="RouteSummaryLabel"
+                               Text="Chọn ít nhất 2 POI"
                                FontSize="11"
-                               TextColor="#68748A" />
+                               TextColor="{StaticResource Muted}"
+                               MaxLines="2" />
                     </VerticalStackLayout>
-                    <ActivityIndicator Grid.Column="1"
-                                       IsRunning="{Binding IsLoading}"
-                                       IsVisible="{Binding IsLoading}" />
+                    <Label x:Name="RouteStopCountLabel"
+                           Grid.Column="1"
+                           Text="0 điểm"
+                           FontAttributes="Bold"
+                           FontSize="12"
+                           TextColor="{StaticResource Primary}"
+                           VerticalTextAlignment="Center" />
                 </Grid>
 
-                <Grid Grid.Row="1">
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                    <Button x:Name="DrawPoiRouteButton"
+                            Text="Vẽ tuyến"
+                            FontSize="12"
+                            Padding="10,6"
+                            MinimumHeightRequest="36"
+                            BackgroundColor="#0EA5E9"
+                            TextColor="White"
+                            CornerRadius="14"
+                            Clicked="OnDrawPoiRouteClicked" />
+                    <Button Grid.Column="1"
+                            Text="Xóa chọn"
+                            FontSize="12"
+                            Padding="10,6"
+                            MinimumHeightRequest="36"
+                            BackgroundColor="#EEF2FF"
+                            TextColor="{StaticResource Primary}"
+                            CornerRadius="14"
+                            Clicked="OnClearPoiRouteStopsClicked" />
+                </Grid>
+            </VerticalStackLayout>
+        </Border>
+
+        <!-- Bottom POI sheet -->
+        <Border x:Name="PoiPanel"
+                BackgroundColor="#FAFCFF"
+                Stroke="#DCE3EF"
+                StrokeShape="RoundRectangle 26,26,0,0"
+                Padding="15,14,15,18"
+                VerticalOptions="End"
+                ZIndex="4">
+
+            <Grid x:Name="PoiPanelGrid"
+                  RowDefinitions="Auto,190">
+                <Grid ColumnDefinitions="*,Auto,Auto"
+                      Margin="2,0,2,10"
+                      ColumnSpacing="8">
+                    <VerticalStackLayout Spacing="2">
+                        <Label Text="{i18n:T Map_PoiListTitle}"
+                               Style="{StaticResource SectionTitle}"
+                               FontSize="17" />
+                        <Label x:Name="PoiPanelSubtitle"
+                               Text="{i18n:T Map_PoiListSubtitle}"
+                               Style="{StaticResource PageSubtitle}"
+                               FontSize="11" />
+                    </VerticalStackLayout>
+
+                    <ActivityIndicator Grid.Column="1"
+                                       IsRunning="{Binding IsLoading}"
+                                       IsVisible="{Binding IsLoading}"
+                                       VerticalOptions="Center" />
+
+                    <Button x:Name="TogglePoiPanelButton"
+                            Grid.Column="2"
+                            Text="Ẩn"
+                            Clicked="OnTogglePoiPanelClicked"
+                            Style="{StaticResource SecondaryButton}"
+                            Padding="12,6"
+                            MinimumWidthRequest="58"
+                            MinimumHeightRequest="36"
+                            VerticalOptions="Center" />
+                </Grid>
+
+                <Grid Grid.Row="1" x:Name="PoiPanelContent">
                     <VerticalStackLayout IsVisible="{Binding IsEmpty}"
                                          VerticalOptions="Center"
-                                         Spacing="5">
-                        <Label Text="Chưa có POI được duyệt"
+                                         Spacing="7"
+                                         Padding="14">
+                        <Label Text="🗺️" FontSize="38" HorizontalTextAlignment="Center" />
+                        <Label Text="{i18n:T Map_Empty}"
                                FontAttributes="Bold"
-                               TextColor="#172033"
-                               HorizontalOptions="Center" />
-                        <Label Text="{Binding Message}"
-                               FontSize="12"
-                               TextColor="#68748A"
+                               TextColor="{StaticResource Ink}"
                                HorizontalTextAlignment="Center" />
+                        <Label Text="{Binding Message}" Style="{StaticResource EmptyStateText}" />
                     </VerticalStackLayout>
 
                     <CollectionView x:Name="PlacesList"
@@ -80,26 +261,124 @@
                                     ItemsLayout="HorizontalList">
                         <CollectionView.ItemTemplate>
                             <DataTemplate>
-                                <Border WidthRequest="220"
+                                <Border WidthRequest="246"
                                         Margin="0,0,10,0"
                                         Padding="11"
                                         BackgroundColor="White"
-                                        Stroke="#E5EAF2"
-                                        StrokeShape="RoundRectangle 16">
-                                    <VerticalStackLayout Spacing="6">
-                                        <Border HeightRequest="82"
+                                        Stroke="#E3EAF4"
+                                        StrokeShape="RoundRectangle 20">
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer Tapped="OnPoiCardTapped" />
+                                    </Border.GestureRecognizers>
+                                    <VerticalStackLayout Spacing="7">
+                                        <Border HeightRequest="86"
                                                 Stroke="Transparent"
-                                                StrokeShape="RoundRectangle 11">
-                                            <Image Source="{Binding ImageUrl}" Aspect="AspectFill" />
+                                                StrokeShape="RoundRectangle 14"
+                                                BackgroundColor="{StaticResource PageBackground}">
+                                            <Grid>
+                                                <Image Source="{Binding ImageUrl}"
+                                                       Aspect="AspectFill"
+                                                       IsVisible="{Binding IsRasterImage}" />
+                                                <WebView Source="{Binding ImageUrl}"
+                                                         IsVisible="{Binding IsSvgImage}"
+                                                         InputTransparent="True" />
+                                                <Grid IsVisible="{Binding HasNoImage}"
+                                                      BackgroundColor="#EEF2FF">
+                                                    <VerticalStackLayout Spacing="3"
+                                                                         HorizontalOptions="Center"
+                                                                         VerticalOptions="Center">
+                                                        <Label Text="🖼️"
+                                                               FontSize="24"
+                                                               HorizontalTextAlignment="Center" />
+                                                        <Label Text="{Binding ImageFallbackText}"
+                                                               FontSize="11"
+                                                               FontAttributes="Bold"
+                                                               TextColor="{StaticResource Muted}"
+                                                               HorizontalTextAlignment="Center" />
+                                                    </VerticalStackLayout>
+                                                </Grid>
+                                                <Border IsVisible="{Binding IsFeatured}"
+                                                        BackgroundColor="#F8D66D"
+                                                        Stroke="Transparent"
+                                                        StrokeShape="RoundRectangle 12"
+                                                        Padding="8,3"
+                                                        Margin="7"
+                                                        HorizontalOptions="Start"
+                                                        VerticalOptions="Start">
+                                                    <Label Text="♛ Nổi bật"
+                                                           FontSize="10"
+                                                           FontAttributes="Bold"
+                                                           TextColor="#5A3B00" />
+                                                </Border>
+                                            </Grid>
                                         </Border>
+
                                         <Label Text="{Binding Title}"
                                                FontAttributes="Bold"
-                                               TextColor="#172033"
-                                               MaxLines="1" />
+                                               TextColor="{StaticResource Ink}"
+                                               MaxLines="1"
+                                               LineBreakMode="TailTruncation" />
+
                                         <Label Text="{Binding Description}"
                                                FontSize="11"
-                                               TextColor="#68748A"
-                                               MaxLines="2" />
+                                               TextColor="{StaticResource Muted}"
+                                               MaxLines="2"
+                                               LineBreakMode="TailTruncation" />
+
+                                        <Label Text="{Binding FeaturedBadgeText}"
+                                               IsVisible="{Binding IsFeatured}"
+                                               FontSize="10"
+                                               FontAttributes="Bold"
+                                               TextColor="#B45309"
+                                               MaxLines="1"
+                                               LineBreakMode="TailTruncation" />
+
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <Label Text="{Binding RatingText}"
+                                                   FontSize="11"
+                                                   TextColor="{StaticResource Warning}" />
+                                            <Label Grid.Column="1"
+                                                   Text="{Binding FeaturedText}"
+                                                   FontSize="11"
+                                                   TextColor="{StaticResource Primary}"
+                                                   FontAttributes="Bold" />
+                                        </Grid>
+
+                                        <Grid RowDefinitions="Auto,Auto"
+                                              ColumnDefinitions="*,*"
+                                              ColumnSpacing="7"
+                                              RowSpacing="7">
+                                            <Button Text="Chỉ đường"
+                                                    FontSize="11"
+                                                    Padding="8,4"
+                                                    MinimumHeightRequest="34"
+                                                    BackgroundColor="#0EA5E9"
+                                                    TextColor="White"
+                                                    CornerRadius="14"
+                                                    CommandParameter="{Binding .}"
+                                                    Clicked="OnPlaceDirectionsClicked" />
+                                            <Button Grid.Column="1"
+                                                    Text="Chi tiết"
+                                                    FontSize="11"
+                                                    Padding="8,4"
+                                                    MinimumHeightRequest="34"
+                                                    BackgroundColor="#5B3FE4"
+                                                    TextColor="White"
+                                                    CornerRadius="14"
+                                                    CommandParameter="{Binding .}"
+                                                    Clicked="OnPlaceDetailClicked" />
+                                            <Button Grid.Row="1"
+                                                    Grid.ColumnSpan="2"
+                                                    Text="Thêm lộ trình"
+                                                    FontSize="11"
+                                                    Padding="8,4"
+                                                    MinimumHeightRequest="34"
+                                                    BackgroundColor="#F59E0B"
+                                                    TextColor="#111827"
+                                                    CornerRadius="14"
+                                                    CommandParameter="{Binding .}"
+                                                    Clicked="OnAddRouteStopClicked" />
+                                        </Grid>
                                     </VerticalStackLayout>
                                 </Border>
                             </DataTemplate>
@@ -108,20 +387,5 @@
                 </Grid>
             </Grid>
         </Border>
-
-
-        <Button Text="AI"
-                FontAttributes="Bold"
-                FontSize="15"
-                TextColor="White"
-                BackgroundColor="#5B3FE4"
-                WidthRequest="58"
-                HeightRequest="58"
-                CornerRadius="29"
-                Padding="0"
-                VerticalOptions="End"
-                HorizontalOptions="End"
-                Margin="0,0,18,238"
-                Clicked="OnAiClicked" />
     </Grid>
 </ContentPage>

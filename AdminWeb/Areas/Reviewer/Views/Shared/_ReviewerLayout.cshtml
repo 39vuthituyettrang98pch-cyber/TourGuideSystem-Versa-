@@ -1,6 +1,9 @@
 @{
     var currentController = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
+    var currentAction = ViewContext.RouteData.Values["action"]?.ToString() ?? "";
     var pageTitle = ViewData["Title"]?.ToString() ?? currentController;
+    var isApprovalPending = currentController == "Approval" && currentAction is "PoiPending" or "Details";
+    var isApprovalHistory = currentController == "Approval" && currentAction == "History";
 }
 <!DOCTYPE html>
 <html lang="vi">
@@ -14,6 +17,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="~/css/admin-theme.css" asp-append-version="true" />
+    <!-- V17: render page-specific CSS sections -->
+    @RenderSection("Styles", required: false)
 </head>
 <body class="reviewer-shell">
     <div class="app-layout">
@@ -30,8 +35,11 @@
                     <a class="nav-item @(currentController == "Dashboard" ? "active" : "")" asp-area="Reviewer" asp-controller="Dashboard" asp-action="Index">
                         <i class="fa-solid fa-house"></i><span>Tổng quan</span>
                     </a>
-                    <a class="nav-item @(currentController == "Approval" ? "active" : "")" asp-area="Reviewer" asp-controller="Approval" asp-action="PoiPending">
+                    <a class="nav-item @(isApprovalPending ? "active" : "")" asp-area="Reviewer" asp-controller="Approval" asp-action="PoiPending">
                         <i class="fa-solid fa-list-check"></i><span>POI chờ duyệt</span>
+                    </a>
+                    <a class="nav-item @(isApprovalHistory ? "active" : "")" asp-area="Reviewer" asp-controller="Approval" asp-action="History">
+                        <i class="fa-solid fa-clock-rotate-left"></i><span>Lịch sử duyệt</span>
                     </a>
                 </div>
             </nav>
@@ -46,11 +54,10 @@
                     <i class="fa-solid fa-chevron-up user-chevron"></i>
                 </button>
                 <ul class="dropdown-menu app-dropdown">
-                    <li><a class="dropdown-item" asp-area="" asp-controller="Account" asp-action="Profile"><i class="fa-solid fa-id-badge"></i> Hồ sơ</a></li>
-                    <li><a class="dropdown-item" asp-area="" asp-controller="Account" asp-action="ChangePassword"><i class="fa-solid fa-key"></i> Đổi mật khẩu</a></li>
+                    <li><span class="dropdown-item-text small text-muted">Tài khoản nhân sự chỉ dùng trong cổng này.</span></li>
                     <li><hr class="dropdown-divider"></li>
                     <li>
-                        <form asp-area="" asp-controller="Account" asp-action="Logout" method="post">
+                        <form action="/Reviewer/Logout" method="post">
                             @Html.AntiForgeryToken()
                             <button class="dropdown-item text-danger" type="submit"><i class="fa-solid fa-right-from-bracket"></i> Đăng xuất</button>
                         </form>
@@ -68,6 +75,7 @@
                 </div>
                 <div class="header-actions">
                     <button type="button" class="icon-btn" id="theme-toggle" title="Đổi giao diện sáng/tối" aria-label="Đổi giao diện"><i class="fa-solid fa-moon"></i></button>
+                    <a class="icon-btn" title="Lịch sử duyệt" asp-area="Reviewer" asp-controller="Approval" asp-action="History"><i class="fa-solid fa-clock-rotate-left"></i></a>
                     <a class="icon-btn" title="POI chờ duyệt" asp-area="Reviewer" asp-controller="Approval" asp-action="PoiPending"><i class="fa-solid fa-list-check"></i></a>
                 </div>
             </header>

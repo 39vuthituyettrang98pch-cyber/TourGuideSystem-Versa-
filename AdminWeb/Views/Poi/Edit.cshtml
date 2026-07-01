@@ -1,13 +1,17 @@
 @model AdminWeb.Models.Poi
 
 @{
-    ViewData["Title"] = "Chỉnh sửa thông số POI";
+    
+    var currentArea = ViewContext.RouteData.Values["area"]?.ToString() ?? "";
+    var isEditorArea = string.Equals(currentArea, "Editor", StringComparison.OrdinalIgnoreCase);
+    var isAdmin = User.IsInRole("Admin") && !isEditorArea;
+ViewData["Title"] = "Chỉnh sửa thông số POI";
 }
 
 <div class="page-title">Chỉnh sửa thông số POI #@Model.Id</div>
 <div class="page-subtitle">Cập nhật vị trí và các thông số cài đặt của điểm tham quan.</div>
 <div class="card" style="padding:28px;">
-    <form asp-action="Edit" method="post" enctype="multipart/form-data">
+    <form asp-area="@currentArea" asp-action="Edit" method="post" enctype="multipart/form-data">
         @Html.AntiForgeryToken()
         <input type="hidden" asp-for="Id" />
         <input type="hidden" asp-for="CreatedAt" />
@@ -31,7 +35,7 @@
 @await Html.PartialAsync("PoiLocationPicker")
             <div class="form-group">
                 <label class="form-label">Trạng thái</label>
-                @if (User.IsInRole("Admin"))
+                @if (isAdmin)
                 {
                     <select class="form-control" asp-for="Status">
                         <option value="Pending">Pending</option>
@@ -61,8 +65,8 @@
         </div>
         <div style="display:flex;gap:12px;flex-wrap:wrap; margin-top:24px;">
             <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Cập nhật POI</button>
-            <a asp-controller="PoiTranslation" asp-action="Index" asp-route-poiId="@Model.Id" class="btn btn-secondary"><i class="fa-solid fa-language"></i> Cập nhật bản dịch</a>
-            <a asp-action="Index" class="btn btn-secondary">Quay lại</a>
+            <a asp-area="@currentArea" asp-controller="PoiTranslation" asp-action="Index" asp-route-poiId="@Model.Id" class="btn btn-secondary"><i class="fa-solid fa-language"></i> Cập nhật bản dịch</a>
+            <a asp-area="@currentArea" asp-action="Index" class="btn btn-secondary">Quay lại</a>
         </div>
     </form>
 </div>

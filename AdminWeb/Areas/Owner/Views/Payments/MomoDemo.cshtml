@@ -1,0 +1,50 @@
+@model AdminWeb.Models.PaymentTransaction
+@{
+    ViewData["Title"] = "Thanh toán MoMo";
+    string Money(decimal value) => value.ToString("N0") + " đ";
+}
+
+<style>
+    .momo-demo-wrap{max-width:1040px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(320px,.8fr);gap:18px;align-items:stretch}.momo-demo-card{border:1px solid var(--owner-border);border-radius:28px;background:var(--owner-card);box-shadow:var(--owner-shadow);padding:24px}.momo-demo-kicker{font-size:12px;font-weight:1000;letter-spacing:.16em;text-transform:uppercase;color:var(--owner-accent)}.momo-demo-title{font-size:clamp(32px,4vw,54px);line-height:.95;letter-spacing:-.06em;font-weight:1000;margin:10px 0}.momo-demo-sub{color:var(--owner-muted);font-weight:800}.demo-qr{height:280px;border-radius:26px;border:1px dashed rgba(45,212,191,.45);background:linear-gradient(135deg,rgba(236,72,153,.18),rgba(45,212,191,.16)),repeating-linear-gradient(45deg,rgba(255,255,255,.08) 0 8px,rgba(255,255,255,.02) 8px 16px);display:grid;place-items:center;text-align:center}.demo-qr i{font-size:72px;color:#f472b6}.demo-info{display:grid;gap:10px;margin-top:16px}.demo-row{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid var(--owner-border);padding:10px 0}.demo-row span{color:var(--owner-muted);font-weight:800}.demo-row strong{font-weight:1000}.demo-actions{display:grid;gap:10px;margin-top:18px}.demo-warning{border:1px solid rgba(251,191,36,.28);background:rgba(251,191,36,.08);color:#fde68a;border-radius:18px;padding:12px;font-weight:850}
+</style>
+
+<section class="momo-demo-wrap">
+    <div class="momo-demo-card">
+        <div class="momo-demo-kicker"><i class="fa-solid fa-flask"></i> Thanh toán MoMo</div>
+        <h1 class="momo-demo-title">Mô phỏng thanh toán MoMo</h1>
+        <p class="momo-demo-sub">
+            Trang này mô phỏng thanh toán MoMo cho đồ án khi chưa có tài khoản doanh nghiệp. Bấm xác nhận để hệ thống chuyển giao dịch sang Paid và kích hoạt gói.
+        </p>
+        <div class="demo-warning"><i class="fa-solid fa-circle-info"></i> Đây là môi trường demo, chỉ dùng kiểm thử luồng thanh toán.</div>
+        <div class="demo-info">
+            <div class="demo-row"><span>Mã giao dịch</span><strong>@Model.TransactionCode</strong></div>
+            <div class="demo-row"><span>Gói</span><strong>@(Model.PaymentPlan?.PlanName ?? Model.Purpose)</strong></div>
+            <div class="demo-row"><span>Số tiền</span><strong>@Money(Model.Amount)</strong></div>
+            <div class="demo-row"><span>Trạng thái</span><strong>@Model.Status</strong></div>
+        </div>
+        <div class="demo-actions">
+            @if (Model.Status == "Paid")
+            {
+                <a href="/Owner/Payments" class="btn owner-btn-primary">Gói đã kích hoạt - quay lại</a>
+            }
+            else
+            {
+                <form action="/Owner/Payments/ConfirmMomoDemo/@Model.Id" method="post">
+                    @Html.AntiForgeryToken()
+                    <button class="btn owner-btn-primary" style="width:100%;"><i class="fa-solid fa-circle-check"></i> Xác nhận thanh toán demo</button>
+                </form>
+                <a href="/Owner/Payments" class="btn owner-btn-soft" style="width:100%;">Quay lại</a>
+            }
+        </div>
+    </div>
+    <aside class="momo-demo-card">
+        <div class="demo-qr">
+            <div>
+                <i class="fa-solid fa-qrcode"></i>
+                <h2 style="margin:14px 0 6px;font-weight:1000;">QR MoMo</h2>
+                <p style="margin:0;color:var(--owner-muted);font-weight:800;">Không cần quét thật</p>
+            </div>
+        </div>
+        <p class="owner-muted" style="margin-top:14px;font-weight:800;">Khi có tài khoản MoMo Business, tắt <code>MoMo:DemoMode</code> và điền PartnerCode, AccessKey, SecretKey để dùng cổng thật/sandbox.</p>
+    </aside>
+</section>

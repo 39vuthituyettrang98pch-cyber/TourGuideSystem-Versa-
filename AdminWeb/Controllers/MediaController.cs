@@ -9,6 +9,19 @@ namespace AdminWeb.Controllers;
 [Authorize(Roles = "Admin,Editor")]
 public class MediaController : Controller
 {
+    private const long MaxImageBytes = 5 * 1024 * 1024;
+    private const long MaxVideoBytes = 100 * 1024 * 1024;
+
+    private static readonly HashSet<string> AllowedImageExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".jpg", ".jpeg", ".png", ".webp"
+    };
+
+    private static readonly HashSet<string> AllowedVideoExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".mp4", ".webm", ".mov", ".m4v"
+    };
+
     private readonly AppDbContext _context;
     private readonly IWebHostEnvironment _hostEnvironment;
 
@@ -73,11 +86,24 @@ public class MediaController : Controller
             return RedirectToAction(nameof(Library), new { poiId });
         }
 
-        var isVideo = mediaFile.ContentType.StartsWith("video/", StringComparison.OrdinalIgnoreCase);
-        var isImage = mediaFile.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase);
+        var extension = Path.GetExtension(Path.GetFileName(mediaFile.FileName));
+        var isVideo = mediaFile.ContentType.StartsWith("video/", StringComparison.OrdinalIgnoreCase)
+                      && AllowedVideoExtensions.Contains(extension);
+        var isImage = mediaFile.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase)
+                      && AllowedImageExtensions.Contains(extension);
+
         if (!isVideo && !isImage)
         {
-            TempData["ErrorMessage"] = "Chỉ hỗ trợ file ảnh hoặc video.";
+            TempData["ErrorMessage"] = "Chỉ hỗ trợ ảnh .jpg/.jpeg/.png/.webp hoặc video .mp4/.webm/.mov/.m4v.";
+            return RedirectToAction(nameof(Library), new { poiId });
+        }
+
+        var maxBytes = isVideo ? MaxVideoBytes : MaxImageBytes;
+        if (mediaFile.Length > maxBytes)
+        {
+            TempData["ErrorMessage"] = isVideo
+                ? "Video vượt quá 100MB."
+                : "Ảnh vượt quá 5MB.";
             return RedirectToAction(nameof(Library), new { poiId });
         }
 
@@ -86,8 +112,7 @@ public class MediaController : Controller
         var uploadsFolder = Path.Combine(webRoot, "uploads", "media");
         Directory.CreateDirectory(uploadsFolder);
 
-        var extension = Path.GetExtension(Path.GetFileName(mediaFile.FileName));
-        var uniqueFileName = $"{Guid.NewGuid():N}{extension}";
+        var uniqueFileName = $"{Guid.NewGuid():N}{extension.ToLowerInvariant()}";
         var filePath = Path.Combine(uploadsFolder, uniqueFileName);
         await using (var fileStream = new FileStream(filePath, FileMode.CreateNew))
         {
@@ -114,6 +139,7 @@ public class MediaController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> DeleteMedia(int id)
     {
         var media = await _context.MediaAssets.FindAsync(id);

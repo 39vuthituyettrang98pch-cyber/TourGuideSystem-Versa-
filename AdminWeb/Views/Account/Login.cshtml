@@ -7,7 +7,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Đăng nhập - VERSA Admin</title>
+    <title>Đăng nhập Admin - VERSA Admin</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -34,7 +34,11 @@
         input:focus { border-color: #5b8cff; box-shadow: 0 0 0 4px rgba(91,140,255,.13); }
         button { width: 100%; margin-top: 8px; padding: 13px; border: 0; border-radius: 12px; background: #5b8cff; color: #fff; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
         button:hover { background: #3f72ed; }
-        .error { margin-bottom: 18px; padding: 11px 12px; border: 1px solid rgba(255,101,119,.25); border-radius: 10px; background: rgba(255,101,119,.12); color: #ff8b99; font-size: 11px; }
+        .error { margin-bottom: 18px; padding: 11px 12px; border: 1px solid rgba(255,101,119,.25); border-radius: 10px; background: rgba(255,101,119,.12); color: #ff8b99; font-size: 11px; line-height: 1.6; }
+        .success { margin-bottom: 18px; padding: 11px 12px; border: 1px solid rgba(52,211,153,.25); border-radius: 10px; background: rgba(52,211,153,.12); color: #86efac; font-size: 11px; line-height: 1.6; }
+        .quick-links { display: grid; gap: 9px; margin-top: 15px; }
+        .quick-link { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 42px; border: 1px solid rgba(148,163,184,.16); border-radius: 12px; color: #d7e2f5; background: rgba(148,163,184,.08); text-decoration: none; font-size: 12px; font-weight: 800; }
+        .quick-link:hover { border-color: #5b8cff; color: #fff; background: rgba(91,140,255,.12); }
         .note { margin-top: 22px; color: #748198; font-size: 10px; line-height: 1.6; }
         @@media (max-width: 800px) { .shell { grid-template-columns: 1fr; } .intro { display: none; } .login { min-height: 520px; padding: 30px; } }
     </style>
@@ -44,19 +48,58 @@
         <section class="intro">
             <div class="brand">
                 <span class="brand-icon"><i class="fa-solid fa-compass"></i></span>
-                <span><strong>VERSA Admin</strong><span>Tour guide content platform</span></span>
+                <span><strong>VERSA Admin</strong><span>Cổng quản trị hệ thống</span></span>
             </div>
-            <h1>Quản lý hành trình và thuyết minh đa ngôn ngữ.</h1>
-            <p>Một nơi để vận hành POI, tour, media, bản dịch và theo dõi toàn bộ tác vụ AI nền.</p>
+            <h1>Cổng đăng nhập riêng dành cho Admin.</h1>
+            <p>Admin quản lý tài khoản, phân quyền, cấu hình hệ thống, nội dung, duyệt POI và thống kê toàn bộ nền tảng.</p>
         </section>
         <section class="login">
-            <h2>Chào mừng trở lại</h2>
-            <p>Đăng nhập bằng tài khoản quản trị hoặc biên tập viên được cấp.</p>
+            <h2>Đăng nhập Admin</h2>
+            <p>Trang này chỉ nhận tài khoản có vai trò Admin.</p>
+            @if (TempData["SuccessMessage"] is string successMessage)
+            {
+                <div class="success"><i class="fa-solid fa-circle-check"></i> @successMessage</div>
+            }
+            @if (ViewBag.SwitchRoleMessage is string switchRoleMessage)
+            {
+                <div class="success"><i class="fa-solid fa-right-left"></i> @switchRoleMessage</div>
+            }
+
             @if (!ViewData.ModelState.IsValid)
             {
-                <div class="error"><i class="fa-solid fa-circle-exclamation"></i> Tên đăng nhập hoặc mật khẩu không chính xác.</div>
+                <div class="error">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    @foreach (var error in ViewData.ModelState.Values.SelectMany(item => item.Errors))
+                    {
+                        <div>@error.ErrorMessage</div>
+                    }
+                    @if (ViewBag.OwnerLoginUrl is string ownerLoginUrl)
+                    {
+                        <div style="margin-top:10px;">
+                            <a href="@ownerLoginUrl" style="color:#93c5fd;font-weight:900;">
+                                Đi tới trang đăng nhập chủ gian hàng
+                            </a>
+                        </div>
+                    }
+                    @if (ViewBag.TouristLoginUrl is string touristLoginUrl)
+                    {
+                        <div style="margin-top:10px;">
+                            <a href="@touristLoginUrl" style="color:#93c5fd;font-weight:900;">
+                                Đi tới trang đăng nhập du khách
+                            </a>
+                        </div>
+                    }
+                    @if (ViewBag.CorrectLoginUrl is string correctLoginUrl)
+                    {
+                        <div style="margin-top:10px;">
+                            <a href="@correctLoginUrl" style="color:#93c5fd;font-weight:900;">
+                                @(ViewBag.CorrectLoginText ?? "Đi tới trang đăng nhập đúng vai trò")
+                            </a>
+                        </div>
+                    }
+                </div>
             }
-            <form asp-controller="Account" asp-action="Login" method="post">
+            <form action="/Admin/Login" method="post">
                 @Html.AntiForgeryToken()
                 <div class="field">
                     <label for="username">Tên đăng nhập hoặc email</label>
@@ -66,9 +109,25 @@
                     <label for="password">Mật khẩu</label>
                     <div class="input"><i class="fa-solid fa-lock"></i><input type="password" id="password" name="password" autocomplete="current-password" required /></div>
                 </div>
-                <button type="submit"><i class="fa-solid fa-arrow-right-to-bracket"></i> Đăng nhập</button>
+                <button type="submit"><i class="fa-solid fa-arrow-right-to-bracket"></i> Đăng nhập Admin</button>
             </form>
-            <div class="note">Hệ thống sẽ tự chuyển bạn vào đúng không gian làm việc theo vai trò được cấp.</div>
+
+            <div class="quick-links">
+                <a href="/Editor/Login" class="quick-link">
+                    <i class="fa-solid fa-pen-nib"></i> Đăng nhập Editor
+                </a>
+                <a href="/Reviewer/Login" class="quick-link">
+                    <i class="fa-solid fa-shield-halved"></i> Đăng nhập Reviewer
+                </a>
+                <a href="/DuKhach/Account/Login" class="quick-link">
+                    <i class="fa-solid fa-earth-asia"></i> Đăng nhập du khách
+                </a>
+                <a href="/Owner/Login" class="quick-link">
+                    <i class="fa-solid fa-store"></i> Đăng nhập chủ gian hàng
+                </a>
+            </div>
+
+            <div class="note">Mỗi vai trò có trang đăng nhập riêng: Admin, Editor, Reviewer, Owner và Du khách không dùng chung form.</div>
         </section>
     </main>
 </body>

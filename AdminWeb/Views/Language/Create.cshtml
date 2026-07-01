@@ -6,18 +6,18 @@
 <div class="page-heading">
     <div>
         <div class="page-title">Thêm ngôn ngữ</div>
-        <div class="page-subtitle">Khai báo mã ngôn ngữ và tên voice hợp lệ của Edge-TTS.</div>
+        <div class="page-subtitle">Khai báo mã ngôn ngữ. Voice Edge-TTS có thể để trống; hệ thống vẫn dịch chữ và chỉ tạo audio khi có voice.</div>
     </div>
 </div>
 
 <div class="form-shell">
     <section class="card">
-        <form asp-action="Create" method="post">
+        <form asp-area="" asp-action="Create" method="post">
             @Html.AntiForgeryToken()
             <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
             <partial name="_LanguageForm" model="Model" />
             <div class="form-actions">
-                <a asp-action="Index" class="btn btn-secondary">Hủy</a>
+                <a asp-area="" asp-action="Index" class="btn btn-secondary">Hủy</a>
                 <button type="submit" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Thêm ngôn ngữ</button>
             </div>
         </form>

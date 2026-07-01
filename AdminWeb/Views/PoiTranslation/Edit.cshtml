@@ -1,12 +1,13 @@
 @model AdminWeb.Models.PoiTranslation
 
 @{
+    var currentArea = ViewContext.RouteData.Values["area"]?.ToString() ?? "";
     ViewData["Title"] = "Sửa bản dịch POI";
 }
 
 <div class="page-title">Sửa bản dịch Điểm tham quan</div>
 <div class="card" style="padding:28px;">
-    <form asp-action="Edit" method="post" enctype="multipart/form-data">
+    <form asp-area="@currentArea" asp-action="Edit" method="post" enctype="multipart/form-data">
         @Html.AntiForgeryToken()
         <input type="hidden" asp-for="Id" />
         <input type="hidden" asp-for="PoiId" />
@@ -40,7 +41,7 @@
         </div>
         <div style="display:flex;gap:12px; margin-top:24px;">
             <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Cập nhật bản dịch</button>
-            <a asp-action="Index" asp-route-poiId="@Model.PoiId" class="btn btn-secondary">Quay lại</a>
+            <a asp-area="@currentArea" asp-action="Index" asp-route-poiId="@Model.PoiId" class="btn btn-secondary">Quay lại</a>
         </div>
     </form>
 </div>

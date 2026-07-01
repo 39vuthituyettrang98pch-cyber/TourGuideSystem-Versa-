@@ -1,0 +1,208 @@
+@{
+    ViewData["Title"] = "Đăng nhập chủ gian hàng";
+    Layout = null;
+
+    var username = ViewBag.Username as string ?? "";
+    var returnUrl = ViewBag.ReturnUrl as string ?? "";
+}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Đăng nhập chủ gian hàng - VERSA Owner</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            padding: 24px;
+            color: #f8fbff;
+            background:
+                radial-gradient(circle at 12% 8%, rgba(52, 211, 153, .22), transparent 34%),
+                radial-gradient(circle at 92% 18%, rgba(56, 189, 248, .20), transparent 32%),
+                linear-gradient(180deg, #06111f, #091a2e);
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        .login-shell {
+            width: min(980px, 100%);
+            display: grid;
+            grid-template-columns: 1fr .92fr;
+            overflow: hidden;
+            border-radius: 30px;
+            border: 1px solid rgba(148, 163, 184, .22);
+            background: rgba(12, 24, 44, .90);
+            box-shadow: 0 28px 90px rgba(0, 0, 0, .36);
+        }
+
+        .login-intro {
+            padding: 42px;
+            display: grid;
+            align-content: space-between;
+            min-height: 610px;
+            background:
+                linear-gradient(145deg, rgba(52, 211, 153, .20), rgba(56, 189, 248, .10)),
+                rgba(148, 163, 184, .06);
+        }
+
+        .brand { display: flex; align-items: center; gap: 12px; font-weight: 950; }
+        .brand-icon {
+            width: 52px;
+            height: 52px;
+            border-radius: 20px;
+            display: grid;
+            place-items: center;
+            color: #03131d;
+            background: linear-gradient(135deg, #34d399, #38bdf8);
+            box-shadow: 0 16px 40px rgba(52, 211, 153, .28);
+        }
+        .brand small { display: block; margin-top: 3px; color: #a9bad7; font-weight: 800; font-size: 12px; }
+        .login-intro h1 { margin: 0 0 14px; font-size: clamp(34px, 5vw, 58px); line-height: 1; letter-spacing: -.06em; }
+        .login-intro p { margin: 0; color: #a9bad7; line-height: 1.75; font-weight: 650; }
+        .feature-list { display: grid; gap: 12px; margin-top: 24px; }
+        .feature-list div { display: flex; align-items: center; gap: 10px; color: #d8e6fb; font-weight: 800; }
+        .feature-list i { color: #34d399; }
+
+        .login-form-wrap { padding: 44px; display: grid; align-content: center; }
+        .login-form-wrap h2 { margin: 0 0 6px; font-size: 30px; font-weight: 950; letter-spacing: -.04em; }
+        .login-form-wrap > p { margin: 0 0 24px; color: #a9bad7; font-size: 14px; line-height: 1.6; }
+        .field { display: grid; gap: 8px; margin-bottom: 14px; }
+        label { color: #a9bad7; font-size: 12px; font-weight: 900; }
+        .input { position: relative; }
+        .input i { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #7dd3fc; }
+        input {
+            width: 100%;
+            min-height: 50px;
+            border-radius: 16px;
+            border: 1px solid rgba(148, 163, 184, .22);
+            outline: none;
+            color: #f8fbff;
+            background: rgba(148, 163, 184, .10);
+            padding: 0 14px 0 42px;
+            font: inherit;
+            font-size: 14px;
+            font-weight: 750;
+        }
+        input:focus { border-color: #38bdf8; box-shadow: 0 0 0 4px rgba(56, 189, 248, .12); }
+        .error, .success {
+            margin-bottom: 16px;
+            padding: 14px 15px;
+            border-radius: 18px;
+            font-weight: 750;
+            line-height: 1.55;
+        }
+        .error { border: 1px solid rgba(251, 113, 133, .28); background: rgba(251, 113, 133, .12); color: #fecdd3; }
+        .success { border: 1px solid rgba(52, 211, 153, .28); background: rgba(52, 211, 153, .12); color: #bbf7d0; }
+        .btn {
+            min-height: 50px;
+            padding: 0 18px;
+            border-radius: 999px;
+            border: 1px solid rgba(148, 163, 184, .22);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 9px;
+            color: #f8fbff;
+            background: rgba(148, 163, 184, .10);
+            font-weight: 950;
+            text-decoration: none;
+            cursor: pointer;
+            font: inherit;
+        }
+        .btn-primary { width: 100%; border: 0; color: #03131d; background: linear-gradient(135deg, #34d399, #38bdf8); }
+        .quick-links { display: grid; gap: 10px; margin-top: 16px; }
+        .note { margin-top: 18px; color: #a9bad7; font-size: 13px; line-height: 1.65; }
+        .note b { color: #f8fbff; }
+        @@media (max-width: 820px) { .login-shell { grid-template-columns: 1fr; } .login-intro { min-height: auto; gap: 26px; } }
+        @@media (max-width: 560px) { body { padding: 12px; } .login-intro, .login-form-wrap { padding: 26px; } }
+    </style>
+</head>
+<body>
+    <main class="login-shell">
+        <section class="login-intro">
+            <div class="brand">
+                <span class="brand-icon"><i class="fa-solid fa-store"></i></span>
+                <span>
+                    VERSA Owner
+                    <small>Owner Center riêng cho chủ gian hàng</small>
+                </span>
+            </div>
+
+            <div>
+                <h1>Quản lý gian hàng của bạn.</h1>
+                <p>
+                    Đây là trang đăng nhập riêng cho chủ gian hàng/chủ POI. Trang này tách biệt với Admin,
+                    chỉ dùng để xem POI của bạn, đánh giá, thống kê và thanh toán gói dịch vụ.
+                </p>
+                <div class="feature-list">
+                    <div><i class="fa-solid fa-circle-check"></i> Không dùng chung trang đăng nhập Admin</div>
+                    <div><i class="fa-solid fa-circle-check"></i> Cookie đăng nhập riêng cho Owner</div>
+                    <div><i class="fa-solid fa-circle-check"></i> Chỉ thấy POI/gian hàng của mình</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="login-form-wrap">
+            <h2>Đăng nhập Owner</h2>
+            <p>Dùng tài khoản chủ gian hàng đã được admin duyệt.</p>
+
+            @if (TempData["OwnerSuccessMessage"] is string successMessage)
+            {
+                <div class="success"><i class="fa-solid fa-circle-check"></i> @successMessage</div>
+            }
+
+            @if (!ViewData.ModelState.IsValid)
+            {
+                <div class="error">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    @foreach (var error in ViewData.ModelState.Values.SelectMany(item => item.Errors))
+                    {
+                        <div>@error.ErrorMessage</div>
+                    }
+                </div>
+            }
+
+            <form action="/Owner/Account/Login" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="returnUrl" value="@returnUrl" />
+
+                <div class="field">
+                    <label for="username">Username hoặc email</label>
+                    <div class="input">
+                        <i class="fa-solid fa-user"></i>
+                        <input id="username" name="username" value="@username" autocomplete="username" required autofocus />
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label for="password">Mật khẩu</label>
+                    <div class="input">
+                        <i class="fa-solid fa-lock"></i>
+                        <input id="password" name="password" type="password" autocomplete="current-password" required />
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa-solid fa-right-to-bracket"></i>
+                    Đăng nhập Owner Center
+                </button>
+            </form>
+
+            <div class="quick-links">
+                <a href="/Owner/Account/Register" class="btn">
+                    <i class="fa-solid fa-store"></i>
+                    Chưa có tài khoản? Đăng ký chủ gian hàng
+                </a>
+            </div>
+
+            <div class="note">
+                Trang này chỉ dành cho tài khoản Owner. Tài khoản mới đăng ký sẽ ở trạng thái <b>Pending</b>. Admin duyệt xong mới đăng nhập được.
+            </div>
+        </section>
+    </main>
+</body>
+</html>

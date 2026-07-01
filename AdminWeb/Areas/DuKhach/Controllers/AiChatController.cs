@@ -2,6 +2,8 @@ using AdminWeb.Data;
 using AdminWeb.Models;
 using AdminWeb.Services;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -10,6 +12,7 @@ namespace AdminWeb.Areas.DuKhach.Controllers;
 
 [Area("DuKhach")]
 [Route("DuKhach/AiChat")]
+[EnableRateLimiting("AiPerIp")]
 public sealed class AiChatController : Controller
 {
     private readonly AppDbContext _context;
@@ -38,6 +41,23 @@ public sealed class AiChatController : Controller
             });
         }
 
+        var touristId = GetTouristId();
+        if (touristId == null)
+        {
+            return Json(new AiChatResponse
+            {
+                Reply = "AI hướng dẫn viên là tính năng Premium. Bạn hãy đăng nhập và mua gói Premium để sử dụng."
+            });
+        }
+
+        if (!await HasActivePremiumAsync(touristId.Value, cancellationToken))
+        {
+            return Json(new AiChatResponse
+            {
+                Reply = "AI hướng dẫn viên là tính năng Premium. Vui lòng mua gói Du khách Premium để hỏi AI, mở tour premium và nghe thuyết minh không giới hạn."
+            });
+        }
+
         var languageCode = NormalizeLanguageCode(request.LanguageCode);
         var contextText = await BuildKnowledgeContextAsync(languageCode, cancellationToken);
 
@@ -62,6 +82,27 @@ public sealed class AiChatController : Controller
                 Reply = BuildFallbackReply(languageCode, contextText)
             });
         }
+    }
+
+    private int? GetTouristId()
+    {
+        var touristIdText = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return int.TryParse(touristIdText, out var touristId) ? touristId : null;
+    }
+
+    private async Task<bool> HasActivePremiumAsync(int touristId, CancellationToken cancellationToken)
+    {
+        var now = DateTime.UtcNow;
+        return await _context.TouristSubscriptions
+            .AsNoTracking()
+            .Include(item => item.PaymentPlan)
+            .AnyAsync(item =>
+                item.TouristId == touristId &&
+                item.Status == "Active" &&
+                item.ExpiresAt > now &&
+                item.PaymentPlan != null &&
+                (item.PaymentPlan.PlanCode == "USER_PREMIUM" || item.PaymentPlan.Audience == "Tourist" || item.PaymentPlan.Audience == "Both"),
+                cancellationToken);
     }
 
     private async Task<string> BuildKnowledgeContextAsync(string languageCode, CancellationToken cancellationToken)

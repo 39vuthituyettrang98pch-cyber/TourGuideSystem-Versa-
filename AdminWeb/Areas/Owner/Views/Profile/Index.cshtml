@@ -1,0 +1,5 @@
+@model AdminWeb.Models.OwnerProfile
+@{
+    ViewData["Title"] = "Hồ sơ gian hàng";
+}
+<div class="owner-card"><form asp-action="Update" method="post">@Html.AntiForgeryToken()<div class="row g-3"><div class="col-md-6"><label class="form-label">Tên gian hàng</label><input name="businessName" class="form-control" value="@Model.BusinessName" required /></div><div class="col-md-6"><label class="form-label">Người đại diện</label><input name="representativeName" class="form-control" value="@Model.RepresentativeName" /></div><div class="col-md-6"><label class="form-label">Điện thoại</label><input name="phone" class="form-control" value="@Model.Phone" /></div><div class="col-md-6"><label class="form-label">Địa chỉ</label><input name="address" class="form-control" value="@Model.Address" /></div></div><button class="btn btn-primary mt-3">Lưu hồ sơ</button></form></div>

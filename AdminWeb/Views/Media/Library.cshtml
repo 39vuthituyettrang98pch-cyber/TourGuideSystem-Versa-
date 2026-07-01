@@ -1,6 +1,8 @@
 @model IEnumerable<AdminWeb.Models.MediaAsset>
 
 @{
+    var currentArea = ViewContext.RouteData.Values["area"]?.ToString() ?? "";
+    var isAdmin = User.IsInRole("Admin");
     ViewData["Title"] = "Thư viện Media tổng hợp";
 }
 
@@ -9,7 +11,7 @@
 
 <div class="toolbar">
     <div>
-        <form asp-action="Library" method="get" style="display: flex; gap: 8px;">
+        <form asp-area="@currentArea" asp-action="Library" method="get" style="display: flex; gap: 8px;">
             <select name="poiId" class="form-control" style="padding: 6px 12px; width: 250px; font-size: 13px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: var(--text); border-radius: 8px;" onchange="this.form.submit()">
                 <option value="">-- Tất cả Điểm tham quan --</option>
                 @if (ViewBag.Pois != null)
@@ -27,7 +29,7 @@
             </select>
             @if (ViewBag.SelectedPoiId != null)
             {
-                <a asp-action="Library" class="btn btn-secondary btn-sm" title="Xóa bộ lọc"><i class="fa-solid fa-xmark"></i></a>
+                <a asp-area="@currentArea" asp-action="Library" class="btn btn-secondary btn-sm" title="Xóa bộ lọc"><i class="fa-solid fa-xmark"></i></a>
             }
         </form>
     </div>
@@ -37,7 +39,7 @@
     <div class="card" style="flex: 1; min-width: 300px; max-width: 400px; height: fit-content;">
         <div class="card-header"><div class="card-title">Tải lên Media mới</div></div>
         <div class="card-body" style="padding: 20px;">
-            <form asp-action="UploadMedia" method="post" enctype="multipart/form-data">
+            <form asp-area="@currentArea" asp-action="UploadMedia" method="post" enctype="multipart/form-data">
                 @Html.AntiForgeryToken()
                 <div class="form-group" style="margin-bottom: 16px;">
                     <label class="form-label" style="display: block; margin-bottom: 8px; color: var(--text2); font-size: 13px;">Chọn Điểm tham quan (POI)</label>
@@ -81,11 +83,14 @@
                                 <div style="font-size: 13px; font-weight: bold; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">@poiName</div>
                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
                                     <div style="font-size: 12px; color: var(--text2);">Thứ tự: <strong>@media.SortOrder</strong></div>
-                                    <form asp-action="DeleteMedia" method="post" style="margin: 0;" onsubmit="return confirm('Xóa file này?');">
+                                    @if (isAdmin)
+                                    {
+                                    <form asp-area="@currentArea" asp-action="DeleteMedia" method="post" style="margin: 0;" onsubmit="return confirm('Xóa file này?');">
                                         @Html.AntiForgeryToken()
                                         <input type="hidden" name="id" value="@media.Id" />
                                         <button type="submit" class="btn btn-sm btn-danger" style="padding: 6px 10px;"><i class="fa-solid fa-trash"></i></button>
                                     </form>
+                                    }
                                 </div>
                             </div>
                         </div>

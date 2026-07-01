@@ -1,15 +1,41 @@
 @using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Authentication
+@using System.Security.Claims
+@using System.Text.Json
 @inject AdminWeb.Data.AppDbContext LayoutDbContext
+
 @{
     var title = ViewData["Title"] as string ?? "Du khách";
     var currentController = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
     var currentAction = ViewContext.RouteData.Values["action"]?.ToString() ?? "";
-    var isTourist = User?.Identity?.IsAuthenticated == true && User.IsInRole("Tourist");
+    // Đọc trực tiếp TouristScheme để thanh điều hướng vẫn nhận ra du khách
+    // khi trang chủ công khai đang ở URL `/` thay vì `/DuKhach/...`.
+    var touristAuth = await Context.AuthenticateAsync("TouristScheme");
+    var touristPrincipal = touristAuth.Succeeded ? touristAuth.Principal : null;
+    var isTourist = touristPrincipal?.Identity?.IsAuthenticated == true
+        && touristPrincipal.IsInRole("Tourist")
+        && string.Equals(touristPrincipal.FindFirstValue("AccountType"), "Tourist", StringComparison.OrdinalIgnoreCase);
+    var touristDisplayName = touristPrincipal?.FindFirstValue(ClaimTypes.Name) ?? "Tài khoản";
+    var touristEmail = touristPrincipal?.FindFirstValue(ClaimTypes.Email) ?? string.Empty;
+    var touristIdText = touristPrincipal?.FindFirstValue(ClaimTypes.NameIdentifier);
+    var touristIdForLayout = int.TryParse(touristIdText, out var parsedTouristId) ? parsedTouristId : (int?)null;
+    var hasDuKhachPremium = touristIdForLayout.HasValue && await LayoutDbContext.TouristSubscriptions
+        .AsNoTracking()
+        .Include(item => item.PaymentPlan)
+        .AnyAsync(item =>
+            item.TouristId == touristIdForLayout.Value &&
+            item.Status == "Active" &&
+            item.ExpiresAt > DateTime.UtcNow &&
+            item.PaymentPlan != null &&
+            (item.PaymentPlan.PlanCode == "USER_PREMIUM" || item.PaymentPlan.Audience == "Tourist" || item.PaymentPlan.Audience == "Both"));
 
     var isHome = currentController == "Home";
     var isMap = currentController == "Map";
+    var isQr = currentController == "Qr";
     var isTour = currentController == "Tour";
     var isLeaderboard = currentController == "Leaderboard";
+    var isPayments = currentController == "Payments";
+    var isOrders = currentController == "MenuOrders";
     var isAccount = currentController == "Account";
 
     var selectedLanguageCode = (ViewBag.SelectedLanguageCode as string
@@ -17,7 +43,28 @@
         ?? Context.Request.Cookies["versa.dukhach.lang"]
         ?? "vi").ToLowerInvariant();
 
-    var languageOptions = await LayoutDbContext.SupportedLanguages
+    static string GetNativeLanguageDisplayName(string? code, string? currentName)
+    {
+        var normalizedCode = (code ?? string.Empty).Trim().ToLowerInvariant();
+        return normalizedCode switch
+        {
+            "vi" => "Tiếng Việt",
+            "en" => "English",
+            "fr" => "Français",
+            "zh" or "zh-cn" or "zh-tw" => "中文",
+            "ja" => "日本語",
+            "ko" => "한국어",
+            "th" => "ไทย",
+            "de" => "Deutsch",
+            "es" => "Español",
+            "it" => "Italiano",
+            "pt" => "Português",
+            "ru" => "Русский",
+            _ => string.IsNullOrWhiteSpace(currentName) ? normalizedCode.ToUpperInvariant() : currentName.Trim()
+        };
+    }
+
+    var languageRows = await LayoutDbContext.SupportedLanguages
         .AsNoTracking()
         .Where(language => language.IsActive)
         .OrderBy(language => language.LanguageCode == "vi" ? 0 : language.LanguageCode == "en" ? 1 : 2)
@@ -29,21 +76,34 @@
         })
         .ToListAsync();
 
+    var languageOptions = languageRows
+        .Select(language => new
+        {
+            language.Code,
+            Name = GetNativeLanguageDisplayName(language.Code, language.Name)
+        })
+        .ToList();
+
     if (languageOptions.Count == 0)
     {
         languageOptions = new[]
         {
             new { Code = "vi", Name = "Tiếng Việt" },
             new { Code = "en", Name = "English" },
+            new { Code = "fr", Name = "Français" },
             new { Code = "zh", Name = "中文" },
             new { Code = "ja", Name = "日本語" },
             new { Code = "ko", Name = "한국어" }
         }.ToList();
     }
+
+    var selectedLanguageName = languageOptions
+        .FirstOrDefault(language => string.Equals(language.Code, selectedLanguageCode, StringComparison.OrdinalIgnoreCase))
+        ?.Name ?? selectedLanguageCode.ToUpperInvariant();
 }
 
 <!DOCTYPE html>
-<html lang="vi" data-theme="dark">
+<html lang="@selectedLanguageCode" data-theme="dark">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -52,7 +112,6 @@
 
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-
     <link rel="stylesheet" href="~/css/dukhach-ai-chat.css" asp-append-version="true" />
 
     @RenderSection("Styles", required: false)
@@ -94,9 +153,16 @@
             box-sizing: border-box;
         }
 
+        html,
+        body {
+            min-height: 100%;
+            height: auto;
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
+
         body {
             margin: 0;
-            min-height: 100vh;
             color: var(--text);
             background:
                 radial-gradient(circle at 8% 12%, rgba(52, 211, 153, 0.18), transparent 32%),
@@ -104,7 +170,6 @@
                 radial-gradient(circle at 50% 92%, rgba(167, 139, 250, 0.15), transparent 34%),
                 linear-gradient(180deg, var(--bg), var(--bg-2));
             font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            overflow-x: hidden;
         }
 
         body::before {
@@ -126,43 +191,45 @@
         }
 
         .dk-shell {
-            width: min(1240px, calc(100% - 32px));
+            width: min(1660px, calc(100% - 28px));
             margin: 0 auto;
         }
 
         .dk-navbar-wrap {
             position: sticky;
             top: 0;
-            z-index: 1000;
-            backdrop-filter: blur(22px);
-            background: rgba(6, 17, 31, 0.72);
+            z-index: 5000;
             border-bottom: 1px solid var(--border);
+            background: rgba(6, 17, 31, 0.86);
+            backdrop-filter: blur(22px);
         }
 
         html[data-theme="light"] .dk-navbar-wrap {
-            background: rgba(244, 248, 255, 0.76);
+            background: rgba(244, 248, 255, 0.92);
         }
 
         .dk-navbar {
-            min-height: 82px;
-            display: flex;
+            min-height: 76px;
+            display: grid;
+            grid-template-columns: 218px minmax(0, 1fr) auto;
             align-items: center;
-            justify-content: space-between;
-            gap: 18px;
+            gap: 10px;
         }
 
         .dk-brand {
+            min-width: 0;
             display: inline-flex;
             align-items: center;
             gap: 12px;
-            font-weight: 900;
+            font-weight: 950;
             letter-spacing: -0.02em;
         }
 
         .dk-brand-icon {
-            width: 46px;
-            height: 46px;
-            border-radius: 18px;
+            width: 48px;
+            height: 48px;
+            min-width: 48px;
+            border-radius: 19px;
             display: grid;
             place-items: center;
             color: #03131d;
@@ -170,40 +237,74 @@
             box-shadow: 0 16px 34px rgba(52, 211, 153, 0.28);
         }
 
-        .dk-brand small {
-            display: block;
-            margin-top: 2px;
-            color: var(--muted);
-            font-size: 11px;
-            font-weight: 700;
+        .dk-brand-text {
+            display: grid;
+            line-height: 1.05;
+            font-size: 18px;
         }
 
-        .dk-nav {
+        .dk-brand small {
+            display: block;
+            margin-top: 4px;
+            color: var(--muted);
+            font-size: 10px;
+            font-weight: 850;
+        }
+
+        .dk-nav-center {
+            min-width: 0;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 6px;
+            overflow-x: auto;
+            overflow-y: hidden;
+            scrollbar-width: none;
+            padding: 10px 0;
+            mask-image: none;
+        }
+
+        .dk-nav-center::-webkit-scrollbar {
+            display: none;
+        }
+
+        .dk-nav-actions {
+            position: relative;
+            z-index: 10;
             display: flex;
             align-items: center;
             justify-content: flex-end;
-            gap: 8px;
-            flex-wrap: wrap;
+            gap: 7px;
+            flex-wrap: nowrap;
+            min-width: 0;
         }
 
         .dk-nav-link,
         .dk-icon-btn,
-        .dk-btn {
+        .dk-btn,
+        .dk-language-btn {
             border: 1px solid transparent;
             border-radius: 999px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
-            font-weight: 800;
-            transition: 0.2s ease;
+            gap: 7px;
+            font-weight: 900;
+            transition: 0.18s ease;
             white-space: nowrap;
+            line-height: 1;
         }
 
         .dk-nav-link {
-            padding: 10px 13px;
+            flex: 0 0 auto;
+            min-height: 40px;
+            padding: 0 11px;
             color: var(--muted);
-            font-size: 14px;
+            font-size: 13px;
+        }
+
+        .dk-nav-link i {
+            font-size: 13px;
         }
 
         .dk-nav-link:hover,
@@ -220,64 +321,137 @@
             box-shadow: 0 14px 34px rgba(52, 211, 153, 0.18);
         }
 
-        .dk-language-form {
-            position: relative;
+
+        .dk-premium-pill {
             display: inline-flex;
             align-items: center;
-        }
-
-        .dk-language-form i {
-            position: absolute;
-            left: 13px;
-            color: var(--accent-2);
-            pointer-events: none;
-            font-size: 13px;
-        }
-
-        .dk-language-select {
-            min-height: 42px;
-            max-width: 150px;
-            padding: 0 34px 0 36px;
+            gap: 5px;
             border-radius: 999px;
-            border: 1px solid var(--border);
+            padding: 0 10px;
+            min-height: 34px;
+            border: 1px solid rgba(251, 191, 36, .28);
+            background: rgba(251, 191, 36, .10);
+            color: #fde68a;
+            font-size: 12px;
+            font-weight: 950;
+        }
+
+        .dk-language {
+            position: relative;
+            flex: 0 0 auto;
+        }
+
+        .dk-language-btn {
+            min-height: 42px;
+            min-width: 132px;
+            max-width: 142px;
+            padding: 0 12px;
+            border-color: var(--border);
             color: var(--text);
             background: rgba(148, 163, 184, 0.10);
             font-size: 13px;
-            font-weight: 900;
-            outline: none;
             cursor: pointer;
         }
 
-        .dk-language-select option {
-            color: #0f172a;
-            background: #ffffff;
+        .dk-language-btn i {
+            color: var(--accent-2);
+        }
+
+        .dk-language-btn span {
+            min-width: 0;
+            max-width: 68px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .dk-language-btn:hover,
+        .dk-language-btn.show {
+            color: var(--text);
+            border-color: rgba(56, 189, 248, 0.44);
+            background: rgba(148, 163, 184, 0.16);
+            transform: translateY(-1px);
+        }
+
+        .dk-language-menu {
+            min-width: 220px;
+            padding: 9px;
+            margin-top: 12px !important;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            background: rgba(7, 18, 34, 0.98);
+            box-shadow: 0 22px 70px rgba(0, 0, 0, 0.35);
+            backdrop-filter: blur(22px);
+        }
+
+        html[data-theme="light"] .dk-language-menu {
+            background: rgba(255, 255, 255, 0.98);
+            box-shadow: 0 22px 70px rgba(15, 23, 42, 0.16);
+        }
+
+        .dk-language-option {
+            width: 100%;
+            min-height: 42px;
+            border: 0;
+            border-radius: 14px;
+            padding: 0 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text);
+            background: transparent;
+            font-size: 13px;
+            font-weight: 850;
+            text-align: left;
+            cursor: pointer;
+        }
+
+        .dk-language-option:hover {
+            background: rgba(148, 163, 184, 0.14);
+        }
+
+        .dk-language-option.active {
+            color: #03131d;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        }
+
+        .dk-language-option .check {
+            width: 18px;
+            opacity: 0;
+        }
+
+        .dk-language-option.active .check {
+            opacity: 1;
         }
 
         .dk-icon-btn {
+            flex: 0 0 auto;
             width: 42px;
             height: 42px;
             color: var(--muted);
-            background: rgba(148, 163, 184, 0.1);
+            background: rgba(148, 163, 184, 0.10);
             border-color: var(--border);
         }
 
         .dk-icon-btn:hover {
             color: var(--text);
             transform: translateY(-1px);
+            background: rgba(148, 163, 184, 0.16);
         }
 
         .dk-btn {
-            padding: 12px 18px;
-            font-size: 14px;
+            flex: 0 0 auto;
+            min-height: 42px;
+            padding: 0 16px;
+            font-size: 13px;
             border-color: var(--border);
             color: var(--text);
-            background: rgba(148, 163, 184, 0.1);
+            background: rgba(148, 163, 184, 0.10);
         }
 
         .dk-btn:hover {
-            transform: translateY(-2px);
+            transform: translateY(-1px);
             color: var(--text);
-            box-shadow: var(--shadow);
+            box-shadow: 0 14px 36px rgba(0, 0, 0, 0.18);
         }
 
         .dk-btn-primary {
@@ -297,7 +471,7 @@
         }
 
         .dk-main {
-            min-height: calc(100vh - 164px);
+            min-height: calc(100vh - 132px);
             padding: 34px 0 58px;
         }
 
@@ -383,31 +557,162 @@
             color: var(--text);
         }
 
-        @@media (max-width: 960px) {
+
+        @@media (max-width: 1680px) {
             .dk-navbar {
-                height: auto;
-                padding: 16px 0;
-                align-items: flex-start;
-                flex-direction: column;
+                grid-template-columns: 208px minmax(0, 1fr) auto;
+                gap: 8px;
             }
 
-            .dk-nav {
-                width: 100%;
-                justify-content: flex-start;
+            .dk-nav-center {
+                gap: 5px;
+            }
+
+            .dk-nav-link {
+                padding: 0 9px;
+                font-size: 12px;
+            }
+
+            .dk-language-btn {
+                min-width: 122px;
+                max-width: 122px;
+                padding: 0 10px;
+                font-size: 12px;
+            }
+
+            .dk-language-btn span {
+                max-width: 60px;
+            }
+
+            .dk-premium-pill {
+                padding: 0 8px;
+                font-size: 11px;
+            }
+
+            .dk-nav-actions form .dk-btn {
+                width: 42px;
+                padding: 0;
+            }
+
+            .dk-nav-actions form .dk-btn span {
+                display: none;
             }
         }
 
-        @@media (max-width: 680px) {
-            .dk-shell {
-                width: min(100% - 22px, 1240px);
+        @@media (max-width: 1380px) {
+            .dk-navbar {
+                grid-template-columns: 205px minmax(0, 1fr) auto;
             }
 
-            .dk-nav-link span {
-                display: none;
+            .dk-brand-text {
+                font-size: 16px;
+            }
+
+            .dk-nav-link {
+                min-height: 38px;
+                padding: 0 10px;
+                font-size: 12px;
+            }
+
+            .dk-nav-link i {
+                font-size: 12px;
+            }
+
+            .dk-language-btn {
+                min-width: 132px;
+                max-width: 142px;
+                font-size: 12px;
             }
 
             .dk-btn {
-                padding: 11px 14px;
+                padding: 0 13px;
+                font-size: 12px;
+            }
+        }
+
+        @@media (max-width: 1120px) {
+            .dk-navbar {
+                min-height: auto;
+                padding: 12px 0;
+                grid-template-columns: 1fr auto;
+                grid-template-areas:
+                    "brand actions"
+                    "menu menu";
+                gap: 8px 12px;
+            }
+
+            .dk-brand {
+                grid-area: brand;
+            }
+
+            .dk-nav-center {
+                grid-area: menu;
+                justify-content: flex-start;
+                width: 100%;
+                padding-bottom: 2px;
+            }
+
+            .dk-nav-actions {
+                grid-area: actions;
+            }
+        }
+
+        @@media (max-width: 760px) {
+            .dk-shell {
+                width: min(100% - 20px, 1660px);
+            }
+
+            .dk-brand-text {
+                display: none;
+            }
+
+            .dk-brand-icon {
+                width: 44px;
+                height: 44px;
+                min-width: 44px;
+            }
+
+            .dk-navbar {
+                grid-template-columns: auto minmax(0, 1fr);
+            }
+
+            .dk-nav-actions {
+                overflow-x: auto;
+                scrollbar-width: none;
+                justify-content: flex-end;
+            }
+
+            .dk-nav-actions::-webkit-scrollbar {
+                display: none;
+            }
+
+            .dk-nav-link span,
+            .dk-btn span {
+                display: none;
+            }
+
+            .dk-nav-link {
+                width: 40px;
+                padding: 0;
+            }
+
+            .dk-language-btn {
+                min-width: 112px;
+                width: 112px;
+                padding: 0 10px;
+            }
+
+            .dk-language-btn span {
+                max-width: 64px;
+            }
+
+            .dk-language-menu {
+                min-width: 190px;
+            }
+
+            .dk-btn {
+                width: 42px;
+                padding: 0;
             }
         }
     </style>
@@ -416,58 +721,84 @@
 <body>
     <header class="dk-navbar-wrap">
         <div class="dk-shell dk-navbar">
-            <a asp-area="DuKhach" asp-controller="Home" asp-action="Index" class="dk-brand">
+            <a asp-area="DuKhach" asp-controller="Home" asp-action="Index" asp-route-lang="@selectedLanguageCode" class="dk-brand">
                 <span class="dk-brand-icon">
                     <i class="fa-solid fa-location-dot"></i>
                 </span>
 
-                <span>
+                <span class="dk-brand-text">
                     VERSA Travel
                     <small>Smart Tour Guide</small>
                 </span>
             </a>
 
-            <nav class="dk-nav">
-                <a asp-area="DuKhach" asp-controller="Home" asp-action="Index" class="dk-nav-link @(isHome ? "active" : "")">
+            <nav class="dk-nav-center" aria-label="Điều hướng du khách">
+                <a asp-area="DuKhach" asp-controller="Home" asp-action="Index" asp-route-lang="@selectedLanguageCode" class="dk-nav-link @(isHome ? "active" : "")">
                     <i class="fa-solid fa-house"></i>
-                    <span>Trang chủ</span>
+                    <span data-i18n="navHome">Trang chủ</span>
                 </a>
 
-                <a asp-area="DuKhach" asp-controller="Map" asp-action="Index" class="dk-nav-link @(isMap ? "active" : "")">
+                <a asp-area="DuKhach" asp-controller="Map" asp-action="Index" asp-route-lang="@selectedLanguageCode" class="dk-nav-link @(isMap ? "active" : "")">
                     <i class="fa-solid fa-map-location-dot"></i>
-                    <span>Bản đồ</span>
+                    <span data-i18n="navMap">Bản đồ</span>
                 </a>
 
-                <a asp-area="DuKhach" asp-controller="Tour" asp-action="Index" class="dk-nav-link @(isTour ? "active" : "")">
+                <a asp-area="DuKhach" asp-controller="Qr" asp-action="Scan" asp-route-lang="@selectedLanguageCode" class="dk-nav-link @(isQr ? "active" : "")">
+                    <i class="fa-solid fa-qrcode"></i>
+                    <span data-i18n="navScanQr">Quét QR</span>
+                </a>
+
+                <a asp-area="DuKhach" asp-controller="Tour" asp-action="Index" asp-route-lang="@selectedLanguageCode" class="dk-nav-link @(isTour ? "active" : "")">
                     <i class="fa-solid fa-route"></i>
-                    <span>Tour</span>
+                    <span data-i18n="navTour">Tour</span>
                 </a>
 
-                <a asp-area="DuKhach" asp-controller="Leaderboard" asp-action="Index" class="dk-nav-link @(isLeaderboard ? "active" : "")">
+                <a asp-area="DuKhach" asp-controller="Leaderboard" asp-action="Index" asp-route-lang="@selectedLanguageCode" class="dk-nav-link @(isLeaderboard ? "active" : "")">
                     <i class="fa-solid fa-ranking-star"></i>
-                    <span>Xếp hạng</span>
+                    <span data-i18n="navRanking">Xếp hạng</span>
                 </a>
 
-                <label class="dk-language-form" title="Chọn ngôn ngữ thuyết minh">
-                    <i class="fa-solid fa-language"></i>
-                    <select id="dkLanguageSelect" class="dk-language-select" aria-label="Chọn ngôn ngữ thuyết minh">
+                <a asp-area="DuKhach" asp-controller="Payments" asp-action="Plans" asp-route-lang="@selectedLanguageCode" class="dk-nav-link @(isPayments ? "active" : "")">
+                    <i class="fa-solid fa-crown"></i>
+                    <span data-i18n="navPlans">Gói dịch vụ</span>
+                </a>
+
+                <a asp-area="DuKhach" asp-controller="MenuOrders" asp-action="My" asp-route-lang="@selectedLanguageCode" class="dk-nav-link @(isOrders ? "active" : "")">
+                    <i class="fa-solid fa-receipt"></i>
+                    <span data-i18n="navOrders">Đơn hàng</span>
+                </a>
+            </nav>
+
+            <div class="dk-nav-actions">
+                <div class="dropdown dk-language" data-no-i18n="true">
+                    <button class="dk-language-btn dropdown-toggle"
+                            type="button"
+                            id="dkLanguageDropdown"
+                            data-bs-toggle="dropdown"
+                            aria-expanded="false"
+                            title="Chọn ngôn ngữ thuyết minh">
+                        <i class="fa-solid fa-language"></i>
+                        <span id="dkLanguageCurrent" data-language-native="true">@selectedLanguageName</span>
+                    </button>
+
+                    <ul class="dropdown-menu dropdown-menu-end dk-language-menu" aria-labelledby="dkLanguageDropdown">
                         @foreach (var language in languageOptions)
                         {
-                            if (string.Equals(language.Code, selectedLanguageCode, StringComparison.OrdinalIgnoreCase))
-                            {
-                                <option value="@language.Code" selected>
-                                    @language.Name
-                                </option>
-                            }
-                            else
-                            {
-                                <option value="@language.Code">
-                                    @language.Name
-                                </option>
-                            }
+                            var isSelected = string.Equals(language.Code, selectedLanguageCode, StringComparison.OrdinalIgnoreCase);
+
+                            <li>
+                                <button type="button"
+                                        class="dk-language-option @(isSelected ? "active" : "")"
+                                        data-lang="@language.Code"
+                                        data-name="@language.Name"
+                                        data-language-native="true">
+                                    <i class="fa-solid fa-check check"></i>
+                                    <span data-language-native="true">@language.Name</span>
+                                </button>
+                            </li>
                         }
-                    </select>
-                </label>
+                    </ul>
+                </div>
 
                 <button type="button" class="dk-icon-btn" id="dkThemeToggle" title="Đổi giao diện">
                     <i class="fa-solid fa-moon"></i>
@@ -475,33 +806,40 @@
 
                 @if (isTourist)
                 {
-                    <a asp-area="DuKhach" asp-controller="Account" asp-action="Profile" class="dk-nav-link @(isAccount ? "active" : "")">
+                    <a asp-area="DuKhach" asp-controller="Account" asp-action="Profile" asp-route-lang="@selectedLanguageCode" class="dk-nav-link @(isAccount ? "active" : "")" title="@touristEmail">
                         <i class="fa-solid fa-user"></i>
-                        <span>Tài khoản</span>
+                        <span>@touristDisplayName</span>
                     </a>
+
+                    @if (hasDuKhachPremium)
+                    {
+                        <span class="dk-premium-pill" title="Du khách Premium đang hoạt động">
+                            <i class="fa-solid fa-crown"></i> Premium
+                        </span>
+                    }
 
                     <form asp-area="DuKhach" asp-controller="Account" asp-action="Logout" method="post" style="display:inline;">
                         @Html.AntiForgeryToken()
 
-                        <button type="submit" class="dk-btn dk-btn-ghost">
+                        <button type="submit" class="dk-btn dk-btn-ghost" title="Đăng xuất">
                             <i class="fa-solid fa-right-from-bracket"></i>
-                            Đăng xuất
+                            <span data-i18n="navLogout">Đăng xuất</span>
                         </button>
                     </form>
                 }
                 else
                 {
-                    <a asp-area="DuKhach" asp-controller="Account" asp-action="Login" class="dk-nav-link @(isAccount && currentAction == "Login" ? "active" : "")">
+                    <a asp-area="DuKhach" asp-controller="Account" asp-action="Login" asp-route-lang="@selectedLanguageCode" class="dk-nav-link @(isAccount && currentAction == "Login" ? "active" : "")">
                         <i class="fa-solid fa-right-to-bracket"></i>
-                        <span>Đăng nhập</span>
+                        <span data-i18n="navLogin">Đăng nhập</span>
                     </a>
 
-                    <a asp-area="DuKhach" asp-controller="Account" asp-action="Register" class="dk-btn dk-btn-primary">
+                    <a asp-area="DuKhach" asp-controller="Account" asp-action="Register" asp-route-lang="@selectedLanguageCode" class="dk-btn dk-btn-primary">
                         <i class="fa-solid fa-user-plus"></i>
-                        Đăng ký
+                        <span data-i18n="navRegister">Đăng ký</span>
                     </a>
                 }
-            </nav>
+            </div>
         </div>
     </header>
 
@@ -545,7 +883,7 @@
 
     <footer class="dk-footer">
         <div class="dk-shell">
-            <strong>VERSA Travel</strong> · Bản đồ tham quan, tài khoản du khách và trải nghiệm dùng chung với app mobile.
+            <strong>VERSA Travel</strong> · <span data-i18n="footerText">Bản đồ tham quan, tài khoản du khách và trải nghiệm dùng chung với app mobile.</span>
         </div>
     </footer>
 
@@ -584,20 +922,148 @@
         })();
 
         (function () {
-            const languageSelect = document.getElementById('dkLanguageSelect');
-            if (!languageSelect) return;
+            const languageButtons = document.querySelectorAll('.dk-language-option');
+            const currentLabel = document.getElementById('dkLanguageCurrent');
+            const initialLanguageCode = @Html.Raw(JsonSerializer.Serialize(selectedLanguageCode));
+            const initialLanguageName = @Html.Raw(JsonSerializer.Serialize(selectedLanguageName));
 
-            languageSelect.addEventListener('change', function () {
-                const lang = this.value || 'vi';
-                localStorage.setItem('versa-dukhach-lang', lang);
+            const cultureMap = {
+                vi: 'vi',
+                en: 'en',
+                fr: 'fr',
+                zh: 'zh-CN',
+                ja: 'ja',
+                ko: 'ko',
+                th: 'th-TH',
+                de: 'de-DE',
+                es: 'es-ES',
+                it: 'it-IT',
+                pt: 'pt-PT',
+                ru: 'ru-RU'
+            };
+
+            function normalizeLang(value) {
+                return String(value || 'vi').trim().toLowerCase();
+            }
+
+            function persistLanguage(lang) {
+                const normalizedLang = normalizeLang(lang);
+                const expires = new Date();
+                expires.setFullYear(expires.getFullYear() + 1);
+
+                localStorage.setItem('versa-dukhach-lang', normalizedLang);
+                document.cookie = `versa.dukhach.lang=${encodeURIComponent(normalizedLang)}; expires=${expires.toUTCString()}; path=/; samesite=lax`;
+
+                const culture = cultureMap[normalizedLang] || normalizedLang;
+                document.cookie = `.AspNetCore.Culture=c=${encodeURIComponent(culture)}|uic=${encodeURIComponent(culture)}; expires=${expires.toUTCString()}; path=/; samesite=lax`;
+            }
+
+            function setLanguageUi(lang, name) {
+                const normalizedLang = normalizeLang(lang);
+                const resolvedName = name || document.querySelector(`.dk-language-option[data-lang="${CSS.escape(normalizedLang)}"]`)?.dataset.name || normalizedLang.toUpperCase();
+
+                if (currentLabel) currentLabel.textContent = resolvedName;
+
+                languageButtons.forEach(button => {
+                    const isActive = normalizeLang(button.dataset.lang) === normalizedLang;
+                    button.classList.toggle('active', isActive);
+                });
+
+                document.querySelectorAll('[data-map-language-current]').forEach(label => {
+                    label.textContent = resolvedName;
+                });
+
+                document.querySelectorAll('.map-language-option').forEach(button => {
+                    const isActive = normalizeLang(button.dataset.lang) === normalizedLang;
+                    button.classList.toggle('active', isActive);
+                });
+
+                window.VERSA_DUKHACH_LANG = normalizedLang;
+                window.VERSA_DUKHACH_LANG_NAME = resolvedName;
+            }
+
+            function syncTouristLinks(lang) {
+                const normalizedLang = normalizeLang(lang);
+
+                document.querySelectorAll('a[href]').forEach(anchor => {
+                    const rawHref = anchor.getAttribute('href');
+                    if (!rawHref || rawHref.startsWith('#') || rawHref.startsWith('javascript:') || rawHref.startsWith('mailto:') || rawHref.startsWith('tel:')) return;
+
+                    try {
+                        const url = new URL(rawHref, window.location.origin);
+                        if (url.origin !== window.location.origin) return;
+
+                        const isTouristLink = url.pathname === '/' || url.pathname.toLowerCase().startsWith('/dukhach');
+                        if (!isTouristLink) return;
+
+                        url.searchParams.set('lang', normalizedLang);
+                        anchor.setAttribute('href', `${url.pathname}${url.search}${url.hash}`);
+                    } catch (e) {
+                        // Bỏ qua href không hợp lệ.
+                    }
+                });
+            }
+
+            function changeLanguage(lang, name) {
+                if (!lang) return;
+
+                const normalizedLang = normalizeLang(lang);
+                const resolvedName = name || normalizedLang.toUpperCase();
+
+                persistLanguage(normalizedLang);
+                setLanguageUi(normalizedLang, resolvedName);
+                syncTouristLinks(normalizedLang);
+
+                window.dispatchEvent(new CustomEvent('versa-dukhach-language-changed', {
+                    detail: { lang: normalizedLang, name: resolvedName, source: 'navbar' }
+                }));
 
                 const url = new URL(window.location.href);
-                url.searchParams.set('lang', lang);
+                url.searchParams.set('lang', normalizedLang);
                 window.location.href = url.toString();
+            }
+
+            languageButtons.forEach(button => {
+                button.addEventListener('click', function () {
+                    changeLanguage(
+                        this.dataset.lang || 'vi',
+                        this.dataset.name || this.textContent.trim()
+                    );
+                });
             });
+
+            window.addEventListener('versa-dukhach-language-changed', function (event) {
+                const detail = event.detail || {};
+                if (!detail.lang || detail.source === 'navbar') return;
+
+                const normalizedLang = normalizeLang(detail.lang);
+                const resolvedName = detail.name || normalizedLang.toUpperCase();
+
+                persistLanguage(normalizedLang);
+                setLanguageUi(normalizedLang, resolvedName);
+                syncTouristLinks(normalizedLang);
+            });
+
+            const currentUrl = new URL(window.location.href);
+            if (normalizeLang(currentUrl.searchParams.get('lang')) === 'auto') {
+                persistLanguage(initialLanguageCode);
+                setLanguageUi(initialLanguageCode, initialLanguageName);
+                syncTouristLinks(initialLanguageCode);
+
+                currentUrl.searchParams.set('lang', initialLanguageCode);
+                history.replaceState(null, '', `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`);
+            } else {
+                syncTouristLinks(initialLanguageCode);
+            }
         })();
     </script>
 
+    <script>
+        window.VERSA_DUKHACH_LANG = @Html.Raw(JsonSerializer.Serialize(selectedLanguageCode));
+        window.VERSA_DUKHACH_LANG_NAME = @Html.Raw(JsonSerializer.Serialize(selectedLanguageName));
+    </script>
+
+<script src="~/js/dukhach-i18n.js" asp-append-version="true"></script> 
     <script src="~/js/dukhach-ai-chat.js" asp-append-version="true"></script>
 
     @RenderSection("Scripts", required: false)

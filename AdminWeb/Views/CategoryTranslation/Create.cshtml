@@ -1,5 +1,6 @@
 @model AdminWeb.Models.CategoryTranslation
 @{
+    var currentArea = ViewContext.RouteData.Values["area"]?.ToString() ?? "";
     ViewData["Title"] = "Thêm bản dịch Danh mục";
     var languages = ViewBag.Languages as IEnumerable<AdminWeb.Models.SupportedLanguage>
         ?? Enumerable.Empty<AdminWeb.Models.SupportedLanguage>();
@@ -9,7 +10,7 @@
 <div class="page-subtitle">Thêm nội dung và ngôn ngữ mới cho Danh mục.</div>
 
 <div class="card" style="padding:28px;">
-    <form asp-action="Create" method="post">
+    <form asp-area="@currentArea" asp-action="Create" method="post">
         @Html.AntiForgeryToken()
         <input type="hidden" asp-for="CategoryId" />
 
@@ -36,7 +37,7 @@
 
         <div style="display:flex;gap:12px;flex-wrap:wrap; margin-top:24px;">
             <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Lưu bản dịch</button>
-            <a asp-action="Index" asp-route-categoryId="@Model.CategoryId" class="btn btn-secondary">Quay lại</a>
+            <a asp-area="@currentArea" asp-action="Index" asp-route-categoryId="@Model.CategoryId" class="btn btn-secondary">Quay lại</a>
         </div>
     </form>
 </div>

@@ -1,0 +1,368 @@
+@{
+    ViewData["Title"] = "Bản đồ POI của tôi";
+    var ownerPoiCount = ViewBag.OwnerPoiCount as int? ?? 0;
+    int? focusPoiId = null;
+    if (ViewBag.FocusPoiId is int focusValue)
+    {
+        focusPoiId = focusValue;
+    }
+    var focusPoiIdJson = System.Text.Json.JsonSerializer.Serialize(focusPoiId);
+}
+
+@section Styles {
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        .owner-map-toolbar {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 14px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+
+        .owner-map-title h2 {
+            margin: 0;
+            font-weight: 950;
+            letter-spacing: -.03em;
+        }
+
+        .owner-map-title p {
+            margin: 6px 0 0;
+            color: var(--owner-muted);
+            font-weight: 750;
+        }
+
+        .owner-map-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 360px;
+            gap: 16px;
+            align-items: stretch;
+        }
+
+        .owner-map-card {
+            min-height: 640px;
+            overflow: hidden;
+        }
+
+        #ownerPoiMap {
+            width: 100%;
+            min-height: 640px;
+            height: calc(100vh - 250px);
+            border-radius: 24px;
+            border: 1px solid var(--owner-border);
+            background: rgba(15, 23, 42, .22);
+            overflow: hidden;
+        }
+
+        .leaflet-container,
+        .leaflet-popup-content-wrapper,
+        .leaflet-popup-tip {
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        .leaflet-popup-content-wrapper,
+        .leaflet-popup-tip {
+            color: var(--owner-text);
+            background: var(--owner-card);
+            border: 1px solid var(--owner-border);
+            box-shadow: var(--owner-shadow);
+        }
+
+        .owner-poi-panel {
+            min-height: 640px;
+            max-height: calc(100vh - 250px);
+            overflow: auto;
+            display: grid;
+            gap: 10px;
+            align-content: start;
+        }
+
+        .owner-poi-panel::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .owner-poi-panel::-webkit-scrollbar-thumb {
+            border-radius: 999px;
+            background: rgba(148, 163, 184, .30);
+        }
+
+        .owner-poi-map-item {
+            border: 1px solid var(--owner-border);
+            background: rgba(148, 163, 184, .08);
+            border-radius: 20px;
+            padding: 14px;
+            cursor: pointer;
+            transition: .18s ease;
+        }
+
+        .owner-poi-map-item:hover,
+        .owner-poi-map-item.active {
+            border-color: rgba(52, 211, 153, .45);
+            background: rgba(52, 211, 153, .12);
+            transform: translateY(-1px);
+        }
+
+        .owner-poi-map-item strong {
+            display: block;
+            font-size: 14px;
+            font-weight: 950;
+        }
+
+        .owner-poi-map-item small {
+            display: block;
+            margin-top: 4px;
+            color: var(--owner-muted);
+            font-weight: 760;
+            line-height: 1.35;
+        }
+
+        .owner-map-popup h4 {
+            margin: 0 0 6px;
+            font-size: 15px;
+            font-weight: 950;
+        }
+
+        .owner-map-popup p {
+            margin: 6px 0;
+            font-size: 12px;
+            color: var(--owner-muted);
+            font-weight: 760;
+        }
+
+        .owner-map-popup-actions {
+            display: flex;
+            gap: 7px;
+            flex-wrap: wrap;
+            margin-top: 9px;
+        }
+
+        .owner-map-popup-actions a {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 30px;
+            padding: 0 10px;
+            border-radius: 10px;
+            color: #03131d;
+            background: linear-gradient(135deg, var(--owner-accent), var(--owner-accent-2));
+            font-size: 12px;
+            font-weight: 900;
+        }
+
+        .owner-map-empty {
+            border: 1px dashed var(--owner-border);
+            border-radius: 22px;
+            padding: 18px;
+            color: var(--owner-muted);
+            font-weight: 780;
+            background: rgba(148, 163, 184, .08);
+        }
+
+        @@media (max-width: 1080px) {
+            .owner-map-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .owner-poi-panel {
+                min-height: 0;
+                max-height: none;
+            }
+        }
+
+        @@media (max-width: 680px) {
+            #ownerPoiMap {
+                min-height: 480px;
+                height: 68vh;
+            }
+        }
+    </style>
+}
+
+<div class="owner-map-toolbar">
+    <div class="owner-map-title">
+        <h2>Bản đồ POI của tôi</h2>
+        <p>Trang này chỉ tải và hiển thị các POI đang thuộc quyền tài khoản Owner hiện tại.</p>
+    </div>
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <a asp-area="Owner" asp-controller="Poi" asp-action="Index" class="btn btn-secondary">
+            <i class="fa-solid fa-list"></i> Danh sách POI
+        </a>
+        <a asp-area="Owner" asp-controller="Poi" asp-action="Create" class="btn btn-primary">
+            <i class="fa-solid fa-plus"></i> Gửi POI mới
+        </a>
+    </div>
+</div>
+
+<div class="owner-map-grid">
+    <div class="owner-card owner-map-card">
+        <div id="ownerPoiMap"></div>
+    </div>
+
+    <aside class="owner-card owner-poi-panel">
+        <div>
+            <h3 style="margin:0;font-weight:950;">POI của tôi</h3>
+            <p style="margin:6px 0 0;color:var(--owner-muted);font-weight:760;">Tổng cộng: @ownerPoiCount POI</p>
+        </div>
+
+        <div id="ownerPoiList" class="owner-poi-list"></div>
+    </aside>
+</div>
+
+@section Scripts {
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        (function () {
+            const focusPoiId = @Html.Raw(focusPoiIdJson);
+            const dataUrl = '@Url.Action("Data", "Map", new { area = "Owner" })';
+            const map = L.map('ownerPoiMap', {
+                zoomControl: true,
+                scrollWheelZoom: true
+            }).setView([10.7769, 106.7009], 12);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; OpenStreetMap'
+            }).addTo(map);
+
+            const markerLayer = L.layerGroup().addTo(map);
+            const circleLayer = L.layerGroup().addTo(map);
+            const markers = new Map();
+            const list = document.getElementById('ownerPoiList');
+
+            function escapeHtml(value) {
+                return String(value ?? '')
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+            }
+
+            function statusClass(status) {
+                const normalized = String(status || '').toLowerCase();
+                if (normalized === 'approved') return 'badge-green';
+                if (normalized === 'rejected') return 'badge-red';
+                return 'badge-yellow';
+            }
+
+            function markerColor(status) {
+                const normalized = String(status || '').toLowerCase();
+                if (normalized === 'approved') return '#34d399';
+                if (normalized === 'rejected') return '#fb7185';
+                return '#fbbf24';
+            }
+
+            function buildPopup(poi) {
+                const safeName = escapeHtml(poi.name);
+                const safeDescription = escapeHtml(poi.shortDescription || 'Chưa có mô tả ngắn.');
+                const safeStatus = escapeHtml(poi.status || 'Pending');
+                const detailsUrl = escapeHtml(poi.detailsUrl || '#');
+                const menuUrl = escapeHtml(poi.menuUrl || '#');
+
+                return `
+                    <div class="owner-map-popup">
+                        <h4>${safeName}</h4>
+                        <span class="badge-soft ${statusClass(poi.status)}">${safeStatus}</span>
+                        <p>${safeDescription}</p>
+                        <p><strong>Tọa độ:</strong> ${poi.latitude}, ${poi.longitude}<br>
+                        <strong>Bán kính:</strong> ${poi.radius || 50} m · <strong>Ngôn ngữ:</strong> ${poi.translationCount || 0}</p>
+                        <div class="owner-map-popup-actions">
+                            <a href="${detailsUrl}">Chi tiết</a>
+                            <a href="${menuUrl}">Menu</a>
+                        </div>
+                    </div>`;
+            }
+
+            function addPoiToList(poi, marker) {
+                const item = document.createElement('button');
+                item.type = 'button';
+                item.className = 'owner-poi-map-item';
+                item.dataset.poiId = poi.id;
+                item.innerHTML = `
+                    <strong>${escapeHtml(poi.name)}</strong>
+                    <small>
+                        <span class="badge-soft ${statusClass(poi.status)}">${escapeHtml(poi.status || 'Pending')}</span><br>
+                        ${escapeHtml(poi.latitude)}, ${escapeHtml(poi.longitude)} · bán kính ${escapeHtml(poi.radius || 50)} m
+                    </small>`;
+
+                item.addEventListener('click', function () {
+                    document.querySelectorAll('.owner-poi-map-item.active').forEach(function (node) {
+                        node.classList.remove('active');
+                    });
+
+                    item.classList.add('active');
+                    map.setView([poi.latitude, poi.longitude], Math.max(map.getZoom(), 16), { animate: true });
+                    marker.openPopup();
+                });
+
+                list.appendChild(item);
+            }
+
+            fetch(dataUrl, { credentials: 'same-origin' })
+                .then(function (response) {
+                    if (!response.ok) {
+                        throw new Error('Không thể tải dữ liệu bản đồ Owner.');
+                    }
+
+                    return response.json();
+                })
+                .then(function (pois) {
+                    if (!Array.isArray(pois) || pois.length === 0) {
+                        list.innerHTML = '<div class="owner-map-empty">Tài khoản Owner này chưa có POI nào. Hãy gửi POI mới hoặc gửi yêu cầu nhận POI có sẵn.</div>';
+                        return;
+                    }
+
+                    const bounds = [];
+
+                    pois.forEach(function (poi) {
+                        if (!Number.isFinite(Number(poi.latitude)) || !Number.isFinite(Number(poi.longitude))) {
+                            return;
+                        }
+
+                        const latLng = [Number(poi.latitude), Number(poi.longitude)];
+                        const marker = L.circleMarker(latLng, {
+                            radius: 10,
+                            color: markerColor(poi.status),
+                            fillColor: markerColor(poi.status),
+                            fillOpacity: 0.86,
+                            weight: 3
+                        }).addTo(markerLayer);
+
+                        const circle = L.circle(latLng, {
+                            radius: Number(poi.radius || 50),
+                            color: markerColor(poi.status),
+                            fillColor: markerColor(poi.status),
+                            fillOpacity: 0.08,
+                            weight: 1
+                        }).addTo(circleLayer);
+
+                        marker.bindPopup(buildPopup(poi), { maxWidth: 320 });
+                        markers.set(Number(poi.id), marker);
+                        bounds.push(latLng);
+                        addPoiToList(poi, marker);
+                    });
+
+                    if (bounds.length > 0) {
+                        map.fitBounds(bounds, { padding: [34, 34], maxZoom: 16 });
+                    }
+
+                    if (focusPoiId && markers.has(Number(focusPoiId))) {
+                        const marker = markers.get(Number(focusPoiId));
+                        const latLng = marker.getLatLng();
+                        map.setView(latLng, 17);
+                        marker.openPopup();
+
+                        const item = document.querySelector(`[data-poi-id="${focusPoiId}"]`);
+                        item?.classList.add('active');
+                        item?.scrollIntoView({ block: 'nearest' });
+                    }
+                })
+                .catch(function (error) {
+                    console.error(error);
+                    list.innerHTML = '<div class="owner-map-empty">Không thể tải bản đồ. Vui lòng đăng nhập lại Owner hoặc kiểm tra kết nối mạng.</div>';
+                });
+        })();
+    </script>
+}

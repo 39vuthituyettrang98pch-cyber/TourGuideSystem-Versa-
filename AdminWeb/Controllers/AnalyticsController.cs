@@ -88,17 +88,19 @@ public class AnalyticsController : Controller
             .OrderByDescending(x => x.ListenCount)
             .Take(10)
             .ToListAsync();
-            
-        var topPoisDict = new Dictionary<string, int>();
-        foreach (var item in topPoisData)
-        {
-            var poi = await _context.Pois
-                .Include(p => p.Translations)
-                .FirstOrDefaultAsync(p => p.Id == item.PoiId);
-                
-            var poiName = poi?.Translations?.FirstOrDefault(t => t.LanguageCode == "vi")?.Name ?? $"POI #{item.PoiId}";
-            topPoisDict[poiName] = item.ListenCount;
-        }
+
+        var topPoiIds = topPoisData.Select(i => i.PoiId).ToList();
+        var poisForTop = await _context.Pois
+            .AsNoTracking()
+            .Include(p => p.Translations)
+            .Where(p => topPoiIds.Contains(p.Id))
+            .ToDictionaryAsync(p => p.Id);
+
+        var topPoisDict = topPoisData.ToDictionary(
+            item => poisForTop.TryGetValue(item.PoiId, out var poi)
+                ? poi.Translations?.FirstOrDefault(t => t.LanguageCode == "vi")?.Name ?? $"POI #{item.PoiId}"
+                : $"POI #{item.PoiId}",
+            item => item.ListenCount);
 
         ViewBag.TopPois = topPoisDict;
 

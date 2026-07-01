@@ -1,99 +1,57 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:i18n="clr-namespace:UserMobile.Markup"
              x:Class="UserMobile.Views.AiChatPage"
              Title="AI"
-             BackgroundColor="#EEF1F5">
+             BackgroundColor="{StaticResource PageBackground}">
     <Grid RowDefinitions="Auto,Auto,*,Auto" Padding="16,14" RowSpacing="12">
-        <Border Grid.Row="0"
-                Padding="16"
-                BackgroundColor="#172033"
-                Stroke="#172033"
-                StrokeShape="RoundRectangle 24">
+        <Border Grid.Row="0" Style="{StaticResource HeroCard}">
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
-                <VerticalStackLayout Spacing="4">
-                    <Label Text="VERSA AI"
-                           FontSize="24"
-                           FontAttributes="Bold"
-                           TextColor="White" />
-                    <Label Text="Hỏi nhanh về điểm tham quan, tour, QR và thuyết minh"
-                           FontSize="12"
-                           TextColor="#CFD8EA" />
-                    <Label FontSize="11"
-                           TextColor="#A7F3D0">
+                <VerticalStackLayout Spacing="5">
+                    <Label Text="VERSA AI" FontSize="25" FontAttributes="Bold" TextColor="White" />
+                    <Label Text="{i18n:T Ai_Subtitle}" FontSize="12" TextColor="#CFD8EA" />
+                    <Label FontSize="11" TextColor="#A7F3D0">
                         <Label.FormattedText>
                             <FormattedString>
-                                <Span Text="Ngôn ngữ đang chọn: " />
+                                <Span Text="{i18n:T Ai_CurrentLanguage}" />
                                 <Span Text="{Binding CurrentLanguageName}" FontAttributes="Bold" />
                             </FormattedString>
                         </Label.FormattedText>
                     </Label>
+                    <HorizontalStackLayout Spacing="8" Margin="0,4,0,0">
+                        <Button Text="Premium ♛" Clicked="OnPremiumClicked" BackgroundColor="#F8D66D" TextColor="#5A3B00" Padding="12,5" MinimumHeightRequest="36" FontSize="12" />
+                        <Button Text="{i18n:T Ai_Change}" Clicked="OnChangeLanguageClicked" BackgroundColor="#2D3A55" TextColor="White" Padding="12,5" MinimumHeightRequest="36" FontSize="12" />
+                    </HorizontalStackLayout>
                 </VerticalStackLayout>
-
-                <Button Grid.Column="1"
-                        Text="Đổi"
-                        Clicked="OnChangeLanguageClicked"
-                        BackgroundColor="#24314A"
-                        TextColor="White"
-                        Padding="12,8"
-                        FontSize="12"
-                        MinimumHeightRequest="38" />
+                <Border Grid.Column="1" WidthRequest="56" HeightRequest="56" BackgroundColor="#2D3A55" Stroke="Transparent" StrokeShape="RoundRectangle 20" VerticalOptions="Start">
+                    <Label Text="AI" FontAttributes="Bold" TextColor="White" HorizontalOptions="Center" VerticalOptions="Center" />
+                </Border>
             </Grid>
         </Border>
 
-        <HorizontalStackLayout Grid.Row="1" Spacing="8">
-            <Button Text="Gợi ý đi đâu?"
-                    Command="{Binding QuickQuestionCommand}"
-                    CommandParameter="Gợi ý cho tôi 5 điểm tham quan nổi bật ở Sài Gòn"
-                    BackgroundColor="White"
-                    TextColor="#172033"
-                    FontSize="12"
-                    Padding="12,8"
-                    MinimumHeightRequest="38" />
-            <Button Text="Nghe thuyết minh"
-                    Command="{Binding QuickQuestionCommand}"
-                    CommandParameter="Làm sao để nghe thuyết minh theo ngôn ngữ tôi chọn?"
-                    BackgroundColor="White"
-                    TextColor="#172033"
-                    FontSize="12"
-                    Padding="12,8"
-                    MinimumHeightRequest="38" />
-        </HorizontalStackLayout>
+        <ScrollView Grid.Row="1" Orientation="Horizontal" HorizontalScrollBarVisibility="Never">
+            <HorizontalStackLayout Spacing="8">
+                <Button Text="{i18n:T Ai_SuggestPlace}" Command="{Binding QuickQuestionCommand}" CommandParameter="Gợi ý cho tôi 5 điểm tham quan nổi bật ở Sài Gòn" Style="{StaticResource PillButton}" />
+                <Button Text="{i18n:T Ai_Narration}" Command="{Binding QuickQuestionCommand}" CommandParameter="Làm sao để nghe thuyết minh theo ngôn ngữ tôi chọn?" Style="{StaticResource PillButton}" />
+            </HorizontalStackLayout>
+        </ScrollView>
 
-        <CollectionView x:Name="MessagesList"
-                        Grid.Row="2"
-                        ItemsSource="{Binding Messages}"
-                        SelectionMode="None">
+        <CollectionView x:Name="MessagesList" Grid.Row="2" ItemsSource="{Binding Messages}" SelectionMode="None">
             <CollectionView.EmptyView>
-                <VerticalStackLayout VerticalOptions="Center" Spacing="8">
-                    <Label Text="Chưa có tin nhắn"
-                           FontAttributes="Bold"
-                           HorizontalTextAlignment="Center"
-                           TextColor="#172033" />
-                    <Label Text="Nhập câu hỏi bên dưới để bắt đầu."
-                           HorizontalTextAlignment="Center"
-                           FontSize="12"
-                           TextColor="#68748A" />
+                <VerticalStackLayout VerticalOptions="Center" Spacing="10" Padding="24">
+                    <Label Text="✨" FontSize="42" HorizontalTextAlignment="Center" />
+                    <Label Text="{i18n:T Ai_Empty}" FontAttributes="Bold" HorizontalTextAlignment="Center" TextColor="{StaticResource Ink}" />
+                    <Label Text="{i18n:T Ai_EmptyHint}" Style="{StaticResource EmptyStateText}" />
                 </VerticalStackLayout>
             </CollectionView.EmptyView>
             <CollectionView.ItemTemplate>
                 <DataTemplate>
                     <VerticalStackLayout Padding="0,4" HorizontalOptions="Fill">
-                        <Border Padding="13,10"
-                                MaximumWidthRequest="310"
-                                HorizontalOptions="{Binding HorizontalAlignment}"
-                                BackgroundColor="{Binding BubbleColor}"
-                                Stroke="#E5EAF2"
-                                StrokeShape="RoundRectangle 18">
-                            <VerticalStackLayout Spacing="4">
-                                <Label Text="{Binding SenderName}"
-                                       FontAttributes="Bold"
-                                       FontSize="11"
-                                       TextColor="{Binding TextColor}" />
-                                <Label Text="{Binding Text}"
-                                       FontSize="14"
-                                       LineBreakMode="WordWrap"
-                                       TextColor="{Binding TextColor}" />
+                        <Border Padding="14,11" MaximumWidthRequest="320" HorizontalOptions="{Binding HorizontalAlignment}" BackgroundColor="{Binding BubbleColor}" Stroke="#E1E8F2" StrokeShape="RoundRectangle 20">
+                            <VerticalStackLayout Spacing="5">
+                                <Label Text="{Binding SenderName}" FontAttributes="Bold" FontSize="11" TextColor="{Binding TextColor}" />
+                                <Label Text="{Binding Text}" FontSize="14" LineBreakMode="WordWrap" TextColor="{Binding TextColor}" />
                             </VerticalStackLayout>
                         </Border>
                     </VerticalStackLayout>
@@ -101,35 +59,13 @@
             </CollectionView.ItemTemplate>
         </CollectionView>
 
-        <Border Grid.Row="3"
-                Padding="10"
-                BackgroundColor="White"
-                Stroke="#E5EAF2"
-                StrokeShape="RoundRectangle 24">
+        <Border Grid.Row="3" Padding="8" BackgroundColor="White" Stroke="#DCE3EF" StrokeShape="RoundRectangle 24">
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                <Entry Text="{Binding CurrentMessage}"
-                       Placeholder="Hỏi AI về POI, tour, bản đồ..."
-                       PlaceholderColor="#8A94A8"
-                       TextColor="#172033"
-                       ReturnType="Send"
-                       Completed="OnEntryCompleted" />
-
-                <Button Grid.Column="1"
-                        Text="Gửi"
-                        Command="{Binding SendMessageCommand}"
-                        IsEnabled="{Binding IsNotBusy}"
-                        BackgroundColor="#5B3FE4"
-                        TextColor="White"
-                        Padding="16,8"
-                        MinimumHeightRequest="44" />
+                <Entry Text="{Binding CurrentMessage}" Placeholder="Hỏi AI về POI, tour, bản đồ..." ReturnType="Send" Completed="OnEntryCompleted" />
+                <Button Grid.Column="1" Text="{i18n:T Ai_Send}" Command="{Binding SendMessageCommand}" IsEnabled="{Binding IsNotBusy}" Padding="16,8" MinimumHeightRequest="46" />
             </Grid>
         </Border>
 
-        <ActivityIndicator Grid.Row="2"
-                           IsRunning="{Binding IsBusy}"
-                           IsVisible="{Binding IsBusy}"
-                           VerticalOptions="End"
-                           HorizontalOptions="Center"
-                           Margin="0,0,0,10" />
+        <ActivityIndicator Grid.Row="2" IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" VerticalOptions="End" HorizontalOptions="Center" Margin="0,0,0,10" />
     </Grid>
 </ContentPage>

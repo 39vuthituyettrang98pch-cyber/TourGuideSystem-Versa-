@@ -28,7 +28,6 @@ public sealed class CategoryApiController : ControllerBase
             .Include(item => item.PoiCategories)
             .Where(item => item.Status == "active")
             .OrderBy(item => item.Id)
-            .AsSplitQuery()
             .ToListAsync(cancellationToken);
 
         var data = categories.Select(category => MapCategory(category, lang)).ToList();
@@ -45,7 +44,6 @@ public sealed class CategoryApiController : ControllerBase
             .AsNoTracking()
             .Include(item => item.Translations)
             .Include(item => item.PoiCategories)
-            .AsSplitQuery()
             .FirstOrDefaultAsync(item => item.Id == id && item.Status == "active", cancellationToken);
 
         if (category == null)

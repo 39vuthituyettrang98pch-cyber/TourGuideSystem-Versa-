@@ -1,0 +1,46 @@
+@model AdminWeb.Models.Tourist
+
+@{
+    ViewData["Title"] = "Thêm tài khoản du khách";
+}
+
+<div class="page-title">Thêm tài khoản du khách</div>
+<div class="page-subtitle">Tạo tài khoản cho web du khách và app mobile. Chỉ nhận Gmail có đuôi <code>@@gmail.com</code>.</div>
+
+<div class="card" style="padding:28px;">
+    <form action="/Admin/User/CreateTourist" method="post" autocomplete="off">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="ModelOnly" class="text-danger" style="margin-bottom:16px;"></div>
+
+        <div class="form-grid">
+            <div class="form-group">
+                <label class="form-label">Họ tên du khách</label>
+                <input class="form-control" asp-for="FullName" type="text" required />
+                <span asp-validation-for="FullName" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Gmail</label>
+                <input class="form-control" asp-for="Email" type="email" required placeholder="tenban@gmail.com" />
+                <span asp-validation-for="Email" class="text-danger"></span>
+                <small style="color:var(--text-soft);">Chỉ dùng Gmail: ví dụ tenban@gmail.com</small>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Mật khẩu</label>
+                <input class="form-control" name="password" type="password" required minlength="8" autocomplete="new-password" />
+            </div>
+        </div>
+
+        <div style="display:flex;gap:12px;margin-top:24px;">
+            <button type="submit" class="btn btn-primary">
+                <i class="fa-solid fa-floppy-disk"></i> Lưu du khách
+            </button>
+            <a href="/Admin/User/Tourists" class="btn btn-secondary">Quay lại</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

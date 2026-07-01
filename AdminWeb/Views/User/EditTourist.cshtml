@@ -1,0 +1,63 @@
+@model AdminWeb.Models.Tourist
+
+@{
+    ViewData["Title"] = "Sửa tài khoản du khách";
+    var orderCount = ViewBag.OrderCount as int? ?? 0;
+    var discoveryCount = ViewBag.DiscoveryCount as int? ?? 0;
+    var subscriptionCount = ViewBag.SubscriptionCount as int? ?? 0;
+}
+
+<div class="page-title">Sửa tài khoản du khách</div>
+<div class="page-subtitle">Cập nhật thông tin cho <strong>@(Model.FullName ?? Model.Email)</strong>. Đây là tài khoản đăng nhập web du khách và app mobile.</div>
+
+<div class="card" style="padding:18px;margin-bottom:16px;">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <span class="badge blue">Đơn món: @orderCount</span>
+        <span class="badge green">POI đã khám phá: @discoveryCount</span>
+        <span class="badge amber">Gói premium: @subscriptionCount</span>
+    </div>
+</div>
+
+<div class="card" style="padding:28px;">
+    <form action="/Admin/User/EditTourist/@Model.Id" method="post" autocomplete="off">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="ModelOnly" class="text-danger" style="margin-bottom:16px;"></div>
+        <input type="hidden" asp-for="Id" />
+
+        <div class="form-grid">
+            <div class="form-group">
+                <label class="form-label">Họ tên du khách</label>
+                <input class="form-control" asp-for="FullName" type="text" required />
+                <span asp-validation-for="FullName" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Gmail</label>
+                <input class="form-control" asp-for="Email" type="email" required placeholder="tenban@gmail.com" />
+                <span asp-validation-for="Email" class="text-danger"></span>
+                <small style="color:var(--text-soft);">Chỉ dùng Gmail: ví dụ tenban@gmail.com</small>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Mật khẩu mới</label>
+                <input class="form-control" name="newPassword" type="password" placeholder="Để trống nếu không đổi" minlength="8" autocomplete="new-password" />
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Nguồn đăng nhập</label>
+                <input class="form-control" value="@Model.AuthProvider" disabled />
+            </div>
+        </div>
+
+        <div style="display:flex;gap:12px;margin-top:24px;">
+            <button type="submit" class="btn btn-primary">
+                <i class="fa-solid fa-floppy-disk"></i> Cập nhật du khách
+            </button>
+            <a href="/Admin/User/Tourists" class="btn btn-secondary">Quay lại</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

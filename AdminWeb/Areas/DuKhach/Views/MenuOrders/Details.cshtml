@@ -1,0 +1,108 @@
+@model AdminWeb.Models.MenuOrder
+@{
+    var poiName = Model.Poi?.Translations.FirstOrDefault(t => t.LanguageCode == "vi")?.Name
+        ?? Model.Poi?.Translations.FirstOrDefault()?.Name
+        ?? $"POI #{Model.PoiId}";
+    var canPayOnline = Model.Status != "Cancelled" && Model.PaymentStatus != "Paid";
+    var vnPayConfigured = ViewBag.VnPayConfigured as bool? ?? false;
+    var momoConfigured = ViewBag.MomoConfigured as bool? ?? false;
+    var momoDemoMode = ViewBag.MomoDemoMode as bool? ?? false;
+    ViewData["Title"] = $"Đơn {Model.OrderCode}";
+}
+
+<div style="border:1px solid var(--border);border-radius:34px;padding:32px;background:var(--surface);box-shadow:var(--shadow);margin-bottom:22px;">
+    <div class="dk-kicker"><i class="fa-solid fa-receipt"></i> @Model.Status</div>
+    <h1 style="font-weight:950;letter-spacing:-.04em;margin:8px 0;">@Model.OrderCode</h1>
+    <p style="color:var(--muted);">@poiName · @Model.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;">
+        <a asp-area="DuKhach" asp-controller="MenuOrders" asp-action="My" class="dk-btn dk-btn-ghost"><i class="fa-solid fa-arrow-left"></i> Đơn của tôi</a>
+        @if (Model.Status is not "Completed" and not "Cancelled" && Model.PaymentStatus != "Paid")
+        {
+            <form asp-area="DuKhach" asp-controller="MenuOrders" asp-action="Cancel" method="post" onsubmit="return confirm('Hủy đơn này?');">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" value="@Model.Id" />
+                <button class="dk-btn dk-btn-ghost" type="submit"><i class="fa-solid fa-ban"></i> Hủy đơn</button>
+            </form>
+        }
+    </div>
+</div>
+
+<div style="display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:20px;align-items:start;">
+    <section style="border:1px solid var(--border);border-radius:28px;background:var(--card);padding:22px;">
+        <h2 style="font-weight:950;margin:0 0 16px;">Món/sản phẩm</h2>
+        <div style="display:grid;gap:12px;">
+            @foreach (var item in Model.Items)
+            {
+                <div style="display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid var(--border);padding-bottom:12px;">
+                    <div>
+                        <strong>@item.ItemName</strong>
+                        <div style="color:var(--muted);">@item.UnitPrice.ToString("N0") @item.Currency × @item.Quantity</div>
+                    </div>
+                    <strong>@item.LineTotal.ToString("N0") @item.Currency</strong>
+                </div>
+            }
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:18px;font-size:22px;font-weight:950;color:var(--accent);">
+            <span>Tổng</span><span>@Model.TotalAmount.ToString("N0") @Model.Currency</span>
+        </div>
+    </section>
+
+    <aside style="display:grid;gap:16px;">
+        <section style="border:1px solid var(--border);border-radius:28px;background:var(--card);padding:22px;">
+            <h2 style="font-weight:950;margin:0 0 16px;">Thanh toán</h2>
+            <div style="border:1px solid var(--border);border-radius:22px;padding:16px;background:rgba(148,163,184,.08);margin-bottom:14px;">
+                <div style="color:var(--muted);font-weight:800;font-size:13px;">Cần thanh toán</div>
+                <div style="font-size:26px;font-weight:950;color:var(--accent);">@Model.TotalAmount.ToString("N0") @Model.Currency</div>
+                <div style="margin-top:6px;color:var(--muted);font-size:13px;">Trạng thái: <strong>@Model.PaymentStatus</strong> · Phương thức: <strong>@Model.PaymentMethod</strong></div>
+            </div>
+
+            @if (Model.PaymentStatus == "Paid")
+            {
+                <div class="dk-btn dk-btn-primary" style="width:100%;justify-content:center;pointer-events:none;"><i class="fa-solid fa-circle-check"></i> Đã thanh toán</div>
+            }
+            else if (canPayOnline)
+            {
+                <div style="display:grid;gap:10px;">
+                    @if (vnPayConfigured)
+                    {
+                        <form asp-area="DuKhach" asp-controller="MenuOrders" asp-action="PayVnPay" method="post">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@Model.Id" />
+                            <button type="submit" class="dk-btn dk-btn-primary" style="width:100%;justify-content:center;"><i class="fa-solid fa-building-columns"></i> Thanh toán VNPay</button>
+                        </form>
+                    }
+                    else
+                    {
+                        <button type="button" class="dk-btn dk-btn-ghost" style="width:100%;justify-content:center;opacity:.65;" disabled><i class="fa-solid fa-building-columns"></i> VNPay chưa cấu hình</button>
+                    }
+
+                    @if (momoConfigured)
+                    {
+                        <form asp-area="DuKhach" asp-controller="MenuOrders" asp-action="PayMomo" method="post">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@Model.Id" />
+                            <button type="submit" class="dk-btn dk-btn-primary" style="width:100%;justify-content:center;background:linear-gradient(135deg,#a50064,#d82d8b);"><i class="fa-solid fa-wallet"></i> Thanh toán MoMo @(momoDemoMode ? "demo" : "")</button>
+                        </form>
+                    }
+                    else
+                    {
+                        <button type="button" class="dk-btn dk-btn-ghost" style="width:100%;justify-content:center;opacity:.65;" disabled><i class="fa-solid fa-wallet"></i> MoMo chưa cấu hình</button>
+                    }
+
+                    <div style="font-size:13px;color:var(--muted);line-height:1.5;">Bạn vẫn có thể thanh toán tại quầy/khi nhận hàng nếu không chọn thanh toán online.</div>
+                </div>
+            }
+        </section>
+
+        <section style="border:1px solid var(--border);border-radius:28px;background:var(--card);padding:22px;">
+            <h2 style="font-weight:950;margin:0 0 16px;">Thông tin đơn</h2>
+            <p><strong>Người nhận:</strong><br />@Model.CustomerName</p>
+            <p><strong>SĐT:</strong><br />@Model.CustomerPhone</p>
+            <p><strong>Trạng thái đơn:</strong><br />@Model.Status</p>
+            @if (!string.IsNullOrWhiteSpace(Model.Note))
+            {
+                <p><strong>Ghi chú:</strong><br />@Model.Note</p>
+            }
+        </section>
+    </aside>
+</div>

@@ -5,11 +5,9 @@ using AdminWeb.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
-using System.Security.Cryptography;
-using System.Text;
 
 namespace AdminWeb.Controllers.Api;
 
@@ -20,21 +18,18 @@ public sealed class AuthApiController : ControllerBase
     private readonly AppDbContext _context;
     private readonly PasswordService _passwordService;
     private readonly JwtTokenService _tokenService;
-    private readonly IEmailSender _emailSender;
-    private readonly IWebHostEnvironment _environment;
+    private readonly PasswordResetService _passwordResetService;
 
     public AuthApiController(
         AppDbContext context,
         PasswordService passwordService,
         JwtTokenService tokenService,
-        IEmailSender emailSender,
-        IWebHostEnvironment environment)
+        PasswordResetService passwordResetService)
     {
         _context = context;
         _passwordService = passwordService;
         _tokenService = tokenService;
-        _emailSender = emailSender;
-        _environment = environment;
+        _passwordResetService = passwordResetService;
     }
 
     [HttpPost("register")]
@@ -49,6 +44,9 @@ public sealed class AuthApiController : ControllerBase
         {
             return BadRequest(ApiResponse<AuthDto>.Fail("Họ tên, email và mật khẩu là bắt buộc."));
         }
+
+        if (!IsGmailAddress(email))
+            return BadRequest(ApiResponse<AuthDto>.Fail("Chỉ chấp nhận đăng ký bằng Gmail có đuôi @gmail.com."));
 
         if (request.Password.Length < 8)
             return BadRequest(ApiResponse<AuthDto>.Fail("Mật khẩu phải có ít nhất 8 ký tự."));
@@ -104,68 +102,60 @@ public sealed class AuthApiController : ControllerBase
 
     [AllowAnonymous]
     [HttpPost("forgot-password")]
+    [EnableRateLimiting("PasswordResetPerIp")]
     public async Task<ActionResult<ApiResponse<object>>> ForgotPassword(
         [FromBody] ForgotPasswordRequest request,
         CancellationToken cancellationToken)
     {
         var email = NormalizeEmail(request.Email);
-        var genericMessage = "Nếu email hợp lệ, hướng dẫn đặt lại mật khẩu sẽ được gửi đến hộp thư của bạn.";
+        var genericMessage =
+            "Nếu email đã đăng ký, mã OTP 6 số đã được gửi. Mã có hiệu lực trong 10 phút.";
 
         if (string.IsNullOrWhiteSpace(email))
             return Ok(ApiResponse<object>.Ok(new { }, genericMessage));
 
-        var tourist = await _context.Tourists
-            .FirstOrDefaultAsync(item => item.Email == email, cancellationToken);
-
-        if (tourist == null || string.IsNullOrWhiteSpace(tourist.Email))
-            return Ok(ApiResponse<object>.Ok(new { }, genericMessage));
-
-        var token = CreateResetToken();
-        var tokenHash = HashResetToken(token);
-
-        var oldTokens = await _context.PasswordResetTokens
-            .Where(item => item.TouristId == tourist.Id && item.UsedAt == null)
-            .ToListAsync(cancellationToken);
-
-        if (oldTokens.Count > 0)
-            _context.PasswordResetTokens.RemoveRange(oldTokens);
-
-        _context.PasswordResetTokens.Add(new PasswordResetToken
-        {
-            TouristId = tourist.Id,
-            Email = tourist.Email,
-            TokenHash = tokenHash,
-            CreatedAt = DateTime.UtcNow,
-            ExpiresAt = DateTime.UtcNow.AddMinutes(30)
-        });
-
-        await _context.SaveChangesAsync(cancellationToken);
-
-        var resetUrl = Url.ActionLink(
-            "ResetPassword",
-            "Account",
-            new { area = "DuKhach", email = tourist.Email, token });
-
-        if (!string.IsNullOrWhiteSpace(resetUrl) && _emailSender.IsConfigured)
-        {
-            var body = $"""
-                <div style="font-family:Arial,sans-serif;line-height:1.6;color:#102033">
-                    <h2>Đặt lại mật khẩu VERSA Travel</h2>
-                    <p>Xin chào {System.Net.WebUtility.HtmlEncode(tourist.FullName ?? "du khách")},</p>
-                    <p>Bấm nút bên dưới để tạo mật khẩu mới. Liên kết này hết hạn sau 30 phút.</p>
-                    <p><a href="{System.Net.WebUtility.HtmlEncode(resetUrl)}" style="display:inline-block;padding:12px 18px;border-radius:12px;background:#34d399;color:#03131d;font-weight:700;text-decoration:none">Đặt lại mật khẩu</a></p>
-                    <p>Nếu bạn không yêu cầu thao tác này, hãy bỏ qua email.</p>
-                </div>
-                """;
-
-            await _emailSender.SendAsync(tourist.Email, "Đặt lại mật khẩu VERSA Travel", body, cancellationToken);
-        }
-
-        object data = _environment.IsDevelopment() && !string.IsNullOrWhiteSpace(resetUrl)
-            ? new { debugResetLink = resetUrl }
+        var result = await _passwordResetService.RequestOtpAsync(email, cancellationToken);
+        object data = !string.IsNullOrWhiteSpace(result.DebugOtp)
+            ? new { debugOtp = result.DebugOtp }
             : new { };
 
         return Ok(ApiResponse<object>.Ok(data, genericMessage));
+    }
+
+    [AllowAnonymous]
+    [HttpPost("reset-password")]
+    [EnableRateLimiting("PasswordResetPerIp")]
+    public async Task<ActionResult<ApiResponse<object>>> ResetPassword(
+        [FromBody] ResetPasswordRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email) ||
+            string.IsNullOrWhiteSpace(request.Otp) ||
+            string.IsNullOrWhiteSpace(request.NewPassword) ||
+            request.NewPassword.Length < 8)
+        {
+            return BadRequest(ApiResponse<object>.Fail(
+                "Email, OTP 6 số và mật khẩu mới ít nhất 8 ký tự là bắt buộc."));
+        }
+
+        if (!string.Equals(request.NewPassword, request.ConfirmPassword, StringComparison.Ordinal))
+            return BadRequest(ApiResponse<object>.Fail("Mật khẩu xác nhận không khớp."));
+
+        var status = await _passwordResetService.ResetPasswordAsync(
+            request.Email,
+            request.Otp,
+            request.NewPassword,
+            cancellationToken);
+
+        if (status != PasswordResetStatus.Success)
+        {
+            return BadRequest(ApiResponse<object>.Fail(
+                "Mã OTP không đúng, đã hết hạn hoặc đã được sử dụng."));
+        }
+
+        return Ok(ApiResponse<object>.Ok(
+            new { },
+            "Đặt lại mật khẩu thành công. Hãy đăng nhập bằng mật khẩu mới."));
     }
 
     [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
@@ -200,6 +190,9 @@ public sealed class AuthApiController : ControllerBase
         var email = NormalizeEmail(request.Email);
         if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(request.FullName))
             return BadRequest(ApiResponse<TouristProfileDto>.Fail("Họ tên và email là bắt buộc."));
+
+        if (!IsGmailAddress(email))
+            return BadRequest(ApiResponse<TouristProfileDto>.Fail("Chỉ chấp nhận địa chỉ Gmail có đuôi @gmail.com."));
 
         var emailExists = await _context.Tourists.AnyAsync(
             item => item.Id != touristId && item.Email == email,
@@ -261,20 +254,20 @@ public sealed class AuthApiController : ControllerBase
             CreatedAt = tourist.CreatedAt
         };
 
+    private static bool IsGmailAddress(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            return false;
+
+        var atIndex = email.IndexOf('@');
+        return atIndex > 0 &&
+               atIndex == email.LastIndexOf('@') &&
+               email.EndsWith("@gmail.com", StringComparison.OrdinalIgnoreCase);
+    }
+
     private static string NormalizeEmail(string? email) =>
         (email ?? string.Empty).Trim().ToLowerInvariant();
 
-    private static string CreateResetToken()
-    {
-        var bytes = RandomNumberGenerator.GetBytes(32);
-        return WebEncoders.Base64UrlEncode(bytes);
-    }
-
-    private static string HashResetToken(string token)
-    {
-        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(token));
-        return Convert.ToHexString(bytes);
-    }
 }
 
 public sealed class RegisterRequest
@@ -293,6 +286,14 @@ public sealed class LoginRequest
 public sealed class ForgotPasswordRequest
 {
     public string Email { get; set; } = "";
+}
+
+public sealed class ResetPasswordRequest
+{
+    public string Email { get; set; } = "";
+    public string Otp { get; set; } = "";
+    public string NewPassword { get; set; } = "";
+    public string ConfirmPassword { get; set; } = "";
 }
 
 public sealed class UpdateProfileRequest

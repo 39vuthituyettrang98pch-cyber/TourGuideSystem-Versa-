@@ -1,5 +1,6 @@
 using AdminWeb.Data;
 using AdminWeb.Models;
+using AdminWeb.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
@@ -24,10 +25,12 @@ public sealed class LogApiController : ControllerBase
     };
 
     private readonly AppDbContext _context;
+    private readonly TouristAudioQuotaService _audioQuota;
 
-    public LogApiController(AppDbContext context)
+    public LogApiController(AppDbContext context, TouristAudioQuotaService audioQuota)
     {
         _context = context;
+        _audioQuota = audioQuota;
     }
 
     [HttpPost]
@@ -66,6 +69,41 @@ public sealed class LogApiController : ControllerBase
 
         var languageCode = await NormalizeLanguageAsync(request.LanguageCode, cancellationToken);
         var triggerType = NormalizeTriggerType(request.TriggerType);
+
+        // Tương thích mobile cũ: API log cũng tiêu thụ quota, nhưng chỉ tạo một log.
+        if (touristId.HasValue)
+        {
+            var quotaResult = await _audioQuota.TryConsumeAsync(
+                touristId.Value,
+                request.PoiId,
+                languageCode,
+                normalizedDeviceId,
+                "MobileAudioPlay",
+                request.ListenDuration,
+                cancellationToken);
+
+            if (!quotaResult.Allowed)
+            {
+                return StatusCode(StatusCodes.Status429TooManyRequests, new
+                {
+                    success = false,
+                    message = quotaResult.Message,
+                    data = new
+                    {
+                        quotaResult.DailyLimit,
+                        quotaResult.UsedToday,
+                        quotaResult.RemainingToday
+                    }
+                });
+            }
+
+            return Ok(new
+            {
+                success = true,
+                message = quotaResult.Message,
+                data = new { id = quotaResult.LogId, quotaResult.RemainingToday }
+            });
+        }
 
         var log = new VisitorPlaybackLog
         {

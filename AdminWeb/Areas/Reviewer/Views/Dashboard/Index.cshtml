@@ -5,19 +5,20 @@
 
 <div class="page-heading">
     <div>
-        <div class="page-title">Không gian kiểm duyệt POI</div>
-        <div class="page-subtitle">Kiểm tra nội dung do biên tập viên gửi trước khi xuất bản lên ứng dụng.</div>
+        <div class="page-title">Xin chào, @User.Identity?.Name</div>
+        <div class="page-subtitle">Không gian Reviewer: kiểm tra chất lượng POI, xem chi tiết nội dung, duyệt nhanh hoặc trả lại cho Editor kèm lý do.</div>
     </div>
     <div class="page-actions">
-        <a asp-area="Reviewer" asp-controller="Approval" asp-action="PoiPending" class="btn btn-primary"><i class="fa-solid fa-list-check"></i> Mở hàng chờ duyệt</a>
+        <a asp-area="Reviewer" asp-controller="Approval" asp-action="History" class="btn btn-secondary"><i class="fa-solid fa-clock-rotate-left"></i> Lịch sử duyệt</a>
+        <a asp-area="Reviewer" asp-controller="Approval" asp-action="PoiPending" class="btn btn-primary"><i class="fa-solid fa-list-check"></i> Mở hàng chờ</a>
     </div>
 </div>
 
 <div class="reviewer-notice">
     <span class="stat-icon"><i class="fa-solid fa-shield-halved"></i></span>
     <div>
-        <strong>Vai trò kiểm duyệt viên</strong>
-        <p>Bạn có thể phê duyệt hoặc từ chối POI. Khi từ chối, hãy nhập lý do rõ ràng để biên tập viên chỉnh sửa.</p>
+        <strong>Quy trình Reviewer mới</strong>
+        <p>Reviewer có trang chi tiết để xem mô tả từng ngôn ngữ, media, danh mục, điểm chất lượng và lý do Editor/Admin ghi chú trước khi phê duyệt.</p>
     </div>
 </div>
 
@@ -26,21 +27,31 @@
         <span class="stat-icon"><i class="fa-solid fa-hourglass-half"></i></span>
         <span><span class="stat-value">@Model.PendingPois</span><span class="stat-label">Đang chờ duyệt</span></span>
     </a>
-    <div class="stat-card">
+    <a class="stat-card" asp-area="Reviewer" asp-controller="Approval" asp-action="History" asp-route-status="Approved">
         <span class="stat-icon"><i class="fa-solid fa-circle-check"></i></span>
         <span><span class="stat-value">@Model.ApprovedPois</span><span class="stat-label">Đã phê duyệt</span></span>
-    </div>
-    <div class="stat-card">
+    </a>
+    <a class="stat-card" asp-area="Reviewer" asp-controller="Approval" asp-action="History" asp-route-status="Rejected">
         <span class="stat-icon"><i class="fa-solid fa-circle-xmark"></i></span>
         <span><span class="stat-value">@Model.RejectedPois</span><span class="stat-label">Đã từ chối</span></span>
-    </div>
+    </a>
+    <a class="stat-card" asp-area="Reviewer" asp-controller="Approval" asp-action="PoiPending">
+        <span class="stat-icon"><i class="fa-solid fa-stopwatch"></i></span>
+        <span><span class="stat-value">@Model.AveragePendingAgeHours h</span><span class="stat-label">Tuổi hàng chờ TB</span></span>
+    </a>
+</div>
+
+<div class="stats-grid" style="margin-top:18px">
+    <div class="stat-card"><span class="stat-icon"><i class="fa-solid fa-calendar-xmark"></i></span><span><span class="stat-value">@Model.PendingOlderThan3Days</span><span class="stat-label">Chờ quá 3 ngày</span></span></div>
+    <div class="stat-card"><span class="stat-icon"><i class="fa-solid fa-language"></i></span><span><span class="stat-value">@Model.PendingMissingTranslation</span><span class="stat-label">Thiếu ngôn ngữ</span></span></div>
+    <div class="stat-card"><span class="stat-icon"><i class="fa-solid fa-volume-xmark"></i></span><span><span class="stat-value">@Model.PendingMissingAudio</span><span class="stat-label">Thiếu audio</span></span></div>
 </div>
 
 <section class="card" style="margin-top:18px">
     <div class="card-header">
         <div>
             <div class="card-title"><i class="fa-solid fa-clock-rotate-left"></i> POI chờ duyệt gần nhất</div>
-            <div class="card-subtitle">Ưu tiên kiểm tra các nội dung mới được gửi.</div>
+            <div class="card-subtitle">Ưu tiên kiểm tra các nội dung gửi lâu hoặc còn thiếu dữ liệu.</div>
         </div>
         <a asp-area="Reviewer" asp-controller="Approval" asp-action="PoiPending" class="btn btn-secondary btn-sm">Xem tất cả</a>
     </div>
@@ -57,7 +68,7 @@
                         <td><strong>@name</strong><br /><small style="color:var(--text-soft)">#@poi.Id · @poi.Translations.Count ngôn ngữ</small></td>
                         <td><code>@poi.Latitude, @poi.Longitude</code></td>
                         <td>@poi.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
-                        <td><a asp-area="Reviewer" asp-controller="Approval" asp-action="PoiPending" class="btn btn-primary btn-sm">Kiểm duyệt</a></td>
+                        <td><a asp-area="Reviewer" asp-controller="Approval" asp-action="Details" asp-route-id="@poi.Id" class="btn btn-primary btn-sm">Mở chi tiết</a></td>
                     </tr>
                 }
             }

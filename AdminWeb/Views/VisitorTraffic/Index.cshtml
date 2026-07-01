@@ -1,0 +1,531 @@
+@model AdminWeb.ViewModels.VisitorTrafficReportViewModel
+
+@{
+    ViewData["Title"] = "Lưu lượng khách theo quán";
+    var maxHourlyEvents = Model.HourlyRows.Any() ? Math.Max(1, Model.HourlyRows.Max(row => row.TotalEvents)) : 1;
+    var maxPoiVisitors = Model.PoiRows.Any() ? Math.Max(1, Model.PoiRows.Max(row => row.UniqueVisitors)) : 1;
+}
+
+@section Styles {
+    <style>
+        .traffic-page {
+            display: grid;
+            gap: 18px;
+        }
+
+        .traffic-hero,
+        .traffic-card {
+            border: 1px solid rgba(148, 163, 184, .22);
+            background: linear-gradient(180deg, rgba(15, 23, 42, .92), rgba(15, 23, 42, .74));
+            border-radius: 24px;
+            box-shadow: 0 24px 70px rgba(2, 6, 23, .22);
+        }
+
+        .traffic-hero {
+            padding: 24px;
+            display: grid;
+            grid-template-columns: minmax(0, 1.25fr) minmax(260px, .75fr);
+            gap: 18px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .traffic-hero::after {
+            content: "";
+            position: absolute;
+            inset: auto -100px -120px auto;
+            width: 320px;
+            height: 320px;
+            border-radius: 999px;
+            background: radial-gradient(circle, rgba(56, 189, 248, .28), transparent 65%);
+            pointer-events: none;
+        }
+
+        .traffic-hero h1 {
+            margin: 0 0 10px;
+            font-size: clamp(28px, 4vw, 44px);
+            font-weight: 950;
+            letter-spacing: -.045em;
+        }
+
+        .traffic-hero p {
+            margin: 0;
+            color: #a8b3cf;
+            max-width: 780px;
+            line-height: 1.75;
+            font-weight: 650;
+        }
+
+        .traffic-filter {
+            position: relative;
+            z-index: 1;
+            border: 1px solid rgba(148, 163, 184, .22);
+            background: rgba(2, 6, 23, .34);
+            border-radius: 20px;
+            padding: 16px;
+        }
+
+        .traffic-filter label {
+            color: #cbd5e1;
+            font-weight: 850;
+            font-size: 12px;
+            margin-bottom: 6px;
+        }
+
+        .traffic-filter .form-control,
+        .traffic-filter .form-select {
+            border-radius: 14px;
+            border-color: rgba(148, 163, 184, .26);
+            background: rgba(15, 23, 42, .78);
+            color: #e5e7eb;
+            font-weight: 750;
+        }
+
+        .traffic-filter .form-control:focus,
+        .traffic-filter .form-select:focus {
+            border-color: rgba(56, 189, 248, .75);
+            box-shadow: 0 0 0 .2rem rgba(56, 189, 248, .15);
+        }
+
+        .traffic-filter option {
+            background: #0f172a;
+            color: #e5e7eb;
+        }
+
+        .traffic-filter .btn {
+            min-height: 44px;
+            border-radius: 14px;
+            font-weight: 950;
+        }
+
+        .traffic-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 14px;
+        }
+
+        .traffic-stat {
+            border: 1px solid rgba(148, 163, 184, .22);
+            background: rgba(15, 23, 42, .76);
+            border-radius: 20px;
+            padding: 18px;
+            min-height: 132px;
+        }
+
+        .traffic-stat i {
+            width: 42px;
+            height: 42px;
+            display: inline-grid;
+            place-items: center;
+            border-radius: 14px;
+            color: #031525;
+            background: linear-gradient(135deg, #34d399, #38bdf8);
+            margin-bottom: 14px;
+        }
+
+        .traffic-stat span {
+            display: block;
+            color: #94a3b8;
+            font-weight: 850;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+        }
+
+        .traffic-stat strong {
+            display: block;
+            margin-top: 6px;
+            color: #f8fafc;
+            font-size: 30px;
+            font-weight: 950;
+            letter-spacing: -.04em;
+        }
+
+        .traffic-card {
+            padding: 22px;
+        }
+
+        .traffic-card h2 {
+            margin: 0 0 8px;
+            color: #f8fafc;
+            font-size: 22px;
+            font-weight: 950;
+            letter-spacing: -.035em;
+        }
+
+        .traffic-card .muted {
+            color: #94a3b8;
+            font-weight: 650;
+        }
+
+        .traffic-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0 10px;
+        }
+
+        .traffic-table th {
+            color: #94a3b8;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            padding: 0 14px 2px;
+            white-space: nowrap;
+        }
+
+        .traffic-table td {
+            background: rgba(15, 23, 42, .74);
+            color: #e5e7eb;
+            padding: 14px;
+            border-top: 1px solid rgba(148, 163, 184, .18);
+            border-bottom: 1px solid rgba(148, 163, 184, .18);
+            vertical-align: middle;
+            font-weight: 700;
+        }
+
+        .traffic-table tr td:first-child {
+            border-left: 1px solid rgba(148, 163, 184, .18);
+            border-radius: 16px 0 0 16px;
+        }
+
+        .traffic-table tr td:last-child {
+            border-right: 1px solid rgba(148, 163, 184, .18);
+            border-radius: 0 16px 16px 0;
+        }
+
+        .traffic-name {
+            display: grid;
+            gap: 4px;
+        }
+
+        .traffic-name strong {
+            color: #f8fafc;
+            font-weight: 950;
+        }
+
+        .traffic-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            border: 1px solid rgba(56, 189, 248, .25);
+            background: rgba(56, 189, 248, .10);
+            color: #bae6fd;
+            font-size: 12px;
+            font-weight: 900;
+            white-space: nowrap;
+        }
+
+        .traffic-bar-wrap {
+            min-width: 180px;
+        }
+
+        .traffic-bar {
+            height: 10px;
+            border-radius: 999px;
+            overflow: hidden;
+            background: rgba(148, 163, 184, .16);
+        }
+
+        .traffic-bar span {
+            display: block;
+            height: 100%;
+            min-width: 4px;
+            border-radius: inherit;
+            background: linear-gradient(90deg, #34d399, #38bdf8);
+        }
+
+        .traffic-empty {
+            border: 1px dashed rgba(148, 163, 184, .28);
+            background: rgba(15, 23, 42, .54);
+            color: #cbd5e1;
+            border-radius: 20px;
+            padding: 20px;
+            font-weight: 750;
+        }
+
+        .traffic-two-col {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(360px, .72fr);
+            gap: 18px;
+        }
+
+        @@media (max-width: 1100px) {
+            .traffic-hero,
+            .traffic-two-col {
+                grid-template-columns: 1fr;
+            }
+
+            .traffic-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @@media (max-width: 680px) {
+            .traffic-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .traffic-card,
+            .traffic-hero {
+                padding: 16px;
+            }
+
+            .traffic-table {
+                display: block;
+                overflow-x: auto;
+            }
+        }
+    </style>
+}
+
+<div class="traffic-page">
+    <section class="traffic-hero">
+        <div>
+            <div class="traffic-pill mb-3">
+                <i class="fa-solid fa-person-walking-luggage"></i>
+                Báo cáo Admin
+            </div>
+            <h1>Lưu lượng khách theo quán / địa điểm</h1>
+            <p>
+                Chọn một POI hoặc quán ăn, chọn ngày và khung giờ để xem số khách duy nhất,
+                lượt mở bản đồ/QR/chi tiết, check-in GPS, đơn menu và doanh thu phát sinh trong đúng khung giờ Việt Nam.
+            </p>
+        </div>
+
+        <form class="traffic-filter" method="get" action="/Admin/VisitorTraffic">
+            <div class="mb-3">
+                <label for="poiId">Địa điểm / quán</label>
+                <select class="form-select" id="poiId" name="poiId">
+                    @if (Model.SelectedPoiId == null)
+                    {
+                        <option value="" selected>Tất cả địa điểm / quán</option>
+                    }
+                    else
+                    {
+                        <option value="">Tất cả địa điểm / quán</option>
+                    }
+
+                    @foreach (var poi in Model.PoiOptions)
+                    {
+                        if (Model.SelectedPoiId == poi.PoiId)
+                        {
+                            <option value="@poi.PoiId" selected>@poi.PoiName @(poi.HasMenu ? "· Có menu" : "")</option>
+                        }
+                        else
+                        {
+                            <option value="@poi.PoiId">@poi.PoiName @(poi.HasMenu ? "· Có menu" : "")</option>
+                        }
+                    }
+                </select>
+            </div>
+
+            <div class="row g-2">
+                <div class="col-12 col-md-6">
+                    <label for="date">Ngày</label>
+                    <input class="form-control" id="date" type="date" name="date" value="@Model.Date.ToString("yyyy-MM-dd")" />
+                </div>
+                <div class="col-6 col-md-3">
+                    <label for="startTime">Từ giờ</label>
+                    <input class="form-control" id="startTime" type="time" name="startTime" value="@Model.StartTime" />
+                </div>
+                <div class="col-6 col-md-3">
+                    <label for="endTime">Đến giờ</label>
+                    <input class="form-control" id="endTime" type="time" name="endTime" value="@Model.EndTime" />
+                </div>
+            </div>
+
+            <button class="btn btn-info w-100 mt-3" type="submit">
+                <i class="fa-solid fa-filter"></i>
+                Lọc báo cáo
+            </button>
+        </form>
+    </section>
+
+    <section class="traffic-grid">
+        <div class="traffic-stat">
+            <i class="fa-solid fa-users"></i>
+            <span>Khách duy nhất</span>
+            <strong>@Model.UniqueVisitors</strong>
+        </div>
+        <div class="traffic-stat">
+            <i class="fa-solid fa-location-crosshairs"></i>
+            <span>Check-in GPS</span>
+            <strong>@Model.GpsCheckIns</strong>
+        </div>
+        <div class="traffic-stat">
+            <i class="fa-solid fa-headphones"></i>
+            <span>Tương tác khách</span>
+            <strong>@Model.AudioInteractions</strong>
+        </div>
+        <div class="traffic-stat">
+            <i class="fa-solid fa-bag-shopping"></i>
+            <span>Đơn menu</span>
+            <strong>@Model.MenuOrders</strong>
+        </div>
+    </section>
+
+    <section class="traffic-card">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+            <div>
+                <h2>Kết quả lọc</h2>
+                <div class="muted">
+                    @Model.SelectedPoiName · @Model.StartAt.ToString("dd/MM/yyyy HH:mm") - @Model.EndAt.ToString("HH:mm")
+                </div>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <span class="traffic-pill"><i class="fa-solid fa-clock"></i> Cao điểm: @Model.PeakHourLabel</span>
+                <span class="traffic-pill"><i class="fa-solid fa-money-bill-wave"></i> @Model.MenuRevenue.ToString("N0") VND</span>
+                <span class="traffic-pill"><i class="fa-solid fa-bell"></i> @Model.PendingMenuOrders đơn đang xử lý</span>
+            </div>
+        </div>
+
+        @if (Model.TotalEvents == 0)
+        {
+            <div class="traffic-empty">
+                Chưa có dữ liệu khách trong khung giờ này. Hãy thử đổi quán, đổi ngày hoặc mở rộng khoảng thời gian lọc. Nếu đang demo, hãy tải lại trang để hệ thống tạo dữ liệu mẫu cho ngày hôm nay.
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="traffic-table">
+                    <thead>
+                        <tr>
+                            <th>Địa điểm / quán</th>
+                            <th>Khách</th>
+                            <th>Check-in</th>
+                            <th>Tương tác</th>
+                            <th>Đơn</th>
+                            <th>Doanh thu</th>
+                            <th>Hoạt động cuối</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in Model.PoiRows)
+                        {
+                            var visitorWidth = Math.Round(row.UniqueVisitors * 100.0 / maxPoiVisitors, 0);
+                            <tr>
+                                <td>
+                                    <div class="traffic-name">
+                                        <strong>@row.PoiName</strong>
+                                        <span class="muted">
+                                            @(string.IsNullOrWhiteSpace(row.OwnerName) ? "Chưa gắn chủ quán" : row.OwnerName)
+                                            @(row.HasMenu ? " · Có menu" : "")
+                                        </span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="traffic-bar-wrap">
+                                        <div class="d-flex justify-content-between gap-2 mb-1">
+                                            <strong>@row.UniqueVisitors</strong>
+                                            <span class="muted">khách</span>
+                                        </div>
+                                        <div class="traffic-bar"><span style="width:@visitorWidth%"></span></div>
+                                    </div>
+                                </td>
+                                <td>@row.GpsCheckIns</td>
+                                <td>@row.AudioInteractions</td>
+                                <td>@row.MenuOrders</td>
+                                <td>@row.MenuRevenue.ToString("N0") VND</td>
+                                <td>@(row.LastActivityAt?.ToString("HH:mm dd/MM") ?? "-")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+
+    <section class="traffic-two-col">
+        <div class="traffic-card">
+            <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                <div>
+                    <h2>Theo khung giờ</h2>
+                    <div class="muted">Dùng để biết khách vào quán/địa điểm đông nhất lúc nào.</div>
+                </div>
+                <span class="traffic-pill">@Model.PeakHourVisitors khách cao điểm</span>
+            </div>
+
+            <div class="table-responsive">
+                <table class="traffic-table">
+                    <thead>
+                        <tr>
+                            <th>Giờ</th>
+                            <th>Lưu lượng</th>
+                            <th>Check-in</th>
+                            <th>Tương tác</th>
+                            <th>Đơn</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in Model.HourlyRows)
+                        {
+                            var eventWidth = Math.Round(row.TotalEvents * 100.0 / maxHourlyEvents, 0);
+                            <tr>
+                                <td>@row.Label</td>
+                                <td>
+                                    <div class="traffic-bar-wrap">
+                                        <div class="d-flex justify-content-between gap-2 mb-1">
+                                            <strong>@row.UniqueVisitors khách</strong>
+                                            <span class="muted">@row.TotalEvents lượt</span>
+                                        </div>
+                                        <div class="traffic-bar"><span style="width:@eventWidth%"></span></div>
+                                    </div>
+                                </td>
+                                <td>@row.GpsCheckIns</td>
+                                <td>@row.AudioInteractions</td>
+                                <td>@row.MenuOrders</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="traffic-card">
+            <h2>Hoạt động mới nhất</h2>
+            <div class="muted mb-3">Lấy từ mở bản đồ/chi tiết/QR/menu, check-in GPS và đơn menu trong khoảng thời gian lọc.</div>
+
+            @if (!Model.RecentEvents.Any())
+            {
+                <div class="traffic-empty">Không có hoạt động nào trong khoảng thời gian này.</div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="traffic-table">
+                        <thead>
+                            <tr>
+                                <th>Thời gian</th>
+                                <th>Hoạt động</th>
+                                <th>Chi tiết</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in Model.RecentEvents)
+                            {
+                                <tr>
+                                    <td>@item.CreatedAt.ToString("HH:mm")</td>
+                                    <td>
+                                        <div class="traffic-name">
+                                            <strong>@item.EventType</strong>
+                                            <span class="muted">@item.PoiName</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="traffic-name">
+                                            <strong>@item.VisitorLabel</strong>
+                                            <span class="muted">@item.Detail</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </section>
+</div>

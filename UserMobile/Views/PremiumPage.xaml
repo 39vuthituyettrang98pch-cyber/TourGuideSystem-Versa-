@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="UserMobile.Views.PremiumPage"
+             Title="Gói Premium"
+             BackgroundColor="{StaticResource PageBackground}">
+    <RefreshView IsRefreshing="{Binding IsBusy}" Command="{Binding RefreshCommand}">
+        <ScrollView>
+            <VerticalStackLayout Padding="18,18,18,36" Spacing="16">
+                <Border Style="{StaticResource HeroCard}" Padding="22">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                        <VerticalStackLayout Spacing="7">
+                            <Label Text="VERSA PREMIUM" TextColor="#B9AEF7" FontAttributes="Bold" FontSize="12" CharacterSpacing="1.2" />
+                            <Label Text="{Binding Status.StatusTitle, FallbackValue='Mở khóa toàn bộ hành trình'}" TextColor="White" FontSize="25" FontAttributes="Bold" />
+                            <Label Text="{Binding Status.StatusDescription}" TextColor="#C8D1E2" FontSize="13" />
+                        </VerticalStackLayout>
+                        <Label Grid.Column="1" Text="♛" FontSize="40" TextColor="#F8D66D" VerticalOptions="Center" />
+                    </Grid>
+                </Border>
+
+                <Border Style="{StaticResource NoticeCard}" IsVisible="{Binding HasMessage}">
+                    <Label Text="{Binding Message}" TextColor="{StaticResource Danger}" HorizontalTextAlignment="Center" />
+                </Border>
+                <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+
+                <Label Text="CHỌN GÓI PHÙ HỢP" Style="{StaticResource Eyebrow}" Margin="2,4,0,0" />
+                <VerticalStackLayout BindableLayout.ItemsSource="{Binding Plans}" Spacing="12">
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate>
+                            <Border Style="{StaticResource Card}" Padding="18">
+                                <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto" RowSpacing="10">
+                                    <VerticalStackLayout Spacing="3">
+                                        <Label Text="{Binding PlanName}" FontSize="18" FontAttributes="Bold" TextColor="{StaticResource Ink}" />
+                                        <Label Text="{Binding DurationText}" Style="{StaticResource PageSubtitle}" />
+                                    </VerticalStackLayout>
+                                    <Label Grid.Column="1" Text="{Binding PriceText}" FontSize="20" FontAttributes="Bold" TextColor="{StaticResource Primary}" />
+                                    <Label Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding Description}" Style="{StaticResource PageSubtitle}" />
+                                    <Button Grid.Row="2" Grid.ColumnSpan="2" Text="Chọn gói này" Clicked="OnBuyClicked" CommandParameter="{Binding}" />
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
+
+                <Label Text="LỊCH SỬ THANH TOÁN" Style="{StaticResource Eyebrow}" Margin="2,8,0,0" />
+                <Border Style="{StaticResource CompactCard}" IsVisible="{Binding HasNoPayments}">
+                    <Label Text="Chưa có giao dịch nào." Style="{StaticResource EmptyStateText}" />
+                </Border>
+                <VerticalStackLayout BindableLayout.ItemsSource="{Binding Payments}" Spacing="10">
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate>
+                            <Border Style="{StaticResource CompactCard}">
+                                <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" RowSpacing="4">
+                                    <Label Text="{Binding PlanName}" FontAttributes="Bold" TextColor="{StaticResource Ink}" />
+                                    <Label Grid.Column="1" Text="{Binding Status}" FontAttributes="Bold" TextColor="{StaticResource Primary}" />
+                                    <Label Grid.Row="1" Text="{Binding CreatedAtText}" FontSize="11" TextColor="{StaticResource Muted2}" />
+                                    <Label Grid.Row="1" Grid.Column="1" Text="{Binding AmountText}" FontSize="12" TextColor="{StaticResource Success}" />
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
+            </VerticalStackLayout>
+        </ScrollView>
+    </RefreshView>
+</ContentPage>

@@ -1,0 +1,82 @@
+@model AdminWeb.Areas.DuKhach.ViewModels.PoiDetailViewModel
+@{
+    Layout = "~/Areas/DuKhach/Views/Shared/_DuKhachLayout.cshtml";
+    var poi = Model.Poi;
+    var translation = poi.Translations.FirstOrDefault(t => t.LanguageCode == "vi") ?? poi.Translations.FirstOrDefault();
+    ViewData["Title"] = translation?.Name ?? $"POI #{poi.Id}";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+    <style>
+        .poi-details-container { max-width: 900px; margin: auto; padding: 20px; }
+        #routing-map { height: 500px; border-radius: 16px; border: 1px solid #ddd; margin-top: 20px; z-index: 1; }
+        .routing-instructions { margin-top: 20px; }
+        .leaflet-routing-container { border-radius: 8px; }
+    </style>
+}
+
+<div class="poi-details-container">
+    <h1>@translation?.Name</h1>
+    <p>@Html.Raw(translation?.FullDescription?.Replace("\n", "<br/>"))</p>
+    
+    <div id="routing-map"></div>
+</div>
+
+@section Scripts {
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const poiLat = @poi.Latitude.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            const poiLon = @poi.Longitude.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            const poiName = @System.Text.Json.JsonSerializer.Serialize(translation?.Name ?? $"POI #{poi.Id}");
+
+            const map = L.map('routing-map');
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+
+            function showRoute(userLat, userLon) {
+                L.Routing.control({
+                    waypoints: [
+                        L.latLng(userLat, userLon),
+                        L.latLng(poiLat, poiLon)
+                    ],
+                    routeWhileDragging: true,
+                    router: L.Routing.osrmv1({
+                        serviceUrl: `https://router.project-osrm.org/route/v1`
+                    }),
+                    createMarker: function(i, waypoint, n) {
+                        const label = i === 0 ? "Vị trí của bạn" : poiName;
+                        return L.marker(waypoint.latLng).bindPopup(label).openPopup();
+                    },
+                    lineOptions: {
+                        styles: [{ color: '#f97316', opacity: 0.8, weight: 7 }]
+                    }
+                }).addTo(map);
+            }
+
+            // Lấy vị trí người dùng và hiển thị tuyến đường
+            navigator.geolocation.getCurrentPosition(function(position) {
+                const userLat = position.coords.latitude;
+                const userLon = position.coords.longitude;
+                
+                // Tính toán trung điểm để đặt view
+                const centerLat = (userLat + poiLat) / 2;
+                const centerLon = (userLon + poiLon) / 2;
+                map.setView([centerLat, centerLon], 13);
+
+                showRoute(userLat, userLon);
+            }, function(error) {
+                // Nếu không lấy được vị trí, chỉ hiển thị POI
+                console.error("Lỗi Geolocation: ", error);
+                alert("Không thể lấy vị trí của bạn. Bản đồ sẽ chỉ hiển thị vị trí của điểm đến.");
+                map.setView([poiLat, poiLon], 15);
+                L.marker([poiLat, poiLon]).addTo(map).bindPopup(poiName).openPopup();
+            });
+        });
+    </script>
+}

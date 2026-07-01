@@ -1,0 +1,789 @@
+@model AdminWeb.Areas.Owner.ViewModels.OwnerReportViewModel
+
+@{
+    ViewData["Title"] = "Báo cáo & doanh thu";
+    var maxDaily = Math.Max(1, Model.Last14Days.Any() ? Model.Last14Days.Max(day => day.PlayCount) : 1);
+    var maxRevenue = Math.Max(1m, Model.RevenueLast14Days.Any() ? Model.RevenueLast14Days.Max(day => day.Revenue) : 1m);
+    var paidRate = Model.TotalOrderCount == 0 ? 0 : (int)Math.Round(Model.CompletedOrderCount * 100.0 / Math.Max(1, Model.TotalOrderCount));
+    var customStartValue = (Model.CustomStart ?? Model.RangeStart.Date).ToString("yyyy-MM-dd");
+    var customEndValue = (Model.CustomEnd ?? Model.RangeEnd.Date).ToString("yyyy-MM-dd");
+    var exportFrom = Model.RangePreset == "custom" ? customStartValue : null;
+    var exportTo = Model.RangePreset == "custom" ? customEndValue : null;
+    string Money(decimal value) => value.ToString("N0") + " VND";
+    string Percent(decimal value) => value.ToString("P0");
+    string NormalizeStatusText(string text) => text.Trim().Replace(" ", "").Replace("_", "").Replace("-", "").ToLowerInvariant();
+    bool IsAny(string? value, params string[] expectedValues)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return false;
+        var normalized = NormalizeStatusText(value);
+        return expectedValues.Any(expected => normalized == NormalizeStatusText(expected));
+    }
+    bool IsCancelled(AdminWeb.Models.MenuOrder order) => IsAny(order.Status, "Cancelled", "Canceled", "Cancel", "Huy", "Huỷ", "DaHuy", "Đã hủy", "Đã huỷ");
+    bool IsCompleted(AdminWeb.Models.MenuOrder order) => IsAny(order.Status, "Completed", "Complete", "Done", "Delivered", "Paid", "HoanThanh", "Hoàn thành", "DaHoanThanh", "Đã hoàn thành");
+    bool IsPaid(AdminWeb.Models.MenuOrder order) => !IsCancelled(order) && (IsCompleted(order) || IsAny(order.PaymentStatus, "Paid", "Success", "Completed", "Confirmed", "DaThanhToan", "Đã thanh toán", "Thanh toán", "Da thu tien", "Đã thu tiền"));
+    string PresetClass(string preset) => string.Equals(Model.RangePreset, preset, StringComparison.OrdinalIgnoreCase) ? "active" : "";
+    string OrderPoiName(AdminWeb.Models.MenuOrder order) => order.Poi?.Translations.FirstOrDefault(t => t.LanguageCode == "vi")?.Name
+        ?? order.Poi?.Translations.FirstOrDefault()?.Name
+        ?? $"POI #{order.PoiId}";
+}
+
+@section Styles {
+    <style>
+        .report-lite {
+            display: grid;
+            gap: 16px;
+        }
+
+        .report-hero {
+            position: relative;
+            overflow: hidden;
+            padding: 22px 24px;
+            border-radius: 28px;
+            border: 1px solid var(--owner-border);
+            background:
+                radial-gradient(circle at 90% 30%, rgba(56,189,248,.18), transparent 34%),
+                linear-gradient(135deg, rgba(52,211,153,.13), rgba(56,189,248,.08)),
+                var(--owner-card);
+            box-shadow: var(--owner-shadow);
+        }
+
+        .report-hero-inner {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 18px;
+        }
+
+        .report-hero h2 {
+            margin: 0;
+            font-size: clamp(30px, 3.2vw, 48px);
+            line-height: .95;
+            letter-spacing: -.055em;
+            font-weight: 1000;
+        }
+
+        .report-hero p {
+            max-width: 760px;
+            margin: 10px 0 0;
+            color: var(--owner-muted);
+            font-weight: 750;
+            font-size: 13px;
+        }
+
+        .report-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+
+        .report-filter {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 12px;
+            align-items: end;
+            padding: 14px;
+            border-radius: 22px;
+            border: 1px solid var(--owner-border);
+            background: rgba(15, 30, 54, .68);
+            box-shadow: 0 14px 38px rgba(0,0,0,.14);
+        }
+
+        .report-presets,
+        .report-custom-range {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .report-preset {
+            min-height: 40px;
+            padding: 0 13px;
+            border-radius: 14px;
+            border: 1px solid var(--owner-border);
+            color: var(--owner-text);
+            background: rgba(148,163,184,.10);
+            font-size: 12px;
+            font-weight: 900;
+        }
+
+        .report-preset.active,
+        .report-preset:hover {
+            color: #03131d;
+            border-color: transparent;
+            background: linear-gradient(135deg, var(--owner-accent), var(--owner-accent-2));
+        }
+
+        .report-custom-range label {
+            display: grid;
+            gap: 5px;
+            color: var(--owner-muted);
+            font-size: 11px;
+            font-weight: 900;
+        }
+
+        .report-custom-range input {
+            min-height: 40px;
+            border-radius: 14px;
+            border: 1px solid var(--owner-border);
+            color: var(--owner-text);
+            background: rgba(148,163,184,.10);
+            padding: 0 12px;
+            font: inherit;
+            font-size: 12px;
+            font-weight: 850;
+        }
+
+        .report-filter-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .report-kpis {
+            display: grid;
+            grid-template-columns: repeat(6, minmax(140px, 1fr));
+            gap: 10px;
+        }
+
+        .report-kpi {
+            min-height: 96px;
+            padding: 14px;
+            border-radius: 20px;
+            border: 1px solid var(--owner-border);
+            background: rgba(15, 30, 54, .72);
+            box-shadow: 0 12px 32px rgba(0,0,0,.16);
+        }
+
+        .report-kpi i {
+            width: 30px;
+            height: 30px;
+            display: grid;
+            place-items: center;
+            border-radius: 11px;
+            color: #03131d;
+            background: linear-gradient(135deg, var(--owner-accent), var(--owner-accent-2));
+            margin-bottom: 10px;
+        }
+
+        .report-kpi span {
+            display: block;
+            color: var(--owner-muted);
+            font-size: 11px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+        }
+
+        .report-kpi strong {
+            display: block;
+            margin-top: 4px;
+            font-size: 21px;
+            line-height: 1.05;
+            font-weight: 1000;
+            letter-spacing: -.04em;
+        }
+
+        .report-kpi small {
+            display: block;
+            margin-top: 4px;
+            color: var(--owner-soft);
+            font-weight: 800;
+        }
+
+        .report-layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1.24fr) minmax(360px, .76fr);
+            gap: 16px;
+            align-items: start;
+        }
+
+        .report-stack {
+            display: grid;
+            gap: 16px;
+        }
+
+        .report-card {
+            padding: 18px;
+            border-radius: 24px;
+            border: 1px solid var(--owner-border);
+            background: rgba(15, 30, 54, .72);
+            box-shadow: 0 18px 48px rgba(0,0,0,.18);
+        }
+
+        .report-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        .report-head h3 {
+            margin: 0;
+            font-size: 21px;
+            font-weight: 1000;
+            letter-spacing: -.035em;
+        }
+
+        .report-head p {
+            margin: 4px 0 0;
+            color: var(--owner-muted);
+            font-size: 12px;
+            font-weight: 760;
+        }
+
+        .report-chart {
+            display: grid;
+            gap: 8px;
+        }
+
+        .report-chart-row {
+            display: grid;
+            grid-template-columns: 48px minmax(0, 1fr) 108px;
+            align-items: center;
+            gap: 10px;
+            min-height: 24px;
+        }
+
+        .report-date {
+            color: var(--owner-muted);
+            font-size: 12px;
+            font-weight: 900;
+        }
+
+        .report-track {
+            height: 10px;
+            border-radius: 999px;
+            overflow: hidden;
+            border: 1px solid rgba(148,163,184,.18);
+            background: rgba(148,163,184,.10);
+        }
+
+        .report-track span {
+            display: block;
+            min-width: 4%;
+            height: 100%;
+            border-radius: inherit;
+            background: linear-gradient(90deg, var(--owner-accent), var(--owner-accent-2));
+        }
+
+        .report-value {
+            text-align: right;
+            font-size: 11px;
+            color: var(--owner-muted);
+            font-weight: 850;
+        }
+
+        .report-value strong {
+            display: block;
+            color: var(--owner-text);
+            font-size: 12px;
+            font-weight: 1000;
+        }
+
+        .report-summary {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .report-pill-box {
+            padding: 12px;
+            border-radius: 18px;
+            background: rgba(148,163,184,.08);
+            border: 1px solid rgba(148,163,184,.16);
+        }
+
+        .report-pill-box span {
+            display: block;
+            color: var(--owner-muted);
+            font-size: 11px;
+            font-weight: 900;
+        }
+
+        .report-pill-box strong {
+            display: block;
+            margin-top: 3px;
+            font-size: 18px;
+            font-weight: 1000;
+        }
+
+        .report-split {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(280px, .82fr);
+            gap: 16px;
+        }
+
+        .report-scroll {
+            max-height: 292px;
+            overflow: auto;
+            padding-right: 4px;
+        }
+
+        .report-scroll::-webkit-scrollbar {
+            width: 7px;
+        }
+
+        .report-scroll::-webkit-scrollbar-thumb {
+            border-radius: 999px;
+            background: rgba(148,163,184,.28);
+        }
+
+        .report-list {
+            display: grid;
+            gap: 8px;
+        }
+
+        .report-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 12px;
+            border-radius: 18px;
+            background: rgba(148,163,184,.08);
+            border: 1px solid rgba(148,163,184,.14);
+        }
+
+        .report-item strong {
+            display: block;
+            font-weight: 950;
+        }
+
+        .report-item small {
+            display: block;
+            margin-top: 3px;
+            color: var(--owner-muted);
+            font-weight: 780;
+        }
+
+        .report-price {
+            white-space: nowrap;
+            color: var(--owner-accent);
+            font-weight: 1000;
+        }
+
+        .report-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .report-table th,
+        .report-table td {
+            padding: 11px 10px;
+            border-bottom: 1px solid rgba(148,163,184,.14);
+            vertical-align: middle;
+            font-size: 13px;
+        }
+
+        .report-table th {
+            color: var(--owner-muted);
+            font-size: 11px;
+            font-weight: 950;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+        }
+
+        .report-empty-mini {
+            min-height: 150px;
+            display: grid;
+            place-items: center;
+            text-align: center;
+            color: var(--owner-muted);
+            border-radius: 20px;
+            border: 1px dashed rgba(148,163,184,.24);
+            background: rgba(148,163,184,.06);
+            padding: 18px;
+        }
+
+        .report-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            color: var(--owner-accent);
+            background: rgba(52,211,153,.12);
+            border: 1px solid rgba(52,211,153,.22);
+            font-size: 11px;
+            font-weight: 950;
+        }
+
+        .report-danger {
+            color: var(--owner-danger);
+            background: rgba(251,113,133,.12);
+            border-color: rgba(251,113,133,.22);
+        }
+
+        .report-muted {
+            color: var(--owner-muted);
+            font-weight: 820;
+        }
+
+        @@media (max-width: 980px) {
+            .report-filter,
+            .report-layout,
+            .report-split {
+                grid-template-columns: 1fr;
+            }
+
+            .report-filter-actions {
+                justify-content: flex-start;
+            }
+        }
+    </style>
+}
+
+<div class="report-lite">
+    <section class="report-hero">
+        <div class="report-hero-inner">
+            <div>
+                <h2>Báo cáo & doanh thu</h2>
+                <p>Theo dõi GMV đơn đồ ăn, phí nền tảng và số tiền thực nhận của cửa hàng sau khi trừ hoa hồng.</p>
+            </div>
+            <div class="report-actions">
+                <a asp-area="Owner" asp-controller="MenuOrders" asp-action="Index" class="btn owner-btn-primary">
+                    <i class="fa-solid fa-receipt"></i> Đơn hàng
+                </a>
+                <a asp-area="Owner" asp-controller="MenuItems" asp-action="Index" class="btn owner-btn-soft">
+                    <i class="fa-solid fa-utensils"></i> Menu
+                </a>
+                <a asp-area="Owner" asp-controller="Payments" asp-action="Index" class="btn owner-btn-soft">
+                    <i class="fa-solid fa-wallet"></i> Gói
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <form class="report-filter" asp-area="Owner" asp-controller="Reports" asp-action="Index" method="get">
+        <div>
+            <div class="report-presets" aria-label="Khoảng thời gian báo cáo">
+                <button type="submit" name="rangePreset" value="24h" class="report-preset @PresetClass("24h")">24h</button>
+                <button type="submit" name="rangePreset" value="7d" class="report-preset @PresetClass("7d")">1 tuần</button>
+                <button type="submit" name="rangePreset" value="1m" class="report-preset @PresetClass("1m")">1 tháng</button>
+                <button type="submit" name="rangePreset" value="2m" class="report-preset @PresetClass("2m")">2 tháng</button>
+            </div>
+
+            <div class="report-custom-range" style="margin-top:10px;">
+                <label>
+                    Từ ngày
+                    <input id="ownerReportFrom" type="date" name="from" value="@customStartValue" />
+                </label>
+                <label>
+                    Đến ngày
+                    <input id="ownerReportTo" type="date" name="to" value="@customEndValue" min="@customStartValue" />
+                </label>
+                <button type="submit" name="rangePreset" value="custom" class="report-preset @PresetClass("custom")">
+                    <i class="fa-solid fa-calendar-check"></i> Tùy chọn
+                </button>
+            </div>
+        </div>
+
+        <div class="report-filter-actions">
+            <span class="report-badge"><i class="fa-solid fa-clock"></i> @Model.RangeLabel</span>
+            <a asp-area="Owner"
+               asp-controller="Reports"
+               asp-action="ExportExcel"
+               asp-route-rangePreset="@Model.RangePreset"
+               asp-route-from="@exportFrom"
+               asp-route-to="@exportTo"
+               class="btn owner-btn-primary">
+                <i class="fa-solid fa-file-excel"></i> Xuất Excel
+            </a>
+        </div>
+    </form>
+
+    <section class="report-kpis">
+        <div class="report-kpi">
+            <i class="fa-solid fa-sack-dollar"></i>
+            <span>GMV đơn hàng</span>
+            <strong>@Money(Model.RangeOrderRevenue)</strong>
+            <small>Tổng đơn không bị hủy</small>
+        </div>
+        <div class="report-kpi">
+            <i class="fa-solid fa-wallet"></i>
+            <span>Thực nhận</span>
+            <strong>@Money(Model.OwnerNetRevenue)</strong>
+            <small>Sau khi trừ phí nền tảng</small>
+        </div>
+        <div class="report-kpi">
+            <i class="fa-solid fa-percent"></i>
+            <span>Phí nền tảng</span>
+            <strong>@Money(Model.PlatformCommissionAmount)</strong>
+            <small>@Percent(Model.PlatformCommissionRate) trên đơn hoàn tất hoặc đã thanh toán</small>
+        </div>
+        <div class="report-kpi">
+            <i class="fa-solid fa-hourglass-half"></i>
+            <span>Đang xử lý</span>
+            <strong>@Money(Model.PendingOrderAmount)</strong>
+            <small>@Model.PendingOrderCount đơn</small>
+        </div>
+        <div class="report-kpi">
+            <i class="fa-solid fa-chart-line"></i>
+            <span>Tổng đơn</span>
+            <strong>@Model.TotalOrderCount</strong>
+            <small>@Model.CompletedOrderCount đơn hoàn tất</small>
+        </div>
+        <div class="report-kpi">
+            <i class="fa-solid fa-star-half-stroke"></i>
+            <span>Đánh giá TB</span>
+            <strong>@Model.AverageRating.ToString("0.0")</strong>
+            <small>@Model.TotalReviewCount đánh giá</small>
+        </div>
+    </section>
+
+    @if (Model.PoiCount == 0)
+    {
+        <div class="owner-empty">
+            <i class="fa-solid fa-store-slash"></i>
+            <h3>Chưa có POI/gian hàng</h3>
+            <p>Gửi POI mới hoặc yêu cầu nhận POI có sẵn để bắt đầu có thống kê.</p>
+            <div class="owner-actions" style="justify-content:center;">
+                <a asp-area="Owner" asp-controller="Poi" asp-action="Create" class="btn owner-btn-primary">Gửi POI mới</a>
+                <a asp-area="Owner" asp-controller="Poi" asp-action="Claim" class="btn owner-btn-soft">Nhận POI có sẵn</a>
+            </div>
+        </div>
+    }
+    else
+    {
+        <section class="report-layout">
+            <div class="report-stack">
+                <div class="report-card">
+                    <div class="report-head">
+                        <div>
+                            <h3>GMV & thực nhận theo thời gian</h3>
+                            <p>GMV là tổng đơn không bị hủy; thực nhận chỉ tính đơn đã thanh toán sau phí nền tảng trong @Model.RangeLabel.</p>
+                        </div>
+                        <span class="report-badge"><i class="fa-solid fa-bolt"></i> Thực nhận @Money(Model.OwnerNetRevenue)</span>
+                    </div>
+
+                    <div class="report-chart">
+                        @foreach (var day in Model.RevenueLast14Days)
+                        {
+                            var width = Math.Max(4, (int)Math.Round(day.Revenue * 100m / maxRevenue));
+                            <div class="report-chart-row">
+                                <div class="report-date">@day.Label</div>
+                                <div class="report-track"><span style="width:@width%"></span></div>
+                                <div class="report-value"><strong>@Money(day.Revenue)</strong><small>Net @Money(day.NetRevenue)</small></div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <div class="report-split">
+                    <div class="report-card">
+                        <div class="report-head">
+                            <div>
+                                <h3>Đơn gần đây</h3>
+                                <p>5 đơn mới nhất.</p>
+                            </div>
+                            <a asp-area="Owner" asp-controller="MenuOrders" asp-action="Index" class="btn owner-btn-soft btn-sm">Xem tất cả</a>
+                        </div>
+
+                        @if (Model.RecentOrders.Count == 0)
+                        {
+                            <div class="report-empty-mini">Chưa có đơn hàng.</div>
+                        }
+                        else
+                        {
+                            <div class="report-scroll">
+                                <table class="report-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Mã</th>
+                                            <th>POI</th>
+                                            <th>Tiền</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var order in Model.RecentOrders.Take(5))
+                                        {
+                                            var paidOrder = IsPaid(order);
+                                            var orderCommission = paidOrder ? Math.Round(order.TotalAmount * Model.PlatformCommissionRate, 0, MidpointRounding.AwayFromZero) : 0;
+                                            var ownerNet = paidOrder ? Math.Max(0, order.TotalAmount - orderCommission) : 0;
+                                            <tr>
+                                                <td><strong>@order.OrderCode</strong><br /><small class="report-muted">@order.CreatedAt.ToLocalTime().ToString("dd/MM HH:mm")</small></td>
+                                                <td>@OrderPoiName(order)</td>
+                                                <td><strong>@Money(order.TotalAmount)</strong><br /><small class="report-muted">Net @Money(ownerNet)</small></td>
+                                                <td><a asp-area="Owner" asp-controller="MenuOrders" asp-action="Details" asp-route-id="@order.Id" class="btn owner-btn-primary btn-sm">Xem</a></td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    </div>
+
+                    <aside class="report-card">
+                        <div class="report-head">
+                            <div>
+                                <h3>Món bán chạy</h3>
+                                <p>Top theo doanh thu.</p>
+                            </div>
+                        </div>
+
+                        @if (Model.TopMenuItems.Count == 0)
+                        {
+                            <div class="report-empty-mini">Chưa có doanh thu menu.</div>
+                        }
+                        else
+                        {
+                            <div class="report-list report-scroll">
+                                @foreach (var item in Model.TopMenuItems.Take(5))
+                                {
+                                    <div class="report-item">
+                                        <div>
+                                            <strong>@item.ItemName</strong>
+                                            <small>Đã bán @item.Quantity phần/món</small>
+                                        </div>
+                                        <span class="report-price">@Money(item.Revenue)</span>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </aside>
+                </div>
+            </div>
+
+            <aside class="report-stack">
+                <div class="report-card">
+                    <div class="report-head">
+                        <div>
+                            <h3>Tổng quan</h3>
+                            <p>Thông số vận hành và dòng tiền.</p>
+                        </div>
+                    </div>
+                    <div class="report-summary">
+                        <div class="report-pill-box"><span>POI</span><strong>@Model.PoiCount</strong></div>
+                        <div class="report-pill-box"><span>Menu</span><strong>@Model.MenuItemCount</strong></div>
+                        <div class="report-pill-box"><span>Tổng đơn</span><strong>@Model.TotalOrderCount</strong></div>
+                        <div class="report-pill-box"><span>Tỉ lệ hoàn tất</span><strong>@paidRate%</strong></div>
+                    </div>
+                    <div class="report-summary">
+                        <div class="report-pill-box"><span>Đã thanh toán</span><strong>@Money(Model.PaidOrderRevenue)</strong></div>
+                        <div class="report-pill-box"><span>Phí nền tảng</span><strong>@Money(Model.PlatformCommissionAmount)</strong></div>
+                        <div class="report-pill-box"><span>Thực nhận</span><strong>@Money(Model.OwnerNetRevenue)</strong></div>
+                        <div class="report-pill-box"><span>Đơn hủy</span><strong>@Model.CancelledOrderCount</strong></div>
+                    </div>
+                </div>
+
+                <div class="report-card">
+                    <div class="report-head">
+                        <div>
+                            <h3>Lượt mở theo thời gian</h3>
+                            <p>Lượt nghe/mở POI và QR trong @Model.RangeLabel.</p>
+                        </div>
+                    </div>
+                    <div class="report-chart report-scroll">
+                        @foreach (var day in Model.Last14Days)
+                        {
+                            var width = Math.Max(4, (int)Math.Round(day.PlayCount * 100.0 / maxDaily));
+                            <div class="report-chart-row">
+                                <div class="report-date">@day.Label</div>
+                                <div class="report-track"><span style="width:@width%"></span></div>
+                                <div class="report-value"><strong>@day.PlayCount</strong><small>QR @day.QrCount</small></div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </aside>
+        </section>
+
+        <section class="report-split">
+            <div class="report-card">
+                <div class="report-head">
+                    <div>
+                        <h3>POI nổi bật</h3>
+                        <p>Top theo lượt mở POI.</p>
+                    </div>
+                </div>
+
+                @if (Model.TopPois.Count == 0)
+                {
+                    <div class="report-empty-mini">Chưa có dữ liệu POI.</div>
+                }
+                else
+                {
+                    <div class="report-list">
+                        @foreach (var poi in Model.TopPois.Take(5))
+                        {
+                            var badge = poi.Status == "Approved" ? "report-badge" : poi.Status == "Pending" ? "report-badge" : "report-badge report-danger";
+                            <div class="report-item">
+                                <div>
+                                    <strong>@poi.Name</strong>
+                                    <small>#@poi.PoiId · @poi.PlayCount lượt mở · @poi.AverageRating.ToString("0.0") sao</small>
+                                </div>
+                                <span class="@badge">@poi.Status</span>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+
+            <aside class="report-card">
+                <div class="report-head">
+                    <div>
+                        <h3>Đánh giá mới nhất</h3>
+                        <p>Hiển thị 4 phản hồi gần nhất.</p>
+                    </div>
+                    <a asp-area="Owner" asp-controller="Reviews" asp-action="Index" class="btn owner-btn-soft btn-sm">Xem tất cả</a>
+                </div>
+
+                @if (Model.RecentReviews.Count == 0)
+                {
+                    <div class="report-empty-mini">Chưa có đánh giá.</div>
+                }
+                else
+                {
+                    <div class="report-list">
+                        @foreach (var review in Model.RecentReviews.Take(4))
+                        {
+                            var poiName = review.Poi?.Translations.FirstOrDefault(t => t.LanguageCode == "vi")?.Name
+                                ?? review.Poi?.Translations.FirstOrDefault()?.Name
+                                ?? $"POI #{review.PoiId}";
+                            <div class="report-item">
+                                <div>
+                                    <strong>@poiName</strong>
+                                    <small>@(string.IsNullOrWhiteSpace(review.Comment) ? "Không có bình luận" : review.Comment)</small>
+                                </div>
+                                <span class="report-price">@review.Rating ★</span>
+                            </div>
+                        }
+                    </div>
+                }
+            </aside>
+        </section>
+    }
+</div>
+
+<script>
+    (() => {
+        const fromInput = document.getElementById('ownerReportFrom');
+        const toInput = document.getElementById('ownerReportTo');
+        if (!fromInput || !toInput) return;
+
+        const syncMinDate = () => {
+            if (!fromInput.value) return;
+            toInput.min = fromInput.value;
+            if (!toInput.value || toInput.value < fromInput.value) {
+                toInput.value = fromInput.value;
+            }
+        };
+
+        fromInput.addEventListener('change', syncMinDate);
+        toInput.addEventListener('change', () => {
+            if (fromInput.value && toInput.value < fromInput.value) {
+                toInput.value = fromInput.value;
+            }
+        });
+        syncMinDate();
+    })();
+</script>

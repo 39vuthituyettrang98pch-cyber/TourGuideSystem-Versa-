@@ -1,6 +1,7 @@
 @model AdminWeb.Models.Category
 
 @{
+    var currentArea = ViewContext.RouteData.Values["area"]?.ToString() ?? "";
     ViewData["Title"] = "Chỉnh sửa danh mục";
 
     var status = Model.Status?.Trim().ToLowerInvariant() ?? "active";
@@ -347,7 +348,7 @@
         </div>
 
         <div class="category-actions">
-            <a asp-controller="CategoryTranslation"
+            <a asp-area="@currentArea" asp-controller="CategoryTranslation"
                asp-action="Index"
                asp-route-categoryId="@Model.Id"
                class="btn btn-primary">
@@ -355,7 +356,7 @@
                 Bản dịch
             </a>
 
-            <a asp-action="Index" class="btn btn-secondary">
+            <a asp-area="@currentArea" asp-action="Index" class="btn btn-secondary">
                 <i class="fa-solid fa-arrow-left"></i>
                 Quay lại
             </a>
@@ -378,7 +379,7 @@
         </div>
 
         <div class="category-card-body">
-            <form asp-action="Edit" asp-route-id="@Model.Id" method="post">
+            <form asp-area="@currentArea" asp-action="Edit" asp-route-id="@Model.Id" method="post">
                 @Html.AntiForgeryToken()
 
                 <input type="hidden" asp-for="Id" />
@@ -435,7 +436,7 @@
                         Lưu thay đổi
                     </button>
 
-                    <a asp-controller="CategoryTranslation"
+                    <a asp-area="@currentArea" asp-controller="CategoryTranslation"
                        asp-action="Index"
                        asp-route-categoryId="@Model.Id"
                        class="btn btn-secondary">
@@ -443,7 +444,7 @@
                         Sửa tên danh mục
                     </a>
 
-                    <a asp-action="Index" class="btn btn-secondary">
+                    <a asp-area="@currentArea" asp-action="Index" class="btn btn-secondary">
                         Hủy
                     </a>
                 </div>
@@ -478,7 +479,7 @@
             </div>
 
             <div class="quick-list" style="margin-top:16px;">
-                <a asp-controller="CategoryTranslation"
+                <a asp-area="@currentArea" asp-controller="CategoryTranslation"
                    asp-action="Index"
                    asp-route-categoryId="@Model.Id"
                    class="quick-link">
@@ -486,7 +487,7 @@
                     Bản dịch danh mục
                 </a>
 
-                <a asp-action="Index" class="quick-link">
+                <a asp-area="@currentArea" asp-action="Index" class="quick-link">
                     <i class="fa-solid fa-table-list"></i>
                     Danh sách danh mục
                 </a>

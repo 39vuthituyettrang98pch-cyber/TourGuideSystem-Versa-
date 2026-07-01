@@ -1,0 +1,905 @@
+@model DuKhachPoiDetailsPageViewModel
+@{
+    ViewData["Title"] = Model.Poi.Name;
+    var poi = Model.Poi;
+    var selectedLanguageCode = Model.SelectedLanguageCode;
+    var qrImageUrl = Url.Action("PoiImage", "Qr", new { area = "DuKhach", id = poi.Id, lang = "auto" }) ?? $"/DuKhach/Qr/PoiImage/{poi.Id}?lang=auto";
+    var mapUrl = Url.Action("Index", "Map", new { area = "DuKhach", lang = selectedLanguageCode }) ?? $"/DuKhach/Map?lang={selectedLanguageCode}";
+    var mapRouteUrl = Url.Action("Index", "Map", new { area = "DuKhach", lang = selectedLanguageCode, routeTo = poi.Id }) ?? $"/DuKhach/Map?lang={selectedLanguageCode}&routeTo={poi.Id}";
+    var ttsText = string.IsNullOrWhiteSpace(poi.NarrationText)
+        ? (string.IsNullOrWhiteSpace(poi.FullDescription) ? poi.ShortDescription : poi.FullDescription)
+        : poi.NarrationText;
+    var returnUrl = $"{Context.Request.Path}{Context.Request.QueryString}";
+}
+
+@section Styles {
+    <style>
+        .poi-detail-page {
+            width: min(1120px, calc(100% - 24px));
+            margin: 0 auto 28px;
+            display: grid;
+            gap: 18px;
+        }
+
+        .poi-detail-hero {
+            position: relative;
+            min-height: 360px;
+            border-radius: 30px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            background: radial-gradient(circle at top left, rgba(52, 211, 153, .28), transparent 34%), #0f172a;
+            box-shadow: var(--shadow);
+        }
+
+        .poi-detail-hero img {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .poi-detail-hero::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, rgba(2,6,23,.16), rgba(2,6,23,.86));
+        }
+
+        .poi-detail-hero-content {
+            position: relative;
+            z-index: 1;
+            min-height: 360px;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            color: #fff;
+        }
+
+        .poi-detail-title {
+            margin: 0;
+            font-size: clamp(30px, 6vw, 56px);
+            line-height: 1;
+            font-weight: 950;
+            letter-spacing: -.055em;
+        }
+
+        .poi-detail-short {
+            max-width: 760px;
+            margin: 12px 0 0;
+            color: #dbeafe;
+            font-size: 16px;
+            line-height: 1.65;
+        }
+
+        .poi-chip-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 14px;
+        }
+
+        .poi-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border-radius: 999px;
+            padding: 8px 12px;
+            background: rgba(255,255,255,.14);
+            color: #fff;
+            font-size: 12px;
+            font-weight: 900;
+            border: 1px solid rgba(255,255,255,.18);
+        }
+
+        .poi-chip.ok {
+            background: rgba(34,197,94,.18);
+            color: #bbf7d0;
+        }
+
+        .poi-chip.warn {
+            background: rgba(250,204,21,.18);
+            color: #fef3c7;
+        }
+
+        .poi-chip.featured {
+            background: linear-gradient(135deg,#facc15,#fb923c);
+            color: #111827;
+            border: 0;
+        }
+
+        .poi-detail-grid {
+            display: grid;
+            grid-template-columns: minmax(0,1fr) 330px;
+            gap: 18px;
+            align-items: start;
+        }
+
+        .poi-card {
+            border-radius: 24px;
+            border: 1px solid var(--border);
+            background: var(--card);
+            box-shadow: var(--shadow);
+            padding: 22px;
+        }
+
+        .poi-card h2 {
+            margin: 0 0 12px;
+            font-size: 22px;
+            font-weight: 950;
+        }
+
+        .poi-description {
+            color: var(--muted);
+            font-size: 15px;
+            line-height: 1.75;
+            white-space: pre-line;
+        }
+
+        .poi-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 16px;
+        }
+
+        .poi-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            min-height: 44px;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 10px 14px;
+            text-decoration: none;
+            background: rgba(148,163,184,.10);
+            color: var(--ink);
+            font-weight: 900;
+            cursor: pointer;
+        }
+
+        .poi-btn.primary {
+            background: linear-gradient(135deg,var(--accent),var(--accent-2));
+            color: #052e24;
+            border: 0;
+        }
+
+        .poi-btn.gold {
+            background: linear-gradient(135deg,#facc15,#fb923c);
+            color: #111827;
+            border: 0;
+        }
+
+        .poi-btn.danger {
+            color: #ef4444;
+        }
+
+        .gps-box {
+            background: linear-gradient(135deg,rgba(52,211,153,.15),rgba(56,189,248,.12));
+            border-color: rgba(52,211,153,.28);
+        }
+
+        .gps-note {
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.55;
+            margin: 0 0 12px;
+        }
+
+        .detail-message {
+            display: none;
+            margin-top: 12px;
+            padding: 12px 14px;
+            border-radius: 16px;
+            font-weight: 800;
+        }
+
+        .detail-message.ok {
+            display: block;
+            color: #166534;
+            background: #dcfce7;
+            border: 1px solid #bbf7d0;
+        }
+
+        .detail-message.err {
+            display: block;
+            color: #991b1b;
+            background: #fee2e2;
+            border: 1px solid #fecaca;
+        }
+
+        .qr-card {
+            text-align: center;
+        }
+
+        .qr-card img {
+            width: 210px;
+            max-width: 100%;
+            border-radius: 18px;
+            padding: 10px;
+            background: #fff;
+            box-shadow: 0 12px 28px rgba(15,23,42,.14);
+        }
+
+        .qr-card p {
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.55;
+            margin: 12px 0 0;
+        }
+
+        .review-item {
+            padding: 12px 0;
+            border-top: 1px solid var(--border);
+        }
+
+        .review-item:first-child {
+            border-top: 0;
+        }
+
+        .review-head {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            font-weight: 900;
+        }
+
+        .review-stars {
+            color: #f59e0b;
+            font-size: 13px;
+            margin: 4px 0;
+        }
+
+        .tts-btn {
+            background: rgba(56,189,248,.14);
+            color: #bae6fd;
+            border-color: rgba(56,189,248,.28);
+        }
+
+        .review-form {
+            display: grid;
+            gap: 12px;
+            margin: 0 0 18px;
+            padding: 16px;
+            border: 1px solid rgba(148,163,184,.18);
+            border-radius: 20px;
+            background: rgba(15,23,42,.48);
+        }
+
+        .review-form label {
+            font-weight: 950;
+            color: var(--ink);
+        }
+
+        .star-input {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .star-btn {
+            min-width: 42px;
+            min-height: 38px;
+            border: 1px solid rgba(245,158,11,.34);
+            border-radius: 12px;
+            background: rgba(245,158,11,.10);
+            color: #fbbf24;
+            cursor: pointer;
+            font-weight: 950;
+        }
+
+        .star-btn.active,
+        .star-btn:hover {
+            background: linear-gradient(135deg,#facc15,#fb923c);
+            color: #111827;
+            border-color: transparent;
+        }
+
+        .review-textarea {
+            width: 100%;
+            min-height: 96px;
+            resize: vertical;
+            border-radius: 16px;
+            border: 1px solid rgba(148,163,184,.24);
+            background: rgba(2,6,23,.52);
+            color: var(--ink);
+            padding: 12px 14px;
+            font: inherit;
+            outline: none;
+        }
+
+        .review-textarea::placeholder {
+            color: rgba(203,213,225,.62);
+        }
+
+        .review-textarea:focus {
+            border-color: rgba(34,211,238,.55);
+            box-shadow: 0 0 0 3px rgba(34,211,238,.12);
+        }
+
+        .review-submit-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .review-message {
+            display: none;
+            padding: 10px 12px;
+            border-radius: 14px;
+            font-weight: 800;
+            font-size: 13px;
+        }
+
+        .review-message.ok {
+            display: inline-flex;
+            color: #bbf7d0;
+            background: rgba(34,197,94,.16);
+            border: 1px solid rgba(34,197,94,.30);
+        }
+
+        .review-message.err {
+            display: inline-flex;
+            color: #fecaca;
+            background: rgba(239,68,68,.14);
+            border: 1px solid rgba(239,68,68,.30);
+        }
+
+        .review-login-box {
+            margin: 0 0 18px;
+            padding: 14px;
+            border-radius: 18px;
+            background: rgba(56,189,248,.10);
+            border: 1px solid rgba(56,189,248,.22);
+            color: var(--muted);
+        }
+
+        @@media (max-width: 900px) {
+            .poi-detail-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @@media (max-width: 560px) {
+            .poi-detail-hero-content {
+                padding: 22px;
+            }
+
+            .poi-actions {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+}
+
+<form id="antiForgeryForm" method="post" style="display:none;">
+    @Html.AntiForgeryToken()
+</form>
+
+<div class="poi-detail-page">
+    <a class="poi-btn" href="@(mapUrl)#poi-@poi.Id" style="width:max-content;">
+        <i class="fa-solid fa-arrow-left"></i> Quay lại bản đồ
+    </a>
+
+    <section class="poi-detail-hero">
+        @if (!string.IsNullOrWhiteSpace(poi.CoverImageUrl))
+        {
+            <img src="@poi.CoverImageUrl" alt="@poi.Name" />
+        }
+
+        <div class="poi-detail-hero-content">
+            <h1 class="poi-detail-title">@poi.Name</h1>
+            <p class="poi-detail-short">
+                @(string.IsNullOrWhiteSpace(poi.ShortDescription) ? "Điểm tham quan trên VERSA Guide." : poi.ShortDescription)
+            </p>
+
+            <div class="poi-chip-row">
+                @if (poi.IsFeatured)
+                {
+                    <span class="poi-chip featured">
+                        <i class="fa-solid fa-crown"></i> POI nổi bật
+                    </span>
+                }
+
+                <span class="poi-chip">
+                    <i class="fa-solid fa-language"></i> @poi.LanguageName
+                </span>
+
+                <span id="discoveredChip" class="poi-chip @(poi.IsDiscovered ? "ok" : "")">
+                    <i class="fa-solid @(poi.IsDiscovered ? "fa-circle-check" : "fa-location-dot")"></i>
+                    @(poi.IsDiscovered ? "Đã check-in" : "Chưa check-in")
+                </span>
+
+                <span class="poi-chip warn">
+                    <i class="fa-solid fa-location-crosshairs"></i> Bán kính @poi.Radius m
+                </span>
+
+                <span class="poi-chip">
+                    <i class="fa-solid fa-star"></i>
+                    @(poi.RatingCount > 0 ? $"{poi.AverageRating:F1}/5 · {poi.RatingCount} đánh giá" : "Chưa có đánh giá")
+                </span>
+            </div>
+        </div>
+    </section>
+
+    <div class="poi-detail-grid">
+        <main class="poi-card">
+            <h2>Thông tin chi tiết</h2>
+
+            @if (poi.IsFeatured && !string.IsNullOrWhiteSpace(poi.OwnerBusinessName))
+            {
+                <div class="poi-chip-row" style="margin:0 0 12px;">
+                    <span class="poi-chip featured">
+                        <i class="fa-solid fa-store"></i> Chủ POI nổi bật: @poi.OwnerBusinessName
+                    </span>
+                </div>
+            }
+
+            <div class="poi-description">
+                @(string.IsNullOrWhiteSpace(poi.FullDescription) ? poi.ShortDescription : poi.FullDescription)
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(poi.AudioUrl))
+            {
+                <div style="margin-top:16px;">
+                    <audio id="poiAudioPlayer" controls style="width:100%;">
+                        <source src="@poi.AudioUrl" />
+                    </audio>
+                </div>
+            }
+
+            <div class="poi-actions">
+                <button class="poi-btn danger" type="button" id="btnBookmark">
+                    <i class="fa-solid fa-heart"></i>
+                    <span id="bookmarkText">@(poi.IsBookmarked ? "Đã lưu" : "Lưu lại")</span>
+                </button>
+
+                <button class="poi-btn primary" type="button" id="btnCheckIn">
+                    <i class="fa-solid fa-location-dot"></i> Check-in bằng GPS
+                </button>
+
+                <button class="poi-btn primary"
+                        type="button"
+                        id="btnRouteOnMap"
+                        data-poi-id="@poi.Id"
+                        data-map-url="@(mapRouteUrl)#poi-@poi.Id">
+                    <i class="fa-solid fa-route"></i> Dẫn đường trên bản đồ
+                </button>
+
+                <a class="poi-btn"
+                   target="_blank"
+                   rel="noopener"
+                   href="https://www.google.com/maps/dir/?api=1&destination=@poi.Latitude.ToString(System.Globalization.CultureInfo.InvariantCulture),@poi.Longitude.ToString(System.Globalization.CultureInfo.InvariantCulture)">
+                    <i class="fa-brands fa-google"></i> Google Maps
+                </a>
+
+                <button class="poi-btn tts-btn" type="button" id="btnSpeak">
+                    <i class="fa-solid fa-volume-high"></i> Nghe thuyết minh
+                </button>
+
+                <a class="poi-btn gold"
+                   asp-area="DuKhach"
+                   asp-controller="PoiMenu"
+                   asp-action="Index"
+                   asp-route-poiId="@poi.Id"
+                   asp-route-lang="@selectedLanguageCode">
+                    <i class="fa-solid fa-bag-shopping"></i> Menu đồ
+                </a>
+            </div>
+
+            <section class="poi-card" style="margin-top:18px; box-shadow:none;">
+                <h2>Đánh giá cộng đồng</h2>
+
+                @if (Model.IsTouristSignedIn)
+                {
+                    <form id="reviewForm" class="review-form">
+                        <label>Chọn số sao</label>
+
+                        <div class="star-input" aria-label="Chọn số sao đánh giá">
+                            @for (var ratingValue = 1; ratingValue <= 5; ratingValue++)
+                            {
+                                <button class="star-btn" type="button" data-rating="@ratingValue" aria-label="@(ratingValue) sao">
+                                    @ratingValue <i class="fa-solid fa-star"></i>
+                                </button>
+                            }
+                        </div>
+
+                        <textarea id="reviewComment"
+                                  class="review-textarea"
+                                  maxlength="600"
+                                  placeholder="Nhập bình luận của bạn về địa điểm này..."></textarea>
+
+                        <div class="review-submit-row">
+                            <button class="poi-btn primary" type="submit">
+                                <i class="fa-solid fa-paper-plane"></i> Gửi đánh giá
+                            </button>
+                            <span id="reviewMessage" class="review-message"></span>
+                        </div>
+                    </form>
+                }
+                else
+                {
+                    <div class="review-login-box">
+                        Bạn cần đăng nhập Du khách để đánh giá và bình luận địa điểm này.
+
+                        <a class="poi-btn primary"
+                           href="@Url.Action("Login", "Account", new { area = "DuKhach", returnUrl })"
+                           style="margin-top:10px; width:max-content;">
+                            <i class="fa-solid fa-right-to-bracket"></i> Đăng nhập để bình luận
+                        </a>
+                    </div>
+                }
+
+                @if (poi.Reviews.Count == 0)
+                {
+                    <p class="gps-note">Chưa có bình luận nào cho POI này.</p>
+                }
+                else
+                {
+                    foreach (var review in poi.Reviews)
+                    {
+                        <div class="review-item">
+                            <div class="review-head">
+                                <span>@review.TouristName</span>
+                                <small>@review.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")</small>
+                            </div>
+
+                            <div class="review-stars">
+                                @for (var i = 1; i <= 5; i++)
+                                {
+                                    var starClass = i <= review.Rating ? "solid" : "regular";
+                                    <i class="fa-@starClass fa-star"></i>
+                                }
+                            </div>
+
+                            @if (!string.IsNullOrWhiteSpace(review.Comment))
+                            {
+                                <div class="poi-description" style="font-size:14px;">
+                                    @review.Comment
+                                </div>
+                            }
+                        </div>
+                    }
+                }
+            </section>
+        </main>
+
+        <aside style="display:grid; gap:18px;">
+            <section class="poi-card gps-box">
+                <h2><i class="fa-solid fa-location-crosshairs"></i> Check-in GPS</h2>
+
+                <p class="gps-note">
+                    Bạn cần đứng gần địa điểm để check-in và nhận điểm.
+                    Hệ thống sẽ xin quyền GPS và backend sẽ kiểm tra khoảng cách thật với tọa độ POI.
+                </p>
+
+                <button class="poi-btn primary" type="button" id="btnCheckInSide" style="width:100%;">
+                    <i class="fa-solid fa-location-dot"></i> Check-in bằng GPS
+                </button>
+
+                <div id="detailMessage" class="detail-message"></div>
+            </section>
+
+            <section class="poi-card qr-card">
+                <h2><i class="fa-solid fa-qrcode"></i> QR mở web</h2>
+                <img src="@qrImageUrl" alt="QR mở chi tiết @poi.Name" />
+                <p>QR chỉ dùng để mở lại trang chi tiết POI này trên trình duyệt điện thoại. QR không cộng điểm.</p>
+            </section>
+        </aside>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const poiId = @poi.Id;
+        const selectedLanguageCode = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(selectedLanguageCode));
+        const isSignedIn = @Json.Serialize(Model.IsTouristSignedIn);
+
+        const checkInUrl = '@Url.Action("CheckIn", "Map", new { area = "DuKhach" })';
+        const toggleBookmarkUrl = '@Url.Action("ToggleBookmark", "Map", new { area = "DuKhach" })';
+        const submitReviewUrl = '@Url.Action("SubmitReview", "Map", new { area = "DuKhach" })';
+        const logAudioUrl = '@Url.Action("LogAudio", "Map", new { area = "DuKhach" })';
+
+        const ttsText = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(ttsText ?? string.Empty));
+        const loginUrl = '@Url.Action("Login", "Account", new { area = "DuKhach" })';
+        const token = document.querySelector('#antiForgeryForm input[name="__RequestVerificationToken"]')?.value;
+        const messageBox = document.getElementById('detailMessage');
+
+        let selectedRating = 0;
+        let hasLoggedCurrentAudio = false;
+
+        function setDetailMessage(message, type = '') {
+            if (!messageBox) return;
+
+            messageBox.textContent = message || '';
+            messageBox.className = `detail-message ${type}`;
+        }
+
+        function redirectToTouristLogin() {
+            window.location.href = `${loginUrl}?returnUrl=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+        }
+
+        async function logAudioPlay(isTts) {
+            if (!isSignedIn) {
+                redirectToTouristLogin();
+                return false;
+            }
+
+            try {
+                const response = await fetch(logAudioUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': token
+                    },
+                    body: JSON.stringify({
+                        poiId: poiId,
+                        languageCode: selectedLanguageCode || 'vi',
+                        isTts: isTts
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || 'Không thể ghi nhận lượt nghe.');
+                }
+
+                return true;
+            } catch (error) {
+                setDetailMessage(error.message || 'Không thể ghi nhận lượt nghe.', 'err');
+                return false;
+            }
+        }
+
+        async function checkInPoi() {
+            if (!isSignedIn) {
+                redirectToTouristLogin();
+                return;
+            }
+
+            if (!navigator.geolocation) {
+                setDetailMessage('Trình duyệt không hỗ trợ GPS.', 'err');
+                return;
+            }
+
+            setDetailMessage('Đang lấy vị trí GPS...', 'ok');
+
+            navigator.geolocation.getCurrentPosition(async position => {
+                try {
+                    const response = await fetch(checkInUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'RequestVerificationToken': token
+                        },
+                        body: JSON.stringify({
+                            poiId: poiId,
+                            languageCode: selectedLanguageCode,
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude,
+                            accuracyMeters: position.coords.accuracy
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (!response.ok || !data.success) {
+                        throw new Error(data.message || 'Check-in thất bại.');
+                    }
+
+                    setDetailMessage(data.message, 'ok');
+
+                    const chip = document.getElementById('discoveredChip');
+                    if (chip) {
+                        chip.className = 'poi-chip ok';
+                        chip.innerHTML = '<i class="fa-solid fa-circle-check"></i> Đã check-in';
+                    }
+                } catch (error) {
+                    setDetailMessage(error.message || 'Check-in thất bại.', 'err');
+                }
+            }, () => {
+                setDetailMessage('Vui lòng bật GPS và cấp quyền vị trí để check-in.', 'err');
+            }, {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 5000
+            });
+        }
+
+        async function toggleBookmark() {
+            if (!isSignedIn) {
+                redirectToTouristLogin();
+                return;
+            }
+
+            try {
+                const response = await fetch(toggleBookmarkUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': token
+                    },
+                    body: JSON.stringify(poiId)
+                });
+
+                const data = await response.json();
+
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || 'Không thể lưu POI.');
+                }
+
+                document.getElementById('bookmarkText').textContent = data.isBookmarked ? 'Đã lưu' : 'Lưu lại';
+                setDetailMessage(data.isBookmarked ? 'Đã lưu địa điểm.' : 'Đã bỏ lưu địa điểm.', 'ok');
+            } catch (error) {
+                setDetailMessage(error.message || 'Không thể lưu POI.', 'err');
+            }
+        }
+
+        function setReviewMessage(message, type = '') {
+            const box = document.getElementById('reviewMessage');
+            if (!box) return;
+
+            box.textContent = message || '';
+            box.className = `review-message ${type}`;
+        }
+
+        function updateStarButtons(rating) {
+            selectedRating = rating;
+
+            document.querySelectorAll('.star-btn').forEach(button => {
+                const value = Number(button.dataset.rating || 0);
+                button.classList.toggle('active', value <= selectedRating);
+            });
+        }
+
+        async function submitReview(event) {
+            event.preventDefault();
+
+            if (!isSignedIn) {
+                redirectToTouristLogin();
+                return;
+            }
+
+            if (selectedRating < 1 || selectedRating > 5) {
+                setReviewMessage('Vui lòng chọn số sao trước khi gửi.', 'err');
+                return;
+            }
+
+            try {
+                setReviewMessage('Đang gửi đánh giá...', 'ok');
+
+                const response = await fetch(submitReviewUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': token
+                    },
+                    body: JSON.stringify({
+                        poiId: poiId,
+                        rating: selectedRating,
+                        comment: document.getElementById('reviewComment')?.value || ''
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || 'Không gửi được đánh giá.');
+                }
+
+                setReviewMessage(`${data.message} Trang sẽ tải lại để cập nhật bình luận.`, 'ok');
+                setTimeout(() => window.location.reload(), 900);
+            } catch (error) {
+                setReviewMessage(error.message || 'Không gửi được đánh giá.', 'err');
+            }
+        }
+
+        async function speakPoiText() {
+            if (!isSignedIn) {
+                redirectToTouristLogin();
+                return;
+            }
+
+            const audioPlayer = document.getElementById('poiAudioPlayer');
+
+            if (!audioPlayer) {
+                setDetailMessage('Địa điểm này chưa có file audio thuyết minh. Vui lòng tạo audio trong Admin/Editor trước.', 'err');
+                return;
+            }
+
+            try {
+                if (audioPlayer.paused) {
+                    await audioPlayer.play();
+                    setDetailMessage('Đang phát file audio thuyết minh.', 'ok');
+                } else {
+                    audioPlayer.pause();
+                    setDetailMessage('Đã tạm dừng audio thuyết minh.', 'ok');
+                }
+            } catch (error) {
+                setDetailMessage('Không thể phát audio thuyết minh. Vui lòng kiểm tra file audio của POI.', 'err');
+            }
+        }
+
+        function sendRouteToOldMapTab(event) {
+            event?.preventDefault();
+
+            const button = document.getElementById('btnRouteOnMap');
+            const targetPoiId = Number(button?.dataset.poiId || poiId);
+            const mapUrl = button?.dataset.mapUrl || '@(mapRouteUrl)#poi-@poi.Id';
+            const payload = {
+                type: 'VERSA_ROUTE_TO_POI',
+                poiId: targetPoiId,
+                url: mapUrl,
+                lang: selectedLanguageCode || 'vi',
+                ts: Date.now()
+            };
+
+            let sent = false;
+
+            try {
+                if (window.opener && !window.opener.closed) {
+                    window.opener.postMessage(payload, window.location.origin);
+                    try { window.opener.focus(); } catch (_) { }
+                    sent = true;
+                }
+            } catch (_) { }
+
+            try {
+                if ('BroadcastChannel' in window) {
+                    const channel = new BroadcastChannel('versa-dukhach-map');
+                    channel.postMessage(payload);
+                    channel.close();
+                    sent = true;
+                }
+            } catch (_) { }
+
+            try {
+                localStorage.setItem('versaDuKhachRouteRequest', JSON.stringify(payload));
+                sent = true;
+            } catch (_) { }
+
+            if (sent) {
+                setDetailMessage('Đã gửi yêu cầu dẫn đường sang tab bản đồ cũ. Mở lại tab Map để xem tuyến đường.', 'ok');
+            } else {
+                // Nếu trình duyệt chặn giao tiếp giữa tab, chuyển tab hiện tại sang bản đồ thay vì mở tab mới.
+                window.location.href = mapUrl;
+            }
+        }
+
+        document.getElementById('btnCheckIn')?.addEventListener('click', checkInPoi);
+        document.getElementById('btnCheckInSide')?.addEventListener('click', checkInPoi);
+        document.getElementById('btnBookmark')?.addEventListener('click', toggleBookmark);
+        document.getElementById('btnSpeak')?.addEventListener('click', speakPoiText);
+        document.getElementById('btnRouteOnMap')?.addEventListener('click', sendRouteToOldMapTab);
+        document.getElementById('reviewForm')?.addEventListener('submit', submitReview);
+
+        document.querySelectorAll('.star-btn').forEach(button => {
+            button.addEventListener('click', () => updateStarButtons(Number(button.dataset.rating || 0)));
+        });
+
+        const audioPlayer = document.getElementById('poiAudioPlayer');
+
+        if (audioPlayer) {
+            audioPlayer.addEventListener('play', async () => {
+                if (hasLoggedCurrentAudio) return;
+
+                const logged = await logAudioPlay(false);
+
+                if (logged) {
+                    hasLoggedCurrentAudio = true;
+                    setDetailMessage('Đã ghi nhận lượt nghe audio.', 'ok');
+                } else {
+                    audioPlayer.pause();
+                }
+            });
+
+            audioPlayer.addEventListener('ended', () => {
+                hasLoggedCurrentAudio = false;
+            });
+        }
+    </script>
+}

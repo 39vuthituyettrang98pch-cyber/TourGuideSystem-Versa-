@@ -37,6 +37,8 @@ public static class MauiProgram
         builder.Services.AddSingleton<IExploreCatalogService, ExploreCatalogService>();
         builder.Services.AddSingleton<IReviewService, ReviewService>();
         builder.Services.AddSingleton<IAiChatService, AiChatService>();
+        builder.Services.AddSingleton<IMenuOrderService, MenuOrderService>();
+        builder.Services.AddSingleton<IPremiumService, PremiumService>();
 
         // Audio
         builder.Services.AddSingleton(AudioManager.Current);
@@ -52,17 +54,29 @@ public static class MauiProgram
         builder.Services.AddSingleton<ViewModels.AchievementViewModel>();
         builder.Services.AddTransient<ViewModels.LoginViewModel>();
         builder.Services.AddTransient<ViewModels.RegisterViewModel>();
+        builder.Services.AddTransient<ViewModels.ResetPasswordViewModel>();
         builder.Services.AddTransient<ViewModels.PlaceDetailViewModel>();
         builder.Services.AddSingleton<ViewModels.AiChatViewModel>();
+        builder.Services.AddTransient<ViewModels.PlaceMenuViewModel>();
+        builder.Services.AddTransient<ViewModels.MenuOrdersViewModel>();
+        builder.Services.AddTransient<ViewModels.MenuOrderDetailViewModel>();
+        builder.Services.AddSingleton<ViewModels.PremiumViewModel>();
+        builder.Services.AddSingleton<ViewModels.LeaderboardViewModel>();
 
         // Pages
         builder.Services.AddTransient<PlaceDetailPage>();
         builder.Services.AddTransient<LanguageSelectionPage>();
         builder.Services.AddTransient<LoginPage>();
         builder.Services.AddTransient<RegisterPage>();
+        builder.Services.AddTransient<ResetPasswordPage>();
         builder.Services.AddTransient<TourDetailPage>();
         builder.Services.AddTransient<AchievementPage>();
         builder.Services.AddTransient<AiChatPage>();
+        builder.Services.AddTransient<PlaceMenuPage>();
+        builder.Services.AddTransient<MenuOrdersPage>();
+        builder.Services.AddTransient<MenuOrderDetailPage>();
+        builder.Services.AddTransient<PremiumPage>();
+        builder.Services.AddTransient<LeaderboardPage>();
 
 #if DEBUG
         builder.Logging.AddDebug();

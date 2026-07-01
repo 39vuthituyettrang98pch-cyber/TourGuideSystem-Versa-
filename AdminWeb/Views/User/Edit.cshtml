@@ -3,14 +3,16 @@
 @{
     ViewData["Title"] = "Sửa tài khoản";
     var roles = ViewBag.Roles as IEnumerable<AdminWeb.Models.Role>;
+    var ownerProfile = ViewBag.OwnerProfile as AdminWeb.Models.OwnerProfile;
 }
 
 <div class="page-title">Sửa tài khoản hệ thống</div>
 <div class="page-subtitle">Cập nhật thông tin và phân quyền cho tài khoản <strong>@Model.Username</strong>.</div>
 
 <div class="card" style="padding:28px;">
-    <form asp-action="Edit" method="post">
+    <form action="/Admin/User/Edit/@Model.Id" method="post">
         @Html.AntiForgeryToken()
+        <div asp-validation-summary="ModelOnly" class="text-danger" style="margin-bottom:16px;"></div>
         <input type="hidden" asp-for="Id" />
         <input type="hidden" asp-for="Username" />
         <div class="form-grid">
@@ -32,7 +34,7 @@
                     <option value="">-- Chọn quyền --</option>
                     @if (roles != null) {
                         foreach (var role in roles) {
-                            <option value="@role.Id">@(role.Description ?? role.RoleName) (@role.RoleName)</option>
+                            <option value="@role.Id" data-role="@role.RoleName">@(role.Description ?? role.RoleName) (@role.RoleName)</option>
                         }
                     }
                 </select>
@@ -46,9 +48,53 @@
                 </select>
             </div>
         </div>
+
+        <div id="ownerProfileFields" class="card" style="padding:18px;margin-top:18px;display:none;border-style:dashed;">
+            <div style="font-weight:800;margin-bottom:6px;">Thông tin Chủ gian hàng / chủ POI</div>
+            <div class="page-subtitle" style="margin-bottom:16px;">Khi đổi tài khoản sang quyền Owner, hệ thống sẽ tự tạo hồ sơ nếu chưa có.</div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">Tên gian hàng / đơn vị</label>
+                    <input class="form-control" name="ownerBusinessName" type="text" value="@ownerProfile?.BusinessName" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Người đại diện</label>
+                    <input class="form-control" name="ownerRepresentativeName" type="text" value="@ownerProfile?.RepresentativeName" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Số điện thoại</label>
+                    <input class="form-control" name="ownerPhone" type="text" value="@ownerProfile?.Phone" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Địa chỉ</label>
+                    <input class="form-control" name="ownerAddress" type="text" value="@ownerProfile?.Address" />
+                </div>
+            </div>
+        </div>
         <div style="display:flex;gap:12px;margin-top:24px;">
             <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Cập nhật</button>
-            <a asp-action="Index" class="btn btn-secondary">Quay lại</a>
+            <a href="/Admin/User" class="btn btn-secondary">Quay lại</a>
         </div>
     </form>
 </div>
+
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (function () {
+            const roleSelect = document.querySelector('[name="RoleId"]');
+            const ownerFields = document.getElementById('ownerProfileFields');
+            if (!roleSelect || !ownerFields) return;
+
+            function syncOwnerFields() {
+                const selectedOption = roleSelect.options[roleSelect.selectedIndex];
+                const roleName = (selectedOption?.dataset?.role || '').toLowerCase();
+                ownerFields.style.display = roleName === 'owner' ? '' : 'none';
+            }
+
+            roleSelect.addEventListener('change', syncOwnerFields);
+            syncOwnerFields();
+        })();
+    </script>
+}

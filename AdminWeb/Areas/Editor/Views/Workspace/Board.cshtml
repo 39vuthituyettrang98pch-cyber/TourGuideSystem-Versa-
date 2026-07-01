@@ -1,0 +1,148 @@
+@model EditorContentBoardViewModel
+@{
+    ViewData["Title"] = "Bảng làm việc Editor";
+    string Badge(string status) => status switch { "Approved" => "green", "Rejected" => "red", "Draft" => "gray", _ => "amber" };
+}
+
+<div class="page-heading">
+    <div>
+        <div class="page-title">Bảng làm việc Editor</div>
+        <div class="page-subtitle">Quản lý trạng thái, sửa nhanh lỗi thiếu ngôn ngữ/audio và gửi nội dung sang Reviewer.</div>
+    </div>
+    <div class="page-actions">
+        <a asp-area="Editor" asp-controller="Workspace" asp-action="Quality" class="btn btn-secondary"><i class="fa-solid fa-shield-heart"></i> Báo cáo chất lượng</a>
+        <a asp-area="Editor" asp-controller="Poi" asp-action="Create" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Tạo POI</a>
+    </div>
+</div>
+
+<div class="stats-grid">
+    <a class="stat-card" asp-area="Editor" asp-controller="Workspace" asp-action="Board"><span class="stat-icon"><i class="fa-solid fa-layer-group"></i></span><span><span class="stat-value">@Model.TotalCount</span><span class="stat-label">Tất cả</span></span></a>
+    <a class="stat-card" asp-area="Editor" asp-controller="Workspace" asp-action="Board" asp-route-status="Draft"><span class="stat-icon"><i class="fa-solid fa-file-pen"></i></span><span><span class="stat-value">@Model.DraftCount</span><span class="stat-label">Bản nháp</span></span></a>
+    <a class="stat-card" asp-area="Editor" asp-controller="Workspace" asp-action="Board" asp-route-status="Pending"><span class="stat-icon"><i class="fa-solid fa-hourglass-half"></i></span><span><span class="stat-value">@Model.PendingCount</span><span class="stat-label">Chờ duyệt</span></span></a>
+    <a class="stat-card" asp-area="Editor" asp-controller="Workspace" asp-action="Board" asp-route-status="Rejected"><span class="stat-icon"><i class="fa-solid fa-rotate-left"></i></span><span><span class="stat-value">@Model.RejectedCount</span><span class="stat-label">Bị trả lại</span></span></a>
+</div>
+
+<form method="get" class="card" style="margin-top:18px;padding:18px;">
+    <div style="display:grid;grid-template-columns:1fr 180px 220px auto;gap:12px;align-items:end;">
+        <div>
+            <label class="form-label">Tìm POI</label>
+            <input class="form-control" name="q" value="@Model.Search" placeholder="Nhập tên, mô tả hoặc #ID" />
+        </div>
+        <div>
+            <label class="form-label">Trạng thái</label>
+            <select class="form-select" name="status">
+                <option value="All" selected="@(Model.StatusFilter == "All")">Tất cả</option>
+                <option value="Draft" selected="@(Model.StatusFilter == "Draft")">Draft</option>
+                <option value="Pending" selected="@(Model.StatusFilter == "Pending")">Pending</option>
+                <option value="Approved" selected="@(Model.StatusFilter == "Approved")">Approved</option>
+                <option value="Rejected" selected="@(Model.StatusFilter == "Rejected")">Rejected</option>
+            </select>
+        </div>
+        <div>
+            <label class="form-label">Lỗi cần xử lý</label>
+            <select class="form-select" name="issue">
+                <option value="All" selected="@(Model.IssueFilter == "All")">Tất cả</option>
+                <option value="MissingLanguage" selected="@(Model.IssueFilter == "MissingLanguage")">Thiếu ngôn ngữ</option>
+                <option value="MissingAudio" selected="@(Model.IssueFilter == "MissingAudio")">Thiếu audio</option>
+                <option value="LowQuality" selected="@(Model.IssueFilter == "LowQuality")">Điểm chất lượng thấp</option>
+                <option value="Rejected" selected="@(Model.IssueFilter == "Rejected")">Bị Reviewer trả lại</option>
+            </select>
+        </div>
+        <button class="btn btn-primary" type="submit"><i class="fa-solid fa-filter"></i> Lọc</button>
+    </div>
+</form>
+
+<section class="card" style="margin-top:18px">
+    <div class="card-header">
+        <div>
+            <div class="card-title"><i class="fa-solid fa-table-list"></i> Danh sách nội dung</div>
+            <div class="card-subtitle">Ngôn ngữ yêu cầu: @string.Join(", ", Model.ActiveLanguages)</div>
+        </div>
+        <span class="badge blue">@Model.Items.Count kết quả</span>
+    </div>
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>POI</th>
+                    <th>Trạng thái</th>
+                    <th>Chất lượng</th>
+                    <th>Thiếu</th>
+                    <th>Ghi chú Reviewer/Admin</th>
+                    <th>Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+            @if (Model.Items.Count == 0)
+            {
+                <tr><td colspan="6"><div class="empty-state"><i class="fa-solid fa-circle-check"></i><h2>Không có nội dung phù hợp</h2><p>Thử đổi bộ lọc hoặc tạo POI mới.</p></div></td></tr>
+            }
+            else
+            {
+                foreach (var item in Model.Items)
+                {
+                    <tr>
+                        <td>
+                            <strong>@item.Name</strong><br />
+                            <small style="color:var(--text-soft)">#@item.Id · @item.Latitude, @item.Longitude · @item.Radius m</small>
+                        </td>
+                        <td><span class="badge @Badge(item.Status)">@item.Status</span></td>
+                        <td>
+                            <strong>@item.QualityScore%</strong><br />
+                            <small style="color:var(--text-soft)">@item.TranslationCount/@item.RequiredLanguageCount ngôn ngữ · @item.MediaCount media · @item.CategoryCount danh mục</small>
+                        </td>
+                        <td>
+                            @if (item.Issues.Count == 0)
+                            {
+                                <span class="badge green">Đạt</span>
+                            }
+                            else
+                            {
+                                foreach (var issue in item.Issues.Take(3))
+                                {
+                                    <span class="badge amber" style="margin:2px">@issue</span>
+                                }
+                                if (item.Issues.Count > 3)
+                                {
+                                    <span class="badge gray">+@(item.Issues.Count - 3)</span>
+                                }
+                            }
+                        </td>
+                        <td style="max-width:280px">
+                            @if (!string.IsNullOrWhiteSpace(item.AdminNote))
+                            {
+                                <span>@item.AdminNote</span>
+                            }
+                            else
+                            {
+                                <span style="color:var(--text-soft)">-</span>
+                            }
+                        </td>
+                        <td>
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                                <a class="btn btn-secondary btn-sm" asp-area="Editor" asp-controller="Poi" asp-action="Edit" asp-route-id="@item.Id"><i class="fa-solid fa-pen"></i> Sửa</a>
+                                <form asp-area="Editor" asp-controller="Workspace" asp-action="SubmitForReview" asp-route-id="@item.Id" method="post">
+                                    @Html.AntiForgeryToken()
+                                    <button class="btn btn-primary btn-sm" type="submit"><i class="fa-solid fa-paper-plane"></i> Gửi duyệt</button>
+                                </form>
+                                <form asp-area="Editor" asp-controller="Workspace" asp-action="DuplicateVietnameseToMissing" asp-route-id="@item.Id" method="post">
+                                    @Html.AntiForgeryToken()
+                                    <button class="btn btn-secondary btn-sm" type="submit"><i class="fa-solid fa-language"></i> Tạo ngôn ngữ thiếu</button>
+                                </form>
+                                <form asp-area="Editor" asp-controller="Workspace" asp-action="QueueAudioTask" asp-route-id="@item.Id" method="post">
+                                    @Html.AntiForgeryToken()
+                                    <button class="btn btn-secondary btn-sm" type="submit"><i class="fa-solid fa-volume-high"></i> Sinh audio</button>
+                                </form>
+                                <form asp-area="Editor" asp-controller="Workspace" asp-action="MoveToDraft" asp-route-id="@item.Id" method="post">
+                                    @Html.AntiForgeryToken()
+                                    <button class="btn btn-secondary btn-sm" type="submit"><i class="fa-solid fa-file-pen"></i> Draft</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            }
+            </tbody>
+        </table>
+    </div>
+</section>

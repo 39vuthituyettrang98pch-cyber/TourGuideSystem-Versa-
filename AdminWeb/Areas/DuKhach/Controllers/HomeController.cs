@@ -1,6 +1,7 @@
 using AdminWeb.Areas.DuKhach.Models;
 using AdminWeb.Data;
 using AdminWeb.Services;
+using AdminWeb.Services.Payments;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -28,22 +29,46 @@ public sealed class HomeController : Controller
         var selectedLanguageCode = GetSelectedLanguageCode();
         ViewBag.SelectedLanguageCode = selectedLanguageCode;
 
+        var featuredOwnerIds = await GetFeaturedOwnerIdsAsync(cancellationToken);
+        var featuredPoiIds = await GetFeaturedPoiIdsAsync(featuredOwnerIds, cancellationToken);
+
         var approvedPoiCount = await _context.Pois
             .CountAsync(item => item.Status == "Approved", cancellationToken);
         var activeTourCount = await _context.Tours
             .CountAsync(item => item.Status == "active", cancellationToken);
 
-        var featuredPois = await _context.Pois
+        var featuredPoiRows = await _context.Pois
             .AsNoTracking()
-            .Include(item => item.Translations)
             .Where(item =>
                 item.Status == "Approved" &&
                 item.Latitude >= -90 && item.Latitude <= 90 &&
                 item.Longitude >= -180 && item.Longitude <= 180)
-            .OrderByDescending(item => item.CreatedAt)
-            .Take(6)
-            .AsSplitQuery()
+            .Select(item => new
+            {
+                item.Id,
+                item.CoverImageUrl,
+                item.Latitude,
+                item.Longitude,
+                item.CreatedAt,
+                item.OwnerProfileId,
+                OwnerBusinessName = item.OwnerProfile == null ? null : item.OwnerProfile.BusinessName
+            })
             .ToListAsync(cancellationToken);
+
+        var featuredPois = featuredPoiRows
+            .OrderByDescending(item => IsFeaturedPoi(item.Id, item.OwnerProfileId, featuredOwnerIds, featuredPoiIds))
+            .ThenByDescending(item => item.CreatedAt)
+            .Take(6)
+            .ToList();
+
+        var featuredPoiIdsForTranslations = featuredPois.Select(item => item.Id).ToList();
+        var featuredPoiTranslations = await _context.PoiTranslations
+            .AsNoTracking()
+            .Where(item => featuredPoiIdsForTranslations.Contains(item.PoiId))
+            .ToListAsync(cancellationToken);
+        var translationsByPoiId = featuredPoiTranslations
+            .GroupBy(item => item.PoiId)
+            .ToDictionary(item => item.Key, item => item.ToList());
 
         var discoveredPoiCount = 0;
         var totalPoints = 0;
@@ -80,10 +105,13 @@ public sealed class HomeController : Controller
             RecentDiscoveries = recentDiscoveries,
             FeaturedPois = featuredPois.Select(item =>
             {
-                var translation = item.Translations.FirstOrDefault(t => t.LanguageCode == selectedLanguageCode)
-                    ?? item.Translations.FirstOrDefault(t => t.LanguageCode == "vi")
-                    ?? item.Translations.FirstOrDefault(t => t.LanguageCode == "en")
-                    ?? item.Translations.FirstOrDefault();
+                translationsByPoiId.TryGetValue(item.Id, out var translations);
+                translations ??= [];
+
+                var translation = translations.FirstOrDefault(t => t.LanguageCode == selectedLanguageCode)
+                    ?? translations.FirstOrDefault(t => t.LanguageCode == "vi")
+                    ?? translations.FirstOrDefault(t => t.LanguageCode == "en")
+                    ?? translations.FirstOrDefault();
                 return new DuKhachPoiCardViewModel
                 {
                     Id = item.Id,
@@ -91,12 +119,93 @@ public sealed class HomeController : Controller
                     ShortDescription = translation?.ShortDescription ?? "Khám phá điểm tham quan này trên bản đồ.",
                     CoverImageUrl = item.CoverImageUrl,
                     Latitude = (double)item.Latitude,
-                    Longitude = (double)item.Longitude
+                    Longitude = (double)item.Longitude,
+                    IsFeatured = IsFeaturedPoi(item.Id, item.OwnerProfileId, featuredOwnerIds, featuredPoiIds),
+                    OwnerBusinessName = item.OwnerBusinessName
                 };
             }).ToList()
         };
 
         return View(model);
+    }
+
+    private async Task<HashSet<int>> GetFeaturedOwnerIdsAsync(CancellationToken cancellationToken)
+    {
+        var now = DateTime.UtcNow;
+
+        var activeSubscriptions = await _context.OwnerSubscriptions
+            .AsNoTracking()
+            .Include(item => item.PaymentPlan)
+            .Where(item =>
+                item.Status == "Active" &&
+                item.StartsAt <= now &&
+                item.ExpiresAt > now &&
+                item.PaymentPlan != null &&
+                (item.PaymentPlan.Audience == "Owner" || item.PaymentPlan.Audience == "Both"))
+            .ToListAsync(cancellationToken);
+
+        var ownerIds = activeSubscriptions
+            .Where(item => OwnerFeaturedPlanHelper.IsFeaturedMapPlan(item.PaymentPlan))
+            .Select(item => item.OwnerProfileId)
+            .ToHashSet();
+
+        var paidTransactions = await _context.PaymentTransactions
+            .AsNoTracking()
+            .Include(item => item.PaymentPlan)
+            .Where(item =>
+                item.PayerType == "Owner" &&
+                item.OwnerProfileId.HasValue &&
+                item.Status == "Paid" &&
+                item.PaymentPlan != null &&
+                (item.PaymentPlan.Audience == "Owner" || item.PaymentPlan.Audience == "Both"))
+            .ToListAsync(cancellationToken);
+
+        foreach (var payment in paidTransactions.Where(payment =>
+            payment.OwnerProfileId.HasValue &&
+            OwnerFeaturedPlanHelper.IsFeaturedMapPlan(payment.PaymentPlan) &&
+            OwnerFeaturedPlanHelper.IsPaymentStillActive(payment)))
+        {
+            ownerIds.Add(payment.OwnerProfileId!.Value);
+        }
+
+        return ownerIds;
+    }
+
+    private async Task<HashSet<int>> GetFeaturedPoiIdsAsync(HashSet<int> featuredOwnerIds, CancellationToken cancellationToken)
+    {
+        if (featuredOwnerIds.Count == 0)
+            return [];
+
+        var fromMenuItems = await _context.OwnerMenuItems
+            .AsNoTracking()
+            .Where(item => featuredOwnerIds.Contains(item.OwnerProfileId) && item.Status != "Hidden")
+            .Select(item => item.PoiId)
+            .ToListAsync(cancellationToken);
+
+        var fromApprovedOwnerRequests = await _context.PoiOwnerRequests
+            .AsNoTracking()
+            .Where(item =>
+                item.PoiId.HasValue &&
+                featuredOwnerIds.Contains(item.OwnerProfileId) &&
+                item.Status == "Approved")
+            .Select(item => item.PoiId!.Value)
+            .ToListAsync(cancellationToken);
+
+        return fromMenuItems
+            .Concat(fromApprovedOwnerRequests)
+            .ToHashSet();
+    }
+
+    private static bool IsFeaturedPoi(AdminWeb.Models.Poi poi, HashSet<int> featuredOwnerIds, HashSet<int> featuredPoiIds)
+    {
+        return (poi.OwnerProfileId.HasValue && featuredOwnerIds.Contains(poi.OwnerProfileId.Value))
+            || featuredPoiIds.Contains(poi.Id);
+    }
+
+    private static bool IsFeaturedPoi(int poiId, int? ownerProfileId, HashSet<int> featuredOwnerIds, HashSet<int> featuredPoiIds)
+    {
+        return (ownerProfileId.HasValue && featuredOwnerIds.Contains(ownerProfileId.Value))
+            || featuredPoiIds.Contains(poiId);
     }
 
     private int GetTouristId() =>

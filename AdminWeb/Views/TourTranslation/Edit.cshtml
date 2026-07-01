@@ -1,6 +1,7 @@
 @model AdminWeb.Models.TourTranslation
 
 @{
+    var currentArea = ViewContext.RouteData.Values["area"]?.ToString() ?? "";
     ViewData["Title"] = "Sửa bản dịch Tour";
 }
 
@@ -8,7 +9,7 @@
 <div class="page-subtitle">Cập nhật nội dung ngôn ngữ <strong>@Model.LanguageCode.ToUpper()</strong>.</div>
 
 <div class="card" style="padding:28px;">
-    <form asp-action="Edit" method="post">
+    <form asp-area="@currentArea" asp-action="Edit" method="post">
         @Html.AntiForgeryToken()
         <input type="hidden" asp-for="Id" />
         <input type="hidden" asp-for="TourId" />
@@ -31,7 +32,7 @@
 
         <div style="display:flex;gap:12px;flex-wrap:wrap; margin-top:24px;">
             <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Cập nhật</button>
-            <a asp-action="Index" asp-route-tourId="@Model.TourId" class="btn btn-secondary">Quay lại</a>
+            <a asp-area="@currentArea" asp-action="Index" asp-route-tourId="@Model.TourId" class="btn btn-secondary">Quay lại</a>
         </div>
     </form>
 </div>

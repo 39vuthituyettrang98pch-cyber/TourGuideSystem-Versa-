@@ -3,6 +3,7 @@ using System.Windows.Input;
 using Plugin.Maui.Audio;
 using UserMobile.Models;
 using UserMobile.Services;
+using UserMobile.Views;
 
 namespace UserMobile.ViewModels;
 
@@ -32,10 +33,10 @@ public class PlaceDetailViewModel : BaseViewModel
     private readonly IAchievementService _achievementService;
     private readonly IReviewService _reviewService;
     private Stream? _audioStream;
-    private bool _playbackLogged;
+    private DateTime? _playbackStartedAt;
     private bool _isUpdatingProgress;
     private bool _isCheckingIn;
-    private string _checkInText = "Check-in khám phá • +10 điểm";
+    private string _checkInText = "Check-in bằng GPS • +10 điểm";
     private int _reviewRating = 5;
     private string _reviewComment = string.Empty;
     private bool _isSubmittingReview;
@@ -52,6 +53,9 @@ public class PlaceDetailViewModel : BaseViewModel
     public ICommand WatchVideoCommand { get; }
     public ICommand CheckInCommand { get; }
     public ICommand SubmitReviewCommand { get; }
+    public ICommand OpenMenuCommand { get; }
+    public ICommand OpenDirectionsCommand { get; }
+    public ICommand SpeakDescriptionCommand { get; }
 
     public PlaceItem? Place
     {
@@ -68,6 +72,7 @@ public class PlaceDetailViewModel : BaseViewModel
             {
                 OnPropertyChanged(nameof(CanPlay));
                 OnPropertyChanged(nameof(CanWatchVideo));
+                OnPropertyChanged(nameof(CanUseTts));
                 if (_isPlaying || _isPaused)
                     StopNarration();
             }
@@ -183,6 +188,10 @@ public class PlaceDetailViewModel : BaseViewModel
         SelectedLanguage != null &&
         !string.IsNullOrWhiteSpace(SelectedLanguage.VideoUrl);
 
+    public bool CanUseTts => Place != null &&
+        !string.IsNullOrWhiteSpace(Place.Introduction) &&
+        !CanPlay;
+
     public bool HasNarrationLanguages => NarrationLanguages.Count > 0;
     public bool HasNoNarrationLanguages => !HasNarrationLanguages;
 
@@ -265,6 +274,17 @@ public class PlaceDetailViewModel : BaseViewModel
         WatchVideoCommand = new Command(async () => await WatchVideoAsync());
         CheckInCommand = new Command(async () => await CheckInAsync());
         SubmitReviewCommand = new Command(async () => await SubmitReviewAsync());
+        OpenMenuCommand = new Command(async () => await OpenMenuAsync());
+        OpenDirectionsCommand = new Command(async () => await OpenDirectionsAsync());
+        SpeakDescriptionCommand = new Command(async () => await SpeakDescriptionAsync());
+    }
+
+    private async Task OpenMenuAsync()
+    {
+        if (Place == null)
+            return;
+
+        await Shell.Current.GoToAsync($"{nameof(PlaceMenuPage)}?poiId={Uri.EscapeDataString(Place.Id)}&title={Uri.EscapeDataString(Place.Title)}");
     }
 
     private void OnLanguageSelected(NarrationLanguage? language)
@@ -285,14 +305,15 @@ public class PlaceDetailViewModel : BaseViewModel
         StopNarration();
         Place = place;
         Message = string.Empty;
-        CheckInText = "Check-in khám phá • +10 điểm";
-        _playbackLogged = false;
+        CheckInText = "Check-in bằng GPS • +10 điểm";
+        _playbackStartedAt = null;
         ReviewRating = 5;
         ReviewComment = string.Empty;
         ApplyReviewSummary(place.AverageRating, place.RatingCount, place.Reviews);
         OnPropertyChanged(nameof(NarrationLanguages));
         OnPropertyChanged(nameof(HasNarrationLanguages));
         OnPropertyChanged(nameof(HasNoNarrationLanguages));
+        OnPropertyChanged(nameof(CanUseTts));
 
         if (NarrationLanguages.Count > 0)
         {
@@ -337,6 +358,9 @@ public class PlaceDetailViewModel : BaseViewModel
 
     public async Task PlayNarrationAsync()
     {
+        if (!_isPaused && !await RequestAudioAccessAsync(isTts: false))
+            return;
+
         if (_audioPlayer == null)
         {
             await InitializeAudioAsync();
@@ -349,6 +373,7 @@ public class PlaceDetailViewModel : BaseViewModel
                 _audioPlayer.Play();
                 IsPaused = false;
                 IsPlaying = true;
+                _playbackStartedAt ??= DateTime.UtcNow;
                 StartPositionTracking();
             }
             else
@@ -357,6 +382,7 @@ public class PlaceDetailViewModel : BaseViewModel
                 IsPlaying = true;
                 IsPaused = false;
                 IsPlayerVisible = true;
+                _playbackStartedAt ??= DateTime.UtcNow;
                 StartPositionTracking();
             }
         }
@@ -386,6 +412,7 @@ public class PlaceDetailViewModel : BaseViewModel
         AudioProgress = 0;
         AudioPosition = 0;
         CurrentTime = "00:00";
+        _playbackStartedAt = null;
         _positionCts?.Cancel();
     }
 
@@ -431,7 +458,6 @@ public class PlaceDetailViewModel : BaseViewModel
             AudioDuration = _audioPlayer.Duration;
             TotalTime = FormatTime(AudioDuration);
             _audioPlayer.Speed = (float)PlaybackSpeed;
-            await LogPlaybackAsync();
         }
         catch (Exception ex)
         {
@@ -510,12 +536,11 @@ public class PlaceDetailViewModel : BaseViewModel
         }
     }
 
-    private async Task LogPlaybackAsync()
+    private async Task<bool> RequestAudioAccessAsync(bool isTts)
     {
-        if (_playbackLogged || Place is null || !int.TryParse(Place.Id, out var poiId))
-            return;
+        if (Place is null || !int.TryParse(Place.Id, out var poiId))
+            return false;
 
-        _playbackLogged = true;
         var deviceId = Preferences.Get("device_id", string.Empty);
         if (string.IsNullOrWhiteSpace(deviceId))
         {
@@ -523,14 +548,16 @@ public class PlaceDetailViewModel : BaseViewModel
             Preferences.Set("device_id", deviceId);
         }
 
-        await _apiService.PostAsync<object>("api/log", new
+        var response = await _apiService.PostAsync<AudioPlaybackAccessResult>("api/tourist/audio-play", new
         {
             PoiId = poiId,
             DeviceId = deviceId,
             LanguageCode = SelectedLanguage?.Code ?? "vi",
-            ListenDuration = 0,
-            CreatedAt = DateTime.Now
+            IsTts = isTts
         });
+
+        Message = response.Message;
+        return response.Success;
     }
 
     private async Task WatchVideoAsync()
@@ -550,6 +577,33 @@ public class PlaceDetailViewModel : BaseViewModel
         }
     }
 
+    private async Task OpenDirectionsAsync()
+    {
+        if (Place == null)
+            return;
+
+        Preferences.Set("pending_route_poi_id", Place.Id);
+        Message = "Đang mở bản đồ và vẽ đường đi trong app...";
+        await Shell.Current.GoToAsync("//MapPage");
+    }
+
+    private async Task SpeakDescriptionAsync()
+    {
+        if (!CanUseTts || Place == null) return;
+        if (!await RequestAudioAccessAsync(isTts: true)) return;
+        try
+        {
+            var languageCode = SelectedLanguage?.Code ?? "vi";
+            var locale = (await TextToSpeech.Default.GetLocalesAsync())
+                .FirstOrDefault(item => item.Language.StartsWith(languageCode, StringComparison.OrdinalIgnoreCase));
+            await TextToSpeech.Default.SpeakAsync(Place.Introduction, new SpeechOptions { Locale = locale });
+        }
+        catch (Exception exception) when (exception is FeatureNotSupportedException or InvalidOperationException)
+        {
+            Message = "Thiết bị không hỗ trợ đọc văn bản cho ngôn ngữ này.";
+        }
+    }
+
     private async Task CheckInAsync()
     {
         if (Place is null || IsCheckingIn)
@@ -564,6 +618,8 @@ public class PlaceDetailViewModel : BaseViewModel
                 ? $"Đã khám phá • +{result.PointsAwarded} điểm"
                 : "Đã khám phá POI này";
             Message = result.BuildDisplayMessage();
+            if (Place != null && result.IsNewDiscovery)
+                Place.IsDiscovered = true;
         }
         catch (Exception exception) when (
             exception is InvalidOperationException or FeatureNotSupportedException or PermissionException)

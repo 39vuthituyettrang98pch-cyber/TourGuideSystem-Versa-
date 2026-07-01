@@ -30,6 +30,22 @@ public sealed class AchievementApiController : ControllerBase
             await BuildSummaryAsync(GetTouristId(), cancellationToken)));
     }
 
+    [HttpPost("/api/pois/{poiId:int}/check-in-gps")]
+    public async Task<ActionResult<ApiResponse<DiscoveryResultDto>>> CheckInGps(
+        int poiId,
+        [FromBody] GpsCheckInRequest request,
+        CancellationToken cancellationToken)
+    {
+        return await Discover(new DiscoverPoiRequest
+        {
+            PoiId = poiId,
+            Method = "GPS",
+            Latitude = request.Latitude,
+            Longitude = request.Longitude,
+            AccuracyMeters = request.AccuracyMeters
+        }, cancellationToken);
+    }
+
     [HttpPost("discover")]
     public async Task<ActionResult<ApiResponse<DiscoveryResultDto>>> Discover(
         [FromBody] DiscoverPoiRequest request,
@@ -46,13 +62,19 @@ public sealed class AchievementApiController : ControllerBase
             return BadRequest(ApiResponse<DiscoveryResultDto>.Fail(
                 "POI không tồn tại hoặc chưa được duyệt."));
 
-        var method = request.Method.Trim().ToUpperInvariant();
-        string? validationError = method switch
+        var method = string.IsNullOrWhiteSpace(request.Method)
+            ? "GPS"
+            : request.Method.Trim().ToUpperInvariant();
+
+        if (method == "QR")
         {
-            "QR" => ValidateQr(poi, request.QrCodeToken),
-            "GPS" => ValidateGps(poi, request),
-            _ => "Phương thức khám phá không hợp lệ."
-        };
+            return BadRequest(ApiResponse<DiscoveryResultDto>.Fail(
+                "QR chỉ dùng để mở trang chi tiết POI trên web, không dùng để cộng điểm. Hãy bấm Check-in bằng GPS khi bạn đang ở gần địa điểm."));
+        }
+
+        var validationError = method == "GPS"
+            ? ValidateGps(poi, request)
+            : "Phương thức khám phá không hợp lệ. Chỉ hỗ trợ Check-in bằng GPS.";
 
         if (validationError != null)
             return BadRequest(ApiResponse<DiscoveryResultDto>.Fail(validationError));
@@ -116,14 +138,12 @@ public sealed class AchievementApiController : ControllerBase
             .Include(item => item.Poi)
                 .ThenInclude(poi => poi!.Translations)
             .OrderByDescending(item => item.DiscoveredAt)
-            .AsSplitQuery()
             .ToListAsync(cancellationToken);
 
         var totalPoiCount = await _context.Pois
             .CountAsync(item => item.Status == "Approved", cancellationToken);
         var totalPoints = discoveries.Sum(item => item.PointsAwarded);
         var discoveredCount = discoveries.Count;
-        var qrCount = discoveries.Count(item => item.DiscoveryMethod == "QR");
         var ranks = new[]
         {
             new RankDefinition("Tân binh", 0),
@@ -147,8 +167,7 @@ public sealed class AchievementApiController : ControllerBase
             new AchievementDefinition("city_explorer", "Nhà khám phá thành phố", "Khám phá 5 POI.", "◆", 5, discoveredCount),
             new AchievementDefinition("trailblazer", "Người mở đường", "Khám phá 10 POI.", "▲", 10, discoveredCount),
             new AchievementDefinition("heritage_hunter", "Thợ săn di sản", "Khám phá 20 POI.", "♛", 20, discoveredCount),
-            new AchievementDefinition("master_explorer", "Bậc thầy khám phá", "Khám phá 50 POI.", "✺", 50, discoveredCount),
-            new AchievementDefinition("qr_hunter", "Thợ săn QR", "Khám phá 3 POI bằng mã QR.", "▦", 3, qrCount)
+            new AchievementDefinition("master_explorer", "Bậc thầy khám phá", "Khám phá 50 POI.", "✺", 50, discoveredCount)
         };
 
         return new AchievementSummaryDto
@@ -173,9 +192,7 @@ public sealed class AchievementApiController : ControllerBase
                 CurrentValue = Math.Min(definition.CurrentValue, definition.RequiredValue),
                 IsUnlocked = definition.CurrentValue >= definition.RequiredValue,
                 UnlockedAt = definition.CurrentValue >= definition.RequiredValue
-                    ? (definition.Code == "qr_hunter"
-                        ? discoveries.Where(item => item.DiscoveryMethod == "QR")
-                        : discoveries)
+                    ? discoveries
                         .OrderBy(item => item.DiscoveredAt)
                         .Skip(definition.RequiredValue - 1)
                         .Select(item => (DateTime?)item.DiscoveredAt)
@@ -195,18 +212,13 @@ public sealed class AchievementApiController : ControllerBase
         };
     }
 
-    private static string? ValidateQr(Poi poi, string? qrCodeToken)
-    {
-        return !string.IsNullOrWhiteSpace(qrCodeToken) &&
-               string.Equals(poi.QrCodeToken, qrCodeToken.Trim(), StringComparison.Ordinal)
-            ? null
-            : "Mã QR không hợp lệ cho POI này.";
-    }
-
     private static string? ValidateGps(Poi poi, DiscoverPoiRequest request)
     {
         if (!request.Latitude.HasValue || !request.Longitude.HasValue)
-            return "Cần bật vị trí để check-in khám phá.";
+            return "Vui lòng bật GPS và cấp quyền vị trí để check-in.";
+
+        if (request.Latitude.Value is < -90 or > 90 || request.Longitude.Value is < -180 or > 180)
+            return "Tọa độ GPS không hợp lệ.";
 
         var distance = CalculateDistanceMeters(
             request.Latitude.Value,
@@ -218,7 +230,7 @@ public sealed class AchievementApiController : ControllerBase
 
         return distance <= allowedDistance
             ? null
-            : $"Bạn cần đến gần POI hơn để check-in. Hiện còn cách khoảng {Math.Round(distance)} m.";
+            : $"Bạn chưa ở gần địa điểm này nên không thể check-in. Hiện còn cách khoảng {Math.Round(distance)} m.";
     }
 
     private static double CalculateDistanceMeters(

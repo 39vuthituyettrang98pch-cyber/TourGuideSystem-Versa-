@@ -430,14 +430,6 @@
                 </div>
             </div>
         </div>
-
-        <div class="register-note">
-            <i class="fa-solid fa-database"></i>
-            <span>
-                Tài khoản này lưu vào bảng <strong>tourists</strong>, nên có thể đăng nhập
-                cả web du khách và app mobile bằng cùng email/mật khẩu.
-            </span>
-        </div>
     </section>
 
     <section class="register-card">
@@ -495,10 +487,11 @@
                                    class="register-input"
                                    type="email"
                                    autocomplete="email"
-                                   placeholder="email@example.com" />
+                                   placeholder="tenban@gmail.com" />
                         </div>
 
                         <span asp-validation-for="Email" class="text-danger"></span>
+                        <div class="password-small">Chỉ dùng Gmail: ví dụ tenban@gmail.com</div>
                     </div>
 
                     <div class="register-field">

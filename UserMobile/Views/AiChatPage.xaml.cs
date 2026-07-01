@@ -30,6 +30,9 @@ public partial class AiChatPage : ContentPage
         await ViewModel.SendMessageAsync();
     }
 
+    private async void OnPremiumClicked(object? sender, EventArgs e) =>
+        await Shell.Current.GoToAsync(nameof(PremiumPage));
+
     private void ScrollToLastMessage()
     {
         MainThread.BeginInvokeOnMainThread(() =>

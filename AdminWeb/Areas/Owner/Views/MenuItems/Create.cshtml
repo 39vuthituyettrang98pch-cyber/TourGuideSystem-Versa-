@@ -1,0 +1,77 @@
+@using AdminWeb.Models
+@model AdminWeb.Models.OwnerMenuItem
+@{
+    ViewData["Title"] = "Thêm menu / sản phẩm";
+    var pois = ViewBag.Pois as List<Poi> ?? new List<Poi>();
+    var selectedPoiId = ViewBag.SelectedPoiId as int?;
+}
+
+<div class="owner-card" style="max-width:920px;">
+    <h2 style="font-weight:950;margin-bottom:6px;">Thêm món / sản phẩm / dịch vụ</h2>
+    <p style="color:var(--text-muted);font-weight:750;">Các mục này giúp chủ gian hàng giới thiệu sản phẩm sau khi du khách xem hoặc quét QR POI.</p>
+
+    <form asp-area="Owner" asp-controller="MenuItems" asp-action="Create" method="post" enctype="multipart/form-data" style="display:grid;gap:14px;">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">POI</label>
+                <select asp-for="PoiId" class="form-select" required>
+                    <option value="">-- Chọn POI --</option>
+                    @foreach (var poi in pois)
+                    {
+                        var name = poi.Translations.FirstOrDefault(t => t.LanguageCode == "vi")?.Name
+                            ?? poi.Translations.FirstOrDefault()?.Name
+                            ?? $"POI #{poi.Id}";
+                        if ((selectedPoiId ?? Model.PoiId) == poi.Id)
+                        {
+                            <option value="@poi.Id" selected>#@poi.Id - @name</option>
+                        }
+                        else
+                        {
+                            <option value="@poi.Id">#@poi.Id - @name</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="Name" class="form-label">Tên mục</label>
+                <input asp-for="Name" class="form-control" required />
+            </div>
+            <div class="col-md-6">
+                <label asp-for="Price" class="form-label">Giá</label>
+                <input asp-for="Price" type="number" min="0" step="1000" class="form-control" />
+            </div>
+            <div class="col-md-3">
+                <label asp-for="Currency" class="form-label">Tiền tệ</label>
+                <input asp-for="Currency" class="form-control" value="VND" />
+            </div>
+            <div class="col-md-3">
+                <label asp-for="Status" class="form-label">Trạng thái</label>
+                <select asp-for="Status" class="form-select">
+                    <option value="Active">Hiển thị</option>
+                    <option value="Hidden">Ẩn</option>
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label for="imageFile" class="form-label">Tải ảnh món ăn</label>
+                <input id="imageFile" name="imageFile" type="file" accept="image/*" class="form-control" />
+                <span class="text-danger" data-valmsg-for="imageFile" data-valmsg-replace="true"></span>
+                <small class="text-muted">Nên dùng ảnh ngang, JPG/PNG/WEBP, tối đa 5MB.</small>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="ImageUrl" class="form-label">Hoặc nhập URL ảnh</label>
+                <input asp-for="ImageUrl" class="form-control" placeholder="/uploads/... hoặc https://..." />
+                <small class="text-muted">Nếu vừa tải ảnh vừa nhập URL, ảnh tải lên sẽ được ưu tiên.</small>
+            </div>
+            <div class="col-12">
+                <label asp-for="Description" class="form-label">Mô tả</label>
+                <textarea asp-for="Description" rows="4" class="form-control"></textarea>
+            </div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button type="submit" class="btn btn-primary">Lưu</button>
+            <a asp-area="Owner" asp-controller="MenuItems" asp-action="Index" class="btn btn-secondary">Quay lại</a>
+        </div>
+    </form>
+</div>

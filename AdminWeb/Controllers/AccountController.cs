@@ -1,78 +1,89 @@
 using AdminWeb.Data;
-using AdminWeb.Models;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Threading.Tasks;
-using System.Collections.Generic;
 using AdminWeb.Services;
 
 namespace AdminWeb.Controllers
 {
     [Authorize]
-    public class AccountController : Controller
+    public class AccountController : StaffPortalControllerBase
     {
         private readonly AppDbContext _context;
         private readonly PasswordService _passwordService;
 
         public AccountController(AppDbContext context, PasswordService passwordService)
+            : base(context, passwordService)
         {
             _context = context;
             _passwordService = passwordService;
         }
 
-        // GET: /Account/Login
+        // GET: /Account/Login hoặc /Admin/Login
+        // Cổng này chỉ dành riêng cho Admin.
         [AllowAnonymous]
-        public IActionResult Login()
+        public async Task<IActionResult> Login(string? returnUrl = null)
         {
-            // Nếu đã đăng nhập rồi thì chuyển thẳng vào trang chủ (Dashboard)
-            if (User.Identity != null && User.Identity.IsAuthenticated)
-            {
-                return RedirectToWorkspace(User.Claims
-                    .FirstOrDefault(claim => claim.Type == System.Security.Claims.ClaimTypes.Role)?.Value);
-            }
-            return View();
+            ConfigureLoginView("Admin");
+
+            var redirect = await PrepareLoginPortalAsync("Admin");
+            if (redirect != null)
+                return redirect;
+
+            return View("Login");
         }
 
-        // POST: /Account/Login
-[HttpPost]
+        // POST: /Account/Login hoặc /Admin/Login
+        [HttpPost]
         [AllowAnonymous]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Login(string username, string password)
+        [ActionName("Login")]
+        public Task<IActionResult> LoginPost(string username, string password)
         {
-            // Cho phép tìm kiếm người dùng bằng Username HOẶC Email
-            var user = await _context.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.Username == username || u.Email == username);
-            
-            if (user != null && user.Status == "active")
-            {
-                if (_passwordService.Verify(password, user.PasswordHash, out var needsUpgrade))
-                {
-                    if (needsUpgrade)
-                    {
-                        user.PasswordHash = _passwordService.Hash(password);
-                        await _context.SaveChangesAsync();
-                    }
+            return LoginStaffAsync(username, password, "Admin", "Login");
+        }
 
-                    var claims = new List<System.Security.Claims.Claim>
-                    {
-                        new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Name, user.Username),
-                        new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Role, user.Role?.RoleName ?? "User")
-                    };
+        [AllowAnonymous]
+        [HttpGet]
+        public IActionResult RedirectAdminOwnerToOwner(string? path = null)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+                return Redirect("/Areas/Owner");
 
-                    var identity = new System.Security.Claims.ClaimsIdentity(claims, "AdminScheme");
-                    var principal = new System.Security.Claims.ClaimsPrincipal(identity);
+            return Redirect("/Areas/Owner/" + path.TrimStart('/'));
+        }
 
-                    // Ghi Cookie phiên đăng nhập
-                    await HttpContext.SignInAsync("AdminScheme", principal);
-                    return RedirectToWorkspace(user.Role?.RoleName);
-                }
-            }
+        [AllowAnonymous]
+        [HttpGet]
+        public async Task<IActionResult> RedirectEditorApprovalToCorrectPortal(string? path = null)
+        {
+            var safePath = string.IsNullOrWhiteSpace(path) ? "PoiPending" : path.TrimStart('/');
 
-            // Báo lỗi nếu sai tài khoản / mật khẩu
-            ModelState.AddModelError("", "Tên đăng nhập hoặc mật khẩu không chính xác.");
-            return View();
+            var reviewerAuth = await HttpContext.AuthenticateAsync("ReviewerScheme");
+            if (reviewerAuth.Succeeded && reviewerAuth.Principal?.IsInRole("Reviewer") == true)
+                return Redirect("/Areas/Reviewer/Approval/" + safePath);
+
+            var adminAuth = await HttpContext.AuthenticateAsync("AdminScheme");
+            if (adminAuth.Succeeded && adminAuth.Principal?.IsInRole("Admin") == true)
+                return Redirect("/Admin/Approval/" + safePath);
+
+            // Admin duyệt POI ở cổng Admin, không dùng prefix /Editor.
+            return Redirect("/Admin/Approval/" + safePath);
+        }
+
+        [AllowAnonymous]
+        [HttpGet]
+        public IActionResult Register(string? area = null, string? returnUrl = null)
+        {
+            // AccountController gốc không dùng để đăng ký. Redirect về đúng khu vực
+            // để URL cũ /Admin/Account/Register?area=Owner không còn 404.
+            var redirect = RedirectWrongArea(area, returnUrl);
+            if (redirect != null)
+                return redirect;
+
+            return RedirectToAction("Login", "Account", new { area = "" });
         }
 
         [AllowAnonymous]
@@ -149,23 +160,77 @@ namespace AdminWeb.Controllers
             return View();
         }
 
-        [HttpPost]
+        [HttpPost("/Account/Logout")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Logout()
         {
-            await HttpContext.SignOutAsync("AdminScheme");
-            return RedirectToAction("Login", "Account", new { area = "" });
+            var roleName = User.Claims.FirstOrDefault(claim => claim.Type == System.Security.Claims.ClaimTypes.Role)?.Value;
+            return await SignOutStaffAndRedirectAsync(roleName);
         }
 
-        private IActionResult RedirectToWorkspace(string? roleName)
+        // Logout của Admin; Editor và Reviewer có action riêng trong Area tương ứng.
+        [AllowAnonymous]
+        [HttpPost("/Admin/Logout")]
+        [HttpPost("/Admin/Account/Logout")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AdminLogout()
+        {
+            await HttpContext.SignOutAsync("AdminScheme");
+            return Redirect("/Admin/Login");
+        }
+
+        // GET logout chỉ dùng làm lối thoát an toàn khi người dùng bấm nhầm link cũ hoặc cache cũ.
+        [AllowAnonymous]
+        [HttpGet("/Admin/Logout")]
+        [HttpGet("/Admin/Account/Logout")]
+        public async Task<IActionResult> AdminLogoutByGet()
+        {
+            await HttpContext.SignOutAsync("AdminScheme");
+            return Redirect("/Admin/Login");
+        }
+
+        private async Task<IActionResult> SignOutStaffAndRedirectAsync(string? roleName)
+        {
+            var scheme = GetStaffScheme(roleName);
+            await HttpContext.SignOutAsync(scheme);
+
+            return roleName?.ToUpperInvariant() switch
+            {
+                "EDITOR" => Redirect("/Areas/Editor/Login"),
+                "REVIEWER" => Redirect("/Areas/Reviewer/Login"),
+                _ => Redirect("/Admin/Login")
+            };
+        }
+
+        private static string GetStaffScheme(string? roleName)
         {
             return roleName?.ToUpperInvariant() switch
             {
-                "EDITOR" => RedirectToAction("Index", "Dashboard", new { area = "Editor" }),
-                "REVIEWER" => RedirectToAction("Index", "Dashboard", new { area = "Reviewer" }),
-                "TOURIST" => RedirectToAction("Index", "Home", new { area = "DuKhach" }),
-                _ => RedirectToAction("Index", "Home", new { area = "" })
+                "EDITOR" => "EditorScheme",
+                "REVIEWER" => "ReviewerScheme",
+                _ => "AdminScheme"
             };
         }
+
+        private IActionResult? RedirectWrongArea(string? area, string? returnUrl)
+        {
+            if (string.IsNullOrWhiteSpace(area))
+                return null;
+
+            if (string.Equals(area, "Owner", StringComparison.OrdinalIgnoreCase))
+                return Redirect("/Areas/Owner/Login" + (string.IsNullOrWhiteSpace(returnUrl) ? "" : "?returnUrl=" + Uri.EscapeDataString(returnUrl)));
+
+            if (string.Equals(area, "DuKhach", StringComparison.OrdinalIgnoreCase))
+                return Redirect("/Areas/DuKhach/Account/Login" + (string.IsNullOrWhiteSpace(returnUrl) ? "" : "?returnUrl=" + Uri.EscapeDataString(returnUrl)));
+
+            if (string.Equals(area, "Editor", StringComparison.OrdinalIgnoreCase))
+                return Redirect("/Areas/Editor/Login");
+
+            if (string.Equals(area, "Reviewer", StringComparison.OrdinalIgnoreCase))
+                return Redirect("/Areas/Reviewer/Login");
+
+            return null;
+        }
+
     }
 }

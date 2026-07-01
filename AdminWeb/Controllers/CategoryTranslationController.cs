@@ -117,6 +117,7 @@ public class CategoryTranslationController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
     {
         var translation = await _context.CategoryTranslations.FindAsync([id], cancellationToken);

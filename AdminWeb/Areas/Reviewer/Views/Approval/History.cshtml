@@ -1,0 +1,76 @@
+@model AdminWeb.Areas.Reviewer.Models.ReviewerAuditHistoryViewModel
+@{
+    ViewData["Title"] = "Lịch sử kiểm duyệt";
+    string Badge(string decision) => decision == "Approved" ? "green" : "red";
+    string Label(string decision) => decision == "Approved" ? "Đã duyệt" : "Đã từ chối";
+}
+
+<div class="page-heading">
+    <div>
+        <div class="page-title">Lịch sử kiểm duyệt</div>
+        <div class="page-subtitle">Theo dõi rõ ai đã duyệt/từ chối POI, lúc nào và lý do xử lý.</div>
+    </div>
+    <div class="page-actions">
+        <a asp-area="Reviewer" asp-controller="Approval" asp-action="PoiPending" class="btn btn-primary"><i class="fa-solid fa-list-check"></i> Hàng chờ</a>
+    </div>
+</div>
+
+<section class="metric-grid" style="margin-top:18px;">
+    <div class="metric-card"><span>Tổng lượt xử lý</span><strong>@Model.TotalCount</strong><small>Dựa trên log kiểm duyệt.</small></div>
+    <div class="metric-card"><span>Đã duyệt</span><strong>@Model.ApprovedCount</strong><small>POI được cho phép hiển thị.</small></div>
+    <div class="metric-card"><span>Đã từ chối</span><strong>@Model.RejectedCount</strong><small>POI cần Editor/Owner sửa lại.</small></div>
+</section>
+
+<form method="get" class="card" style="padding:18px;margin-top:18px;">
+    <div style="display:grid;grid-template-columns:1fr 190px auto;gap:12px;align-items:end;">
+        <div>
+            <label class="form-label">Tìm lịch sử</label>
+            <input class="form-control" name="q" value="@Model.Search" placeholder="Tên POI, #ID, reviewer hoặc lý do" />
+        </div>
+        <div>
+            <label class="form-label">Kết quả duyệt</label>
+            <select class="form-select" name="status">
+                <option value="All" selected="@(Model.StatusFilter == "All")">Tất cả</option>
+                <option value="Approved" selected="@(Model.StatusFilter == "Approved")">Đã duyệt</option>
+                <option value="Rejected" selected="@(Model.StatusFilter == "Rejected")">Đã từ chối</option>
+            </select>
+        </div>
+        <button class="btn btn-primary" type="submit"><i class="fa-solid fa-filter"></i> Lọc</button>
+    </div>
+</form>
+
+<section class="card" style="margin-top:18px">
+    <div class="card-header">
+        <div>
+            <div class="card-title"><i class="fa-solid fa-clock-rotate-left"></i> Nhật ký xử lý POI</div>
+            <div class="card-subtitle">Mỗi dòng là một hành động duyệt hoặc từ chối đã lưu trong hệ thống.</div>
+        </div>
+    </div>
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr><th>POI</th><th>Kết quả</th><th>Người duyệt</th><th>Ngày duyệt</th><th>Lý do / ghi chú</th><th></th></tr>
+            </thead>
+            <tbody>
+            @if (Model.Items.Count == 0)
+            {
+                <tr><td colspan="6"><div class="empty-state compact"><i class="fa-solid fa-magnifying-glass"></i><p>Chưa có lịch sử phù hợp.</p></div></td></tr>
+            }
+            else
+            {
+                foreach (var item in Model.Items)
+                {
+                    <tr>
+                        <td><strong>@item.PoiName</strong><br /><small style="color:var(--text-soft)">#@item.PoiId · Log #@item.LogId</small></td>
+                        <td><span class="badge @Badge(item.Decision)">@Label(item.Decision)</span></td>
+                        <td>@(string.IsNullOrWhiteSpace(item.ReviewerName) ? "Reviewer" : item.ReviewerName)</td>
+                        <td>@item.ReviewedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                        <td style="max-width:460px;">@(string.IsNullOrWhiteSpace(item.Reason) ? "-" : item.Reason)</td>
+                        <td><a class="btn btn-secondary btn-sm" asp-area="Reviewer" asp-controller="Approval" asp-action="Details" asp-route-id="@item.PoiId"><i class="fa-solid fa-eye"></i> Chi tiết</a></td>
+                    </tr>
+                }
+            }
+            </tbody>
+        </table>
+    </div>
+</section>

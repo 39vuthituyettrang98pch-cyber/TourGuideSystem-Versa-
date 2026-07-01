@@ -1,6 +1,7 @@
 @model AdminWeb.Models.Tour
 
 @{
+    var currentArea = ViewContext.RouteData.Values["area"]?.ToString() ?? "";
     ViewData["Title"] = "Quản lý POI trong Tour";
     var availablePois = ViewBag.AvailablePois as IEnumerable<AdminWeb.Models.Poi>;
 }
@@ -9,7 +10,7 @@
 <div class="page-subtitle">Thêm, bớt và sắp xếp lại thứ tự các điểm tham quan trong tour bằng cách kéo thả.</div>
 
 <div class="toolbar">
-    <a asp-action="Index" class="btn btn-secondary btn-sm"><i class="fa-solid fa-arrow-left"></i> Quay lại danh sách Tour</a>
+    <a asp-area="@currentArea" asp-action="Index" class="btn btn-secondary btn-sm"><i class="fa-solid fa-arrow-left"></i> Quay lại danh sách Tour</a>
 </div>
 
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; margin-top: 24px;">
@@ -33,7 +34,7 @@
                                     <div style="font-size: 12px; color: var(--text2);">Thứ tự: <span class="seq-num">@tp.SequenceOrder</span></div>
                                 </div>
                             </div>
-                            <form asp-action="RemovePoi" method="post" style="margin: 0;">
+                            <form asp-area="@currentArea" asp-action="RemovePoi" method="post" style="margin: 0;">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="tourId" value="@Model.Id" />
                                 <input type="hidden" name="poiId" value="@tp.PoiId" />
@@ -59,7 +60,7 @@
             <div class="card-title" style="font-weight: 700; font-size: 16px;">Thêm Điểm tham quan</div>
         </div>
         <div class="card-body" style="padding: 20px;">
-            <form asp-action="AddPoi" method="post">
+            <form asp-area="@currentArea" asp-action="AddPoi" method="post">
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="tourId" value="@Model.Id" />
                 <div class="form-group" style="margin-bottom: 16px;">

@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace AdminWeb.Models; // DÀNH CHO WEB
 
@@ -20,6 +20,7 @@ public sealed class User
     public string Status { get; set; } = "active";
     public DateTime CreatedAt { get; set; } = DateTime.Now;
     public Role? Role { get; set; }
+    public OwnerProfile? OwnerProfile { get; set; }
 }
 
 public sealed class Tourist
@@ -35,6 +36,8 @@ public sealed class Tourist
     public List<TouristFavorite> Favorites { get; set; } = [];
     public List<VisitorPlaybackLog> PlaybackLogs { get; set; } = [];
     public List<TouristPoiDiscovery> PoiDiscoveries { get; set; } = [];
+    public List<TouristSubscription> Subscriptions { get; set; } = [];
+    public List<MenuOrder> MenuOrders { get; set; } = [];
 }
 
 public sealed class Poi
@@ -52,10 +55,12 @@ public sealed class Poi
     public string? AdminNote { get; set; }
 
     public int? CreatedBy { get; set; }
+    public int? OwnerProfileId { get; set; }
     public string? CoverImageUrl { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.Now;
 
     public User? Creator { get; set; }
+    public OwnerProfile? OwnerProfile { get; set; }
     public List<PoiTranslation> Translations { get; set; } = [];
     public List<MediaTask> MediaTasks { get; set; } = [];
     public List<MediaAsset> MediaAssets { get; set; } = [];
@@ -64,6 +69,7 @@ public sealed class Poi
     public List<TourPoi> TourPois { get; set; } = [];
     public List<VisitorPlaybackLog> PlaybackLogs { get; set; } = [];
     public List<TouristPoiDiscovery> Discoveries { get; set; } = [];
+    public List<MenuOrder> MenuOrders { get; set; } = [];
 }
 
 public sealed class PoiTranslation
@@ -100,7 +106,6 @@ public sealed class SupportedLanguage
     public string LanguageName { get; set; } = "";
 
     // Edge-TTS voice name, e.g. en-US-AriaNeural
-    [System.ComponentModel.DataAnnotations.Required]
     [System.ComponentModel.DataAnnotations.StringLength(100)]
     public string EdgeTtsVoice { get; set; } = "";
 
@@ -279,6 +284,172 @@ public sealed class TouristPoiDiscovery
     public DateTime DiscoveredAt { get; set; } = DateTime.UtcNow;
 
     public Tourist? Tourist { get; set; }
+    public Poi? Poi { get; set; }
+}
+
+
+public sealed class OwnerProfile
+{
+    public int Id { get; set; }
+    public int UserId { get; set; }
+    public string BusinessName { get; set; } = "";
+    public string? RepresentativeName { get; set; }
+    public string? Phone { get; set; }
+    public string? Address { get; set; }
+    public string Status { get; set; } = "Pending";
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    public User? User { get; set; }
+    public List<Poi> Pois { get; set; } = [];
+    public List<OwnerSubscription> Subscriptions { get; set; } = [];
+    public List<OwnerMenuItem> MenuItems { get; set; } = [];
+    public List<MenuOrder> MenuOrders { get; set; } = [];
+}
+
+public sealed class PaymentPlan
+{
+    public int Id { get; set; }
+    public string PlanCode { get; set; } = "";
+    public string PlanName { get; set; } = "";
+    public string Audience { get; set; } = "Owner"; // Owner / Tourist / Both
+    public decimal Price { get; set; }
+    public int DurationDays { get; set; } = 30;
+    public string? Description { get; set; }
+    public bool IsActive { get; set; } = true;
+
+    public List<PaymentTransaction> Payments { get; set; } = [];
+    public List<OwnerSubscription> OwnerSubscriptions { get; set; } = [];
+}
+
+public sealed class PaymentTransaction
+{
+    public int Id { get; set; }
+    public string TransactionCode { get; set; } = "";
+    public string PayerType { get; set; } = "Owner"; // Owner / Tourist
+    public int? OwnerProfileId { get; set; }
+    public int? TouristId { get; set; }
+    public int? PaymentPlanId { get; set; }
+    public string Purpose { get; set; } = "Subscription";
+    public decimal Amount { get; set; }
+    public string Currency { get; set; } = "VND";
+    public string PaymentMethod { get; set; } = "Manual";
+    public string Status { get; set; } = "Pending"; // Pending / Paid / Rejected / Cancelled
+    public string? Note { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? PaidAt { get; set; }
+    public string? CheckoutUrl { get; set; }
+    public string? GatewayOrderCode { get; set; }
+    public string? GatewayPaymentLinkId { get; set; }
+    public string? GatewayStatus { get; set; }
+
+    public OwnerProfile? OwnerProfile { get; set; }
+    public Tourist? Tourist { get; set; }
+    public PaymentPlan? PaymentPlan { get; set; }
+}
+
+public sealed class OwnerSubscription
+{
+    public int Id { get; set; }
+    public int OwnerProfileId { get; set; }
+    public int PaymentPlanId { get; set; }
+    public int? PaymentTransactionId { get; set; }
+    public string Status { get; set; } = "Active";
+    public DateTime StartsAt { get; set; } = DateTime.UtcNow;
+    public DateTime ExpiresAt { get; set; } = DateTime.UtcNow.AddDays(30);
+
+    public OwnerProfile? OwnerProfile { get; set; }
+    public PaymentPlan? PaymentPlan { get; set; }
+    public PaymentTransaction? PaymentTransaction { get; set; }
+}
+
+public sealed class TouristSubscription
+{
+    public int Id { get; set; }
+    public int TouristId { get; set; }
+    public int PaymentPlanId { get; set; }
+    public int? PaymentTransactionId { get; set; }
+    public string Status { get; set; } = "Active";
+    public DateTime StartsAt { get; set; } = DateTime.UtcNow;
+    public DateTime ExpiresAt { get; set; } = DateTime.UtcNow.AddDays(30);
+
+    public Tourist? Tourist { get; set; }
+    public PaymentPlan? PaymentPlan { get; set; }
+    public PaymentTransaction? PaymentTransaction { get; set; }
+}
+
+public sealed class OwnerMenuItem
+{
+    public int Id { get; set; }
+    public int OwnerProfileId { get; set; }
+    public int PoiId { get; set; }
+    public string Name { get; set; } = "";
+    public string? Description { get; set; }
+    public decimal Price { get; set; }
+    public string Currency { get; set; } = "VND";
+    public string? ImageUrl { get; set; }
+    public string Status { get; set; } = "Active"; // Active / Hidden
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+    public OwnerProfile? OwnerProfile { get; set; }
+    public Poi? Poi { get; set; }
+    public List<MenuOrderItem> OrderItems { get; set; } = [];
+}
+
+public sealed class MenuOrder
+{
+    public int Id { get; set; }
+    public string OrderCode { get; set; } = "";
+    public int TouristId { get; set; }
+    public int OwnerProfileId { get; set; }
+    public int PoiId { get; set; }
+    public string CustomerName { get; set; } = "";
+    public string CustomerPhone { get; set; } = "";
+    public string? Note { get; set; }
+    public string Status { get; set; } = "Pending"; // Pending / Confirmed / Preparing / Ready / Completed / Cancelled
+    public string PaymentMethod { get; set; } = "PayAtCounter";
+    public string PaymentStatus { get; set; } = "Unpaid"; // Unpaid / Paid / Refunded
+    public decimal Subtotal { get; set; }
+    public decimal TotalAmount { get; set; }
+    public string Currency { get; set; } = "VND";
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? ConfirmedAt { get; set; }
+    public DateTime? CompletedAt { get; set; }
+    public DateTime? CancelledAt { get; set; }
+
+    public Tourist? Tourist { get; set; }
+    public OwnerProfile? OwnerProfile { get; set; }
+    public Poi? Poi { get; set; }
+    public List<MenuOrderItem> Items { get; set; } = [];
+}
+
+public sealed class MenuOrderItem
+{
+    public int Id { get; set; }
+    public int MenuOrderId { get; set; }
+    public int OwnerMenuItemId { get; set; }
+    public string ItemName { get; set; } = "";
+    public decimal UnitPrice { get; set; }
+    public int Quantity { get; set; }
+    public decimal LineTotal { get; set; }
+    public string Currency { get; set; } = "VND";
+
+    public MenuOrder? MenuOrder { get; set; }
+    public OwnerMenuItem? OwnerMenuItem { get; set; }
+}
+
+public sealed class PoiOwnerRequest
+{
+    public int Id { get; set; }
+    public int OwnerProfileId { get; set; }
+    public int? PoiId { get; set; }
+    public string RequestType { get; set; } = "Claim"; // Claim / Create / Update
+    public string Status { get; set; } = "Pending";
+    public string? Note { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? ReviewedAt { get; set; }
+
+    public OwnerProfile? OwnerProfile { get; set; }
     public Poi? Poi { get; set; }
 }
 

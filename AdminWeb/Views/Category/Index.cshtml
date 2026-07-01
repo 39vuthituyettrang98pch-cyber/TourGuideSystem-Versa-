@@ -1,6 +1,8 @@
 @model IEnumerable<AdminWeb.Models.Category>
 
 @{
+    var currentArea = ViewContext.RouteData.Values["area"]?.ToString() ?? "";
+    var isAdmin = User.IsInRole("Admin");
     ViewData["Title"] = "Danh mục";
 }
 
@@ -9,13 +11,13 @@
 <div class="toolbar">
     <div></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
-        <form asp-action="GenerateMissingTranslations" method="post" onsubmit="return confirm('AI sẽ dịch các danh mục còn thiếu sang toàn bộ ngôn ngữ đang bật. Tiếp tục?');">
+        <form asp-area="@currentArea" asp-action="GenerateMissingTranslations" method="post" onsubmit="return confirm('AI sẽ dịch các danh mục còn thiếu sang toàn bộ ngôn ngữ đang bật. Tiếp tục?');">
             @Html.AntiForgeryToken()
             <button type="submit" class="btn btn-secondary btn-sm">
                 <i class="fa-solid fa-wand-magic-sparkles"></i> AI dịch còn thiếu
             </button>
         </form>
-        <a asp-action="Create" class="btn btn-primary btn-sm"><i class="fa-solid fa-plus"></i> Thêm danh mục</a>
+        <a asp-area="@currentArea" asp-action="Create" class="btn btn-primary btn-sm"><i class="fa-solid fa-plus"></i> Thêm danh mục</a>
     </div>
 </div>
 
@@ -45,13 +47,16 @@
                     <td>@poiCount</td>
                     <td>
                         <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                            <a asp-action="Edit" asp-route-id="@category.Id" class="btn btn-sm btn-secondary">Sửa</a>
-                            <a asp-controller="CategoryTranslation" asp-action="Index" asp-route-categoryId="@category.Id" class="btn btn-sm btn-secondary"><i class="fa-solid fa-language"></i> Dịch</a>
-                            <form asp-action="Delete" method="post" style="display:inline;">
+                            <a asp-area="@currentArea" asp-action="Edit" asp-route-id="@category.Id" class="btn btn-sm btn-secondary">Sửa</a>
+                            <a asp-area="@currentArea" asp-controller="CategoryTranslation" asp-action="Index" asp-route-categoryId="@category.Id" class="btn btn-sm btn-secondary"><i class="fa-solid fa-language"></i> Dịch</a>
+                            @if (isAdmin)
+                            {
+                            <form asp-area="@currentArea" asp-action="Delete" method="post" style="display:inline;">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="id" value="@category.Id" />
                                 <button type="submit" class="btn btn-sm btn-danger">Xóa</button>
                             </form>
+                            }
                         </div>
                     </td>
                 </tr>

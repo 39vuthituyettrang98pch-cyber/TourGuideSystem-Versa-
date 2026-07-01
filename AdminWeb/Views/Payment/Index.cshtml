@@ -1,0 +1,20 @@
+@model IEnumerable<AdminWeb.Models.PaymentTransaction>
+@{
+    ViewData["Title"] = "Thanh toán & doanh thu";
+    decimal totalRevenue = ViewBag.TotalRevenue ?? 0m;
+    int pendingCount = ViewBag.PendingCount ?? 0;
+}
+<div class="page-heading"><div><div class="page-title">Thanh toán & doanh thu</div><div class="page-subtitle">Theo dõi giao dịch chủ gian hàng và người dùng. Bản này dùng thanh toán giả lập/manual.</div></div></div>
+<div class="stats-grid" style="margin-bottom:18px;"><div class="stat-card"><span>Doanh thu đã thu</span><strong>@totalRevenue.ToString("N0") đ</strong></div><div class="stat-card"><span>Giao dịch chờ xác nhận</span><strong>@pendingCount</strong></div><div class="stat-card"><span>Tổng giao dịch</span><strong>@Model.Count()</strong></div></div>
+<div class="data-table table-wrapper"><table class="data-table"><thead><tr><th>Mã GD</th><th>Người trả</th><th>Gói</th><th>Số tiền</th><th>Mục đích</th><th>Ngày tạo</th><th>Trạng thái</th><th>Hành động</th></tr></thead><tbody>
+@foreach (var payment in Model)
+{
+    var payer = payment.PayerType == "Owner" ? payment.OwnerProfile?.BusinessName : payment.Tourist?.FullName ?? payment.Tourist?.Email;
+    <tr><td><strong>@payment.TransactionCode</strong></td><td>@payment.PayerType<br /><small>@payer</small></td><td>@payment.PaymentPlan?.PlanName</td><td>@payment.Amount.ToString("N0") @payment.Currency</td><td>@payment.Purpose<br /><small>@payment.Note</small></td><td>@payment.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td><td><span class="badge @(payment.Status == "Paid" ? "green" : payment.Status == "Pending" ? "yellow" : "red")">@payment.Status</span></td><td>
+        @if (payment.Status == "Pending")
+        {
+            <div style="display:flex;gap:8px;flex-wrap:wrap;"><form action="/Admin/Payment/Confirm" method="post">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@payment.Id" /><button class="btn btn-sm btn-primary">Xác nhận thu tiền</button></form><form action="/Admin/Payment/Reject" method="post">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@payment.Id" /><button class="btn btn-sm btn-danger">Từ chối</button></form></div>
+        }
+    </td></tr>
+}
+</tbody></table></div>

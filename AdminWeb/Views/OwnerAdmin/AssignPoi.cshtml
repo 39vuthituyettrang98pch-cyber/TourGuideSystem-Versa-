@@ -1,0 +1,26 @@
+@model AdminWeb.Models.OwnerProfile
+@{
+    ViewData["Title"] = "Gán POI cho chủ gian hàng";
+    var pois = ViewBag.Pois as IEnumerable<AdminWeb.Models.Poi> ?? Enumerable.Empty<AdminWeb.Models.Poi>();
+}
+<div class="page-heading"><div><div class="page-title">Gán POI cho @Model.BusinessName</div><div class="page-subtitle">Chủ gian hàng chỉ quản lý được POI đã gán.</div></div></div>
+<div class="card" style="padding:22px;margin-bottom:18px;">
+    <form asp-area="" asp-action="AssignPoi" asp-route-id="@Model.Id" method="post" style="display:flex;gap:10px;flex-wrap:wrap;align-items:end;">
+        @Html.AntiForgeryToken()
+        <div style="flex:1;min-width:260px;"><label class="form-label">Chọn POI</label><select name="poiId" class="form-control">
+            @foreach (var poi in pois)
+            {
+                var name = poi.Translations.FirstOrDefault(t => t.LanguageCode == "vi")?.Name ?? poi.Translations.FirstOrDefault()?.Name ?? $"POI #{poi.Id}";
+                <option value="@poi.Id">#@poi.Id - @name @(poi.OwnerProfileId == Model.Id ? "(đang thuộc owner này)" : poi.OwnerProfileId.HasValue ? "(đã có owner)" : "")</option>
+            }
+        </select></div>
+        <button class="btn btn-primary">Gán POI</button><a asp-area="" asp-action="Index" class="btn btn-secondary">Quay lại</a>
+    </form>
+</div>
+<div class="data-table table-wrapper"><table class="data-table"><thead><tr><th>POI</th><th>Trạng thái</th><th>Hành động</th></tr></thead><tbody>
+@foreach (var poi in pois.Where(p => p.OwnerProfileId == Model.Id))
+{
+    var name = poi.Translations.FirstOrDefault(t => t.LanguageCode == "vi")?.Name ?? poi.Translations.FirstOrDefault()?.Name ?? $"POI #{poi.Id}";
+    <tr><td><strong>@name</strong><br /><small>#@poi.Id</small></td><td>@poi.Status</td><td><form asp-area="" asp-action="RemovePoi" method="post">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@Model.Id" /><input type="hidden" name="poiId" value="@poi.Id" /><button class="btn btn-sm btn-danger">Bỏ gán</button></form></td></tr>
+}
+</tbody></table></div>

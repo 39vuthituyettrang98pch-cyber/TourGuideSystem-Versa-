@@ -12,8 +12,14 @@
     var isAudioTasksSection = currentController == "AudioTasks";
     var isAnalyticsSection = currentController == "Analytics";
     var isActivityLogSection = currentController == "ActivityLog";
+    var isVisitorTrafficSection = currentController == "VisitorTraffic";
     var isVisitorSection = currentController == "Visitor";
     var isReviewSection = currentController == "Review";
+    var isOwnerAdminSection = currentController == "OwnerAdmin";
+    var isPaymentPlanSection = currentController == "PaymentPlan";
+    var isPaymentSection = currentController == "Payment";
+    var isRevenueSection = currentController == "Revenue";
+    var isPurchasesSection = currentController == "Purchases";
     var isBeaconSection = currentController == "Beacon";
     var isSyncSection = currentController == "SyncVersion";
     var isUserSection = currentController == "User";
@@ -30,7 +36,9 @@
             ? "Biên tập viên"
             : User.IsInRole("Reviewer")
                 ? "Kiểm duyệt viên"
-                : "Nhân sự";
+                : User.IsInRole("Owner")
+                    ? "Chủ gian hàng"
+                    : "Nhân sự";
 
     var initials = userName.Trim().Length > 0
         ? userName.Trim()[0].ToString().ToUpperInvariant()
@@ -187,9 +195,6 @@
             padding: 14px 16px;
             display: flex;
             align-items: center;
-            gap: 10 padding: 14px 16px;
-            display: flex;
-            align-items: center;
             gap: 10px;
             margin-bottom: 18px;
         }
@@ -265,7 +270,7 @@
         <div class="sidebar-overlay" data-sidebar-close></div>
 
         <aside class="sidebar" id="adminSidebar">
-            <a class="sidebar-logo" asp-area="" asp-controller="Home" asp-action="Index">
+            <a class="sidebar-logo" href="/Admin">
                 <span class="logo-icon">
                     <i class="fa-solid fa-compass"></i>
                 </span>
@@ -281,10 +286,7 @@
                 <div class="sidebar-section">
                     <div class="sidebar-section-label">Tổng quan</div>
 
-                    <a class="nav-item @(isHomeSection ? "active" : "")"
-                       asp-area=""
-                       asp-controller="Home"
-                       asp-action="Index">
+                    <a class="nav-item @(isHomeSection ? "active" : "")" href="/Admin">
                         <i class="fa-solid fa-chart-pie"></i>
                         <span>Dashboard</span>
                     </a>
@@ -306,34 +308,22 @@
                 <div class="sidebar-section">
                     <div class="sidebar-section-label">Nội dung</div>
 
-                    <a class="nav-item @(isPoiSection ? "active" : "")"
-                       asp-area=""
-                       asp-controller="Poi"
-                       asp-action="Index">
+                    <a class="nav-item @(isPoiSection ? "active" : "")" href="/Admin/Poi">
                         <i class="fa-solid fa-map-pin"></i>
                         <span>Điểm tham quan</span>
                     </a>
 
-                    <a class="nav-item @(isTourSection ? "active" : "")"
-                       asp-area=""
-                       asp-controller="Tour"
-                       asp-action="Index">
+                    <a class="nav-item @(isTourSection ? "active" : "")" href="/Admin/Tour">
                         <i class="fa-solid fa-route"></i>
                         <span>Tour du lịch</span>
                     </a>
 
-                    <a class="nav-item @(isCategorySection ? "active" : "")"
-                       asp-area=""
-                       asp-controller="Category"
-                       asp-action="Index">
+                    <a class="nav-item @(isCategorySection ? "active" : "")" href="/Admin/Category">
                         <i class="fa-solid fa-tags"></i>
                         <span>Danh mục</span>
                     </a>
 
-                    <a class="nav-item @(isMediaSection ? "active" : "")"
-                       asp-area=""
-                       asp-controller="Media"
-                       asp-action="Library">
+                    <a class="nav-item @(isMediaSection ? "active" : "")" href="/Admin/Media/Library">
                         <i class="fa-solid fa-photo-film"></i>
                         <span>Thư viện media</span>
                     </a>
@@ -342,58 +332,42 @@
                 <div class="sidebar-section">
                     <div class="sidebar-section-label">Vận hành</div>
 
-                    <a class="nav-item @(isApprovalSection ? "active" : "")"
-                       asp-area=""
-                       asp-controller="Approval"
-                       asp-action="PoiPending">
+                    <a class="nav-item @(isApprovalSection ? "active" : "")" href="/Admin/Approval/PoiPending">
                         <i class="fa-solid fa-circle-check"></i>
                         <span>Duyệt POI</span>
                     </a>
 
-                    <a class="nav-item @(isAudioTasksSection ? "active" : "")"
-                       asp-area=""
-                       asp-controller="AudioTasks"
-                       asp-action="Index">
+                    <a class="nav-item @(isAudioTasksSection ? "active" : "")" href="/Admin/AudioTasks">
                         <i class="fa-solid fa-wand-magic-sparkles"></i>
                         <span>Tác vụ AI Media</span>
                     </a>
 
-                    <a class="nav-item @(isAnalyticsSection ? "active" : "")"
-                       asp-area=""
-                       asp-controller="Analytics"
-                       asp-action="Index">
+                    <a class="nav-item @(isAnalyticsSection ? "active" : "")" href="/Admin/Analytics">
                         <i class="fa-solid fa-chart-line"></i>
                         <span>Phân tích</span>
                     </a>
 
-                    <a class="nav-item @(isActivityLogSection ? "active" : "")"
-                       asp-area=""
-                       asp-controller="ActivityLog"
-                       asp-action="Index">
+                    <a class="nav-item @(isActivityLogSection ? "active" : "")" href="/Admin/ActivityLog">
                         <i class="fa-solid fa-clock-rotate-left"></i>
                         <span>Lịch sử phát</span>
                     </a>
 
-                    <a class="nav-item @(isReviewSection ? "active" : "")"
-                       asp-area=""
-                       asp-controller="Review"
-                       asp-action="Index">
+                    <a class="nav-item @(isVisitorTrafficSection ? "active" : "")" href="/Admin/VisitorTraffic">
+                        <i class="fa-solid fa-person-walking-luggage"></i>
+                        <span>Lưu lượng khách</span>
+                    </a>
+
+                    <a class="nav-item @(isReviewSection ? "active" : "")" href="/Admin/Review">
                         <i class="fa-solid fa-star-half-stroke"></i>
                         <span>Đánh giá POI</span>
                     </a>
 
-                    <a class="nav-item @(isVisitorSection ? "active" : "")"
-                       asp-area=""
-                       asp-controller="Visitor"
-                       asp-action="Index">
+                    <a class="nav-item @(isVisitorSection ? "active" : "")" href="/Admin/Visitor">
                         <i class="fa-solid fa-users"></i>
                         <span>Du khách</span>
                     </a>
 
-                    <a class="nav-item @(isBeaconSection ? "active" : "")"
-                       asp-area=""
-                       asp-controller="Beacon"
-                       asp-action="Index">
+                    <a class="nav-item @(isBeaconSection ? "active" : "")" href="/Admin/Beacon">
                         <i class="fa-solid fa-tower-broadcast"></i>
                         <span>Beacon BLE</span>
                     </a>
@@ -401,37 +375,67 @@
 
                 @if (User.IsInRole("Admin"))
                 {
+
+
+                    <div class="sidebar-section">
+                        <div class="sidebar-section-label">Kinh doanh</div>
+
+                        <a class="nav-item @(isOwnerAdminSection && ViewContext.RouteData.Values["action"]?.ToString() != "Requests" ? "active" : "")"
+                           href="/Admin/OwnerAdmin">
+                            <i class="fa-solid fa-store"></i>
+                            <span>Chủ gian hàng</span>
+                        </a>
+
+                        <a class="nav-item @(isOwnerAdminSection && ViewContext.RouteData.Values["action"]?.ToString() == "Requests" ? "active" : "")"
+                           href="/Admin/OwnerAdmin/Requests">
+                            <i class="fa-solid fa-inbox"></i>
+                            <span>Yêu cầu POI</span>
+                        </a>
+
+                        <a class="nav-item @(isPaymentPlanSection ? "active" : "")"
+                           href="/Admin/PaymentPlan">
+                            <i class="fa-solid fa-layer-group"></i>
+                            <span>Gói dịch vụ</span>
+                        </a>
+
+                        <a class="nav-item @(isRevenueSection ? "active" : "")"
+                           href="/Admin/Revenue">
+                            <i class="fa-solid fa-chart-pie"></i>
+                            <span>Quản lý doanh thu</span>
+                        </a>
+
+                        <a class="nav-item @(isPurchasesSection ? "active" : "")"
+                           href="/Admin/Purchases">
+                            <i class="fa-solid fa-cart-shopping"></i>
+                            <span>Lượt mua gói</span>
+                        </a>
+
+                        <a class="nav-item @(isPaymentSection ? "active" : "")"
+                           href="/Admin/Payment">
+                            <i class="fa-solid fa-money-check-dollar"></i>
+                            <span>Giao dịch thanh toán</span>
+                        </a>
+                    </div>
+
                     <div class="sidebar-section">
                         <div class="sidebar-section-label">Hệ thống</div>
 
-                        <a class="nav-item @(isSyncSection ? "active" : "")"
-                           asp-area=""
-                           asp-controller="SyncVersion"
-                           asp-action="Index">
+                        <a class="nav-item @(isSyncSection ? "active" : "")" href="/Admin/SyncVersion">
                             <i class="fa-solid fa-box-archive"></i>
                             <span>Gói đồng bộ</span>
                         </a>
 
-                        <a class="nav-item @(isUserSection ? "active" : "")"
-                           asp-area=""
-                           asp-controller="User"
-                           asp-action="Index">
+                        <a class="nav-item @(isUserSection ? "active" : "")" href="/Admin/User">
                             <i class="fa-solid fa-user-shield"></i>
                             <span>Tài khoản & phân quyền</span>
                         </a>
 
-                        <a class="nav-item @(isSettingSection ? "active" : "")"
-                           asp-area=""
-                           asp-controller="Setting"
-                           asp-action="Index">
+                        <a class="nav-item @(isSettingSection ? "active" : "")" href="/Admin/Setting">
                             <i class="fa-solid fa-gear"></i>
                             <span>Cài đặt hệ thống</span>
                         </a>
 
-                        <a class="nav-item @(isLanguageSection ? "active" : "")"
-                           asp-area=""
-                           asp-controller="Language"
-                           asp-action="Index">
+                        <a class="nav-item @(isLanguageSection ? "active" : "")" href="/Admin/Language">
                             <i class="fa-solid fa-language"></i>
                             <span>Ngôn ngữ & giọng đọc</span>
                         </a>
@@ -455,14 +459,14 @@
 
                 <ul class="dropdown-menu app-dropdown">
                     <li>
-                        <a class="dropdown-item" asp-area="" asp-controller="Account" asp-action="Profile">
+                        <a class="dropdown-item" href="/Admin/Account/Profile">
                             <i class="fa-solid fa-id-badge"></i>
                             Hồ sơ
                         </a>
                     </li>
 
                     <li>
-                        <a class="dropdown-item" asp-area="" asp-controller="Account" asp-action="ChangePassword">
+                        <a class="dropdown-item" href="/Admin/Account/ChangePassword">
                             <i class="fa-solid fa-key"></i>
                             Đổi mật khẩu
                         </a>
@@ -485,7 +489,7 @@
                     </li>
 
                     <li>
-                        <form asp-area="" asp-controller="Account" asp-action="Logout" method="post">
+                        <form action="/Admin/Logout" method="post">
                             @Html.AntiForgeryToken()
                             <button class="dropdown-item text-danger" type="submit">
                                 <i class="fa-solid fa-right-from-bracket"></i>
@@ -503,7 +507,7 @@
                     <i class="fa-solid fa-bars"></i>
                 </button>
 
-                <a class="mobile-brand" asp-area="" asp-controller="Home" asp-action="Index">
+                <a class="mobile-brand" href="/Admin">
                     <span>
                         <i class="fa-solid fa-compass"></i>
                     </span>
@@ -520,7 +524,7 @@
                     <strong>@pageTitle</strong>
                 </div>
 
-                <form class="global-search" asp-area="" asp-controller="Poi" asp-action="Index" method="get">
+                <form class="global-search" action="/Admin/Poi" method="get">
                     <i class="fa-solid fa-magnifying-glass"></i>
                     <input type="search"
                            name="searchString"
@@ -530,19 +534,11 @@
                 </form>
 
                 <div class="header-actions quick-action-bar">
-                    <a class="icon-btn"
-                       title="Tạo POI nhanh"
-                       asp-area=""
-                       asp-controller="Poi"
-                       asp-action="Create">
+                    <a class="icon-btn" title="Tạo POI nhanh" href="/Admin/Poi/Create">
                         <i class="fa-solid fa-plus"></i>
                     </a>
 
-                    <a class="icon-btn"
-                       title="Duyệt POI"
-                       asp-area=""
-                       asp-controller="Approval"
-                       asp-action="PoiPending">
+                    <a class="icon-btn" title="Duyệt POI" href="/Admin/Approval/PoiPending">
                         <i class="fa-solid fa-circle-check"></i>
                     </a>
 
@@ -554,11 +550,7 @@
                         <i class="fa-solid fa-moon"></i>
                     </button>
 
-                    <a class="icon-btn"
-                       title="Tác vụ AI Media"
-                       asp-area=""
-                       asp-controller="AudioTasks"
-                       asp-action="Index">
+                    <a class="icon-btn" title="Tác vụ AI Media" href="/Admin/AudioTasks">
                         <i class="fa-solid fa-wand-magic-sparkles"></i>
                     </a>
 
@@ -569,14 +561,14 @@
 
                         <ul class="dropdown-menu dropdown-menu-end app-dropdown">
                             <li>
-                                <a class="dropdown-item" asp-area="" asp-controller="Account" asp-action="Profile">
+                                <a class="dropdown-item" href="/Admin/Account/Profile">
                                     <i class="fa-solid fa-id-badge"></i>
                                     Hồ sơ
                                 </a>
                             </li>
 
                             <li>
-                                <a class="dropdown-item" asp-area="" asp-controller="Account" asp-action="ChangePassword">
+                                <a class="dropdown-item" href="/Admin/Account/ChangePassword">
                                     <i class="fa-solid fa-key"></i>
                                     Đổi mật khẩu
                                 </a>
@@ -587,7 +579,7 @@
                             </li>
 
                             <li>
-                                <form asp-area="" asp-controller="Account" asp-action="Logout" method="post">
+                                <form action="/Admin/Logout" method="post">
                                     @Html.AntiForgeryToken()
                                     <button class="dropdown-item text-danger" type="submit">
                                         <i class="fa-solid fa-right-from-bracket"></i>
@@ -666,9 +658,48 @@
                 });
             });
 
+            const sidebarNav = sidebar?.querySelector('.sidebar-nav');
+            const sidebarScrollKey = 'versa-admin-sidebar-scroll';
+            const normalizePath = value => value.replace(/\/+$/, '') || '/';
+            const saveSidebarScroll = () => {
+                if (sidebarNav) {
+                    sessionStorage.setItem(sidebarScrollKey, String(sidebarNav.scrollTop));
+                }
+            };
+            const restoreSidebarScroll = () => {
+                if (!sidebarNav) return;
+
+                const saved = Number(sessionStorage.getItem(sidebarScrollKey) || '0');
+                if (!Number.isNaN(saved) && saved > 0) {
+                    sidebarNav.scrollTop = saved;
+                }
+            };
+
+            requestAnimationFrame(restoreSidebarScroll);
+            window.addEventListener('pageshow', restoreSidebarScroll);
+            window.addEventListener('beforeunload', saveSidebarScroll);
+            sidebarNav?.addEventListener('scroll', saveSidebarScroll, { passive: true });
+
             sidebar?.querySelectorAll('a').forEach(link => {
-                link.addEventListener('click', () => {
+                link.addEventListener('click', event => {
+                    const rawHref = link.getAttribute('href');
                     document.body.classList.remove('sidebar-open');
+                    saveSidebarScroll();
+
+                    if (!rawHref || rawHref === '#' || link.target === '_blank') {
+                        return;
+                    }
+
+                    const nextUrl = new URL(link.href, window.location.href);
+                    const currentUrl = new URL(window.location.href);
+                    const isSamePage = nextUrl.origin === currentUrl.origin
+                        && normalizePath(nextUrl.pathname) === normalizePath(currentUrl.pathname)
+                        && nextUrl.search === currentUrl.search
+                        && nextUrl.hash === currentUrl.hash;
+
+                    if (isSamePage) {
+                        event.preventDefault();
+                    }
                 });
             });
 

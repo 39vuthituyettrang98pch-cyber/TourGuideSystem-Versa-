@@ -1,4 +1,3 @@
-using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -11,47 +10,34 @@ namespace AdminWeb.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.CreateTable(
-                name: "password_reset_tokens",
-                columns: table => new
-                {
-                    Id = table.Column<long>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    TouristId = table.Column<int>(type: "INTEGER", nullable: false),
-                    Email = table.Column<string>(type: "TEXT", maxLength: 160, nullable: false),
-                    TokenHash = table.Column<string>(type: "TEXT", maxLength: 128, nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    ExpiresAt = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    UsedAt = table.Column<DateTime>(type: "TEXT", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_password_reset_tokens", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_password_reset_tokens_tourists_TouristId",
-                        column: x => x.TouristId,
-                        principalTable: "tourists",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
+            // Idempotent SQL keeps old hosting/local SQLite databases safe even if the table
+            // had already been created by the previous runtime safety-net code.
+            migrationBuilder.Sql(@"
+                CREATE TABLE IF NOT EXISTS password_reset_tokens (
+                    Id INTEGER NOT NULL CONSTRAINT PK_password_reset_tokens PRIMARY KEY AUTOINCREMENT,
+                    TouristId INTEGER NOT NULL,
+                    Email TEXT NOT NULL,
+                    TokenHash TEXT NOT NULL,
+                    CreatedAt TEXT NOT NULL,
+                    ExpiresAt TEXT NOT NULL,
+                    UsedAt TEXT NULL,
+                    CONSTRAINT FK_password_reset_tokens_tourists_TouristId
+                        FOREIGN KEY (TouristId) REFERENCES tourists (Id) ON DELETE CASCADE
+                );");
 
-            migrationBuilder.CreateIndex(
-                name: "IX_password_reset_tokens_TokenHash",
-                table: "password_reset_tokens",
-                column: "TokenHash",
-                unique: true);
+            migrationBuilder.Sql(@"
+                CREATE UNIQUE INDEX IF NOT EXISTS IX_password_reset_tokens_TokenHash
+                    ON password_reset_tokens (TokenHash);");
 
-            migrationBuilder.CreateIndex(
-                name: "IX_password_reset_tokens_TouristId_ExpiresAt",
-                table: "password_reset_tokens",
-                columns: new[] { "TouristId", "ExpiresAt" });
+            migrationBuilder.Sql(@"
+                CREATE INDEX IF NOT EXISTS IX_password_reset_tokens_TouristId_ExpiresAt
+                    ON password_reset_tokens (TouristId, ExpiresAt);");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
-                name: "password_reset_tokens");
+            migrationBuilder.DropTable(name: "password_reset_tokens");
         }
     }
 }

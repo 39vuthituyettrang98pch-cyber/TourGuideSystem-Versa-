@@ -148,6 +148,24 @@
     }
     .custom-marker i { transform: rotate(45deg); }
 
+    .current-user-marker {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        background: linear-gradient(180deg, #4f8cff 0%, #2f6df6 100%);
+        border: 3px solid #ffffff;
+        box-shadow: 0 10px 24px rgba(47, 109, 246, 0.35);
+        color: #ffffff;
+        font-size: 15px;
+    }
+
+    .current-user-marker i {
+        transform: none;
+    }
+
     @@media (max-width: 900px) {
         .poi-map-toolbar {
             grid-template-columns: 1fr;
@@ -401,7 +419,7 @@
                     } else {
                         const adminIcon = L.divIcon({
                             className: 'custom-map-icon',
-                            html: `<div class="custom-marker" style="background:#3b82f6; border-color:#ffffff;"><i class="fa-solid fa-user-tie"></i></div>`,
+                            html: `<div class="current-user-marker"><i class="fa-solid fa-user"></i></div>`,
                             iconSize: [32, 32],
                             iconAnchor: [16, 32],
                             popupAnchor: [0, -32]

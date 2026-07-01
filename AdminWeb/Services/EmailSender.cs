@@ -22,7 +22,8 @@ public sealed class SmtpEmailSender : IEmailSender
 
     public bool IsConfigured =>
         !string.IsNullOrWhiteSpace(_configuration["Smtp:Host"]) &&
-        !string.IsNullOrWhiteSpace(_configuration["Smtp:From"]);
+        !string.IsNullOrWhiteSpace(_configuration["Smtp:Username"]) &&
+        !string.IsNullOrWhiteSpace(_configuration["Smtp:Password"]);
 
     public async Task SendAsync(string to, string subject, string htmlBody, CancellationToken cancellationToken = default)
     {
@@ -37,7 +38,7 @@ public sealed class SmtpEmailSender : IEmailSender
         var enableSsl = _configuration.GetValue("Smtp:EnableSsl", true);
         var username = _configuration["Smtp:Username"];
         var password = _configuration["Smtp:Password"];
-        var from = _configuration["Smtp:From"]!;
+        var from = _configuration["Smtp:From"] ?? username!;
         var fromName = _configuration["Smtp:FromName"] ?? "VERSA Travel";
 
         using var message = new MailMessage

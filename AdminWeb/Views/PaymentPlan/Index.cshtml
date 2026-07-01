@@ -1,0 +1,11 @@
+@model IEnumerable<AdminWeb.Models.PaymentPlan>
+@{
+    ViewData["Title"] = "Gói dịch vụ";
+}
+<div class="page-heading"><div><div class="page-title">Gói dịch vụ</div><div class="page-subtitle">Thiết lập gói thu tiền cho chủ gian hàng và người dùng.</div></div><div class="page-actions"><a asp-area="" asp-action="Create" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Thêm gói</a></div></div>
+<div class="data-table table-wrapper"><table class="data-table"><thead><tr><th>Mã</th><th>Tên gói</th><th>Đối tượng</th><th>Giá</th><th>Thời hạn</th><th>Trạng thái</th><th>Hành động</th></tr></thead><tbody>
+@foreach (var plan in Model)
+{
+    <tr><td><strong>@plan.PlanCode</strong></td><td>@plan.PlanName<br /><small>@plan.Description</small></td><td>@plan.Audience</td><td>@plan.Price.ToString("N0") đ</td><td>@plan.DurationDays ngày</td><td><span class="badge @(plan.IsActive ? "green" : "red")">@(plan.IsActive ? "Đang bật" : "Đã tắt")</span></td><td><a asp-area="" asp-action="Edit" asp-route-id="@plan.Id" class="btn btn-sm btn-secondary">Sửa</a></td></tr>
+}
+</tbody></table></div>

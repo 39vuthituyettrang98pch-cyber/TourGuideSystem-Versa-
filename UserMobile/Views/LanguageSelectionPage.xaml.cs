@@ -30,7 +30,15 @@ public partial class LanguageSelectionPage : ContentPage
                 return;
             }
 
-            await Shell.Current.GoToAsync("..");
+            if (Shell.Current is { } shell)
+            {
+                await shell.GoToAsync("..");
+                return;
+            }
+
+            // During first-run setup this page is hosted by a NavigationPage,
+            // so there is no current Shell to navigate back through.
+            App.ShowMainPage();
         }
     }
 }

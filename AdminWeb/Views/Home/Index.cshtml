@@ -1,5 +1,6 @@
 @using System.Text.Json
 @using Microsoft.EntityFrameworkCore
+@model AdminWeb.ViewModels.AdminDashboardViewModel
 @inject AdminWeb.Data.AppDbContext DbContext
 
 @{
@@ -7,6 +8,7 @@
 
     var topPois = ViewBag.TopPois as Dictionary<string, int> ?? new Dictionary<string, int>();
     var recentActivities = ViewBag.RecentActivities as List<AdminWeb.Models.VisitorPlaybackLog> ?? new List<AdminWeb.Models.VisitorPlaybackLog>();
+    var dashboard = Model ?? new AdminWeb.ViewModels.AdminDashboardViewModel();
 
     var totalPois = Convert.ToInt32(ViewBag.TotalPois ?? 0);
     var totalTours = Convert.ToInt32(ViewBag.TotalTours ?? 0);
@@ -19,6 +21,10 @@
 
     var approvalRate = totalPois > 0
         ? Math.Round((double)approvedPois / totalPois * 100, 0)
+        : 0;
+
+    var pendingRatio = totalPois > 0
+        ? Math.Round((double)pendingPois / totalPois * 100, 0)
         : 0;
 
     var topRatedStats = DbContext.Set<AdminWeb.Models.PoiReview>()
@@ -66,248 +72,287 @@
         .dashboard-page {
             display: grid;
             gap: 22px;
+            padding-bottom: 24px;
         }
 
-        .dashboard-hero {
+        .admin-hero {
             position: relative;
             overflow: hidden;
             border: 1px solid var(--border);
-            border-radius: 30px;
-            padding: 30px;
+            border-radius: 32px;
+            padding: 32px;
             background:
-                radial-gradient(circle at 12% 20%, rgba(91, 140, 255, 0.22), transparent 30%),
-                radial-gradient(circle at 82% 30%, rgba(58, 213, 139, 0.18), transparent 32%),
-                linear-gradient(135deg, rgba(16, 24, 42, 0.96), rgba(9, 14, 28, 0.88));
+                radial-gradient(circle at 12% 15%, rgba(91, 140, 255, .30), transparent 31%),
+                radial-gradient(circle at 78% 12%, rgba(58, 213, 139, .25), transparent 34%),
+                linear-gradient(135deg, rgba(13, 21, 42, .98), rgba(7, 13, 28, .94));
             box-shadow: var(--shadow);
         }
 
-        .dashboard-hero-inner {
+        .admin-hero::after {
+            content: "";
+            position: absolute;
+            inset: auto -120px -160px auto;
+            width: 420px;
+            height: 420px;
+            border-radius: 50%;
+            background: rgba(91, 140, 255, .12);
+            filter: blur(4px);
+        }
+
+        .admin-hero-inner {
             position: relative;
             z-index: 2;
             display: grid;
             grid-template-columns: minmax(0, 1fr) auto;
-            gap: 20px;
-            align-items: center;
+            gap: 26px;
+            align-items: end;
         }
 
-        .dashboard-kicker {
+        .hero-kicker {
             width: fit-content;
             display: inline-flex;
             align-items: center;
-            gap: 8px;
-            padding: 8px 12px;
-            border: 1px solid rgba(91, 140, 255, 0.30);
+            gap: 9px;
+            padding: 9px 13px;
+            border: 1px solid rgba(143, 180, 255, .32);
             border-radius: 999px;
-            color: #8fb0ff;
-            background: rgba(91, 140, 255, 0.12);
+            color: #bcd0ff;
+            background: rgba(91, 140, 255, .13);
             font-size: 12px;
-            font-weight: 900;
+            font-weight: 950;
             letter-spacing: .08em;
             text-transform: uppercase;
         }
 
-        .dashboard-hero h1 {
-            margin: 14px 0 10px;
-            font-size: clamp(34px, 4vw, 56px);
-            line-height: 1;
-            font-weight: 950;
-            letter-spacing: -0.065em;
+        .admin-hero h1 {
+            margin: 16px 0 12px;
+            max-width: 900px;
+            font-size: clamp(36px, 5vw, 72px);
+            line-height: .95;
+            font-weight: 1000;
+            letter-spacing: -.075em;
         }
 
-        .dashboard-hero p {
+        .admin-hero p {
             margin: 0;
-            max-width: 720px;
+            max-width: 820px;
             color: var(--text-muted);
             line-height: 1.75;
             font-size: 15px;
         }
 
-        .dashboard-actions {
+        .hero-actions {
             display: flex;
-            gap: 12px;
             flex-wrap: wrap;
             justify-content: flex-end;
+            gap: 12px;
         }
 
-        .dashboard-section-title {
+        .hero-actions .btn {
+            min-height: 46px;
+        }
+
+        .section-heading {
             display: flex;
-            align-items: end;
             justify-content: space-between;
+            align-items: end;
             gap: 16px;
-            margin-bottom: -4px;
         }
 
-        .dashboard-section-title h2 {
+        .section-heading h2 {
             margin: 0;
-            font-size: 22px;
-            font-weight: 950;
-            letter-spacing: -0.04em;
+            font-size: 23px;
+            font-weight: 1000;
+            letter-spacing: -.045em;
         }
 
-        .dashboard-section-title p {
-            margin: 4px 0 0;
+        .section-heading p {
+            margin: 5px 0 0;
             color: var(--text-muted);
             font-size: 13px;
-            line-height: 1.5;
+            line-height: 1.55;
         }
 
-        .dashboard-stats {
+        .overview-grid {
             display: grid;
             grid-template-columns: repeat(4, minmax(0, 1fr));
             gap: 16px;
         }
 
-        .dashboard-stat {
-            min-width: 0;
+        .metric-card,
+        .panel-card,
+        .quick-card {
             position: relative;
             overflow: hidden;
             border: 1px solid var(--border);
             border-radius: 24px;
-            padding: 22px;
             background: var(--surface);
-            box-shadow: 0 18px 50px rgba(0, 0, 0, 0.12);
-            text-decoration: none;
             color: var(--text);
-            transition: .2s ease;
+            box-shadow: 0 18px 50px rgba(0, 0, 0, .12);
         }
 
-        .dashboard-stat:hover {
+        a.metric-card,
+        a.quick-card {
+            text-decoration: none;
+            transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+        }
+
+        a.metric-card:hover,
+        a.quick-card:hover {
             color: var(--text);
             transform: translateY(-3px);
-            border-color: rgba(91, 140, 255, .48);
+            border-color: rgba(91, 140, 255, .45);
             box-shadow: var(--shadow);
         }
 
-        .dashboard-stat::after {
-            content: "";
-            position: absolute;
-            right: -34px;
-            top: -34px;
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            background: rgba(91, 140, 255, 0.10);
+        .metric-card {
+            min-height: 162px;
+            padding: 20px;
         }
 
-        .dashboard-stat-icon {
+        .metric-card::after {
+            content: "";
+            position: absolute;
+            top: -38px;
+            right: -38px;
+            width: 128px;
+            height: 128px;
+            border-radius: 50%;
+            background: rgba(91, 140, 255, .10);
+        }
+
+        .metric-top {
             position: relative;
-            z-index: 2;
+            z-index: 1;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .metric-icon {
             width: 48px;
             height: 48px;
             display: grid;
             place-items: center;
-            border-radius: 18px;
-            color: #fff;
+            border-radius: 17px;
+            color: white;
             background: linear-gradient(135deg, #5b8cff, #3ad58b);
-            box-shadow: 0 14px 34px rgba(91, 140, 255, .24);
+            box-shadow: 0 14px 32px rgba(91, 140, 255, .26);
         }
 
-        .dashboard-stat-value {
+        .metric-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 9px;
+            border-radius: 999px;
+            color: #bcd0ff;
+            background: rgba(91, 140, 255, .12);
+            font-size: 11px;
+            font-weight: 950;
+            white-space: nowrap;
+        }
+
+        .metric-value {
             position: relative;
-            z-index: 2;
+            z-index: 1;
             display: block;
             margin-top: 18px;
             font-size: 38px;
             line-height: 1;
-            font-weight: 950;
-            letter-spacing: -0.06em;
+            font-weight: 1000;
+            letter-spacing: -.06em;
         }
 
-        .dashboard-stat-label {
+        .metric-label {
             position: relative;
-            z-index: 2;
+            z-index: 1;
             display: block;
-            margin-top: 8px;
+            margin-top: 9px;
             color: var(--text-muted);
             font-size: 13px;
-            font-weight: 800;
+            font-weight: 850;
+            line-height: 1.45;
         }
 
-        .operation-grid {
+        .focus-grid {
             display: grid;
-            grid-template-columns: 1.2fr .8fr;
+            grid-template-columns: minmax(0, 1.15fr) minmax(360px, .85fr);
             gap: 18px;
             align-items: stretch;
         }
 
-        .operation-card {
-            border: 1px solid var(--border);
-            border-radius: 26px;
-            background: var(--surface);
-            box-shadow: 0 18px 50px rgba(0, 0, 0, 0.10);
-            overflow: hidden;
-        }
-
-        .operation-card-inner {
-            padding: 22px;
-        }
-
-        .operation-head {
+        .panel-card-header {
+            min-height: 74px;
             display: flex;
-            align-items: flex-start;
             justify-content: space-between;
+            align-items: center;
             gap: 16px;
-            margin-bottom: 18px;
+            padding: 20px 22px;
+            border-bottom: 1px solid var(--border);
         }
 
-        .operation-title {
-            margin: 0;
-            font-size: 18px;
-            font-weight: 950;
-            letter-spacing: -0.03em;
+        .panel-title {
             display: flex;
             align-items: center;
             gap: 10px;
+            margin: 0;
+            font-size: 18px;
+            font-weight: 1000;
+            letter-spacing: -.035em;
         }
 
-        .operation-title i {
+        .panel-title i {
             color: #5b8cff;
         }
 
-        .operation-subtitle {
-            margin: 6px 0 0;
+        .panel-subtitle {
+            margin-top: 5px;
             color: var(--text-muted);
             font-size: 13px;
             line-height: 1.5;
         }
 
-        .todo-grid {
+        .panel-card-body {
+            padding: 20px 22px 22px;
+        }
+
+        .action-summary-grid {
             display: grid;
             grid-template-columns: repeat(3, minmax(0, 1fr));
             gap: 12px;
         }
 
-        .todo-item {
+        .action-box {
             border: 1px solid var(--border);
             border-radius: 20px;
-            padding: 16px;
-            background: rgba(148, 163, 184, 0.06);
-            text-decoration: none;
+            padding: 17px;
             color: var(--text);
-            transition: .18s ease;
+            background: rgba(148, 163, 184, .06);
+            text-decoration: none;
         }
 
-        .todo-item:hover {
+        .action-box:hover {
             color: var(--text);
-            transform: translateY(-2px);
-            border-color: rgba(91, 140, 255, .45);
+            border-color: rgba(91, 140, 255, .42);
             background: rgba(91, 140, 255, .09);
         }
 
-        .todo-item strong {
+        .action-box strong {
             display: block;
-            font-size: 28px;
+            font-size: 31px;
             line-height: 1;
-            font-weight: 950;
-            letter-spacing: -0.05em;
+            font-weight: 1000;
+            letter-spacing: -.06em;
         }
 
-        .todo-item span {
+        .action-box span {
             display: block;
-            margin-top: 8px;
+            margin-top: 9px;
             color: var(--text-muted);
             font-size: 13px;
-            font-weight: 800;
+            font-weight: 850;
         }
 
         .health-meter {
@@ -320,120 +365,100 @@
             gap: 12px;
             color: var(--text-muted);
             font-size: 13px;
-            font-weight: 800;
+            font-weight: 850;
             margin-bottom: 8px;
         }
 
         .health-bar {
             height: 12px;
             border-radius: 999px;
-            background: rgba(148, 163, 184, 0.14);
+            background: rgba(148, 163, 184, .14);
             overflow: hidden;
         }
 
         .health-bar span {
             display: block;
-            width: @approvalRate%;
             height: 100%;
             border-radius: inherit;
             background: linear-gradient(135deg, #5b8cff, #3ad58b);
         }
 
-        .quick-grid {
+        .quick-list {
             display: grid;
             gap: 10px;
         }
 
-        .quick-link {
-            min-height: 54px;
+        .quick-card {
+            min-height: 58px;
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 12px;
-            border: 1px solid var(--border);
-            border-radius: 18px;
             padding: 0 16px;
-            color: var(--text);
-            background: rgba(148, 163, 184, 0.06);
-            text-decoration: none;
-            font-weight: 900;
-            transition: .18s ease;
+            background: rgba(148, 163, 184, .06);
+            font-weight: 920;
         }
 
-        .quick-link:hover {
-            color: var(--text);
-            transform: translateY(-2px);
-            border-color: rgba(91, 140, 255, .45);
-            background: rgba(91, 140, 255, .09);
-        }
-
-        .quick-link span {
+        .quick-card span {
             display: inline-flex;
             align-items: center;
             gap: 10px;
         }
 
-        .main-analytics-grid {
+        .alert-stack {
             display: grid;
-            grid-template-columns: minmax(0, 1.4fr) minmax(360px, .6fr);
-            gap: 18px;
-            align-items: stretch;
+            gap: 12px;
         }
 
-        .content-grid {
+        .admin-alert {
             display: grid;
-            grid-template-columns: minmax(0, 1.25fr) minmax(380px, .75fr);
-            gap: 18px;
-            align-items: start;
-        }
-
-        .side-stack {
-            display: grid;
-            gap: 18px;
-        }
-
-        .dashboard-card {
-            min-width: 0;
+            grid-template-columns: 44px minmax(0, 1fr);
+            gap: 12px;
+            padding: 14px;
             border: 1px solid var(--border);
-            border-radius: 26px;
-            background: var(--surface);
-            box-shadow: 0 18px 50px rgba(0, 0, 0, 0.10);
-            overflow: hidden;
+            border-radius: 18px;
+            color: var(--text);
+            background: rgba(148, 163, 184, .06);
+            text-decoration: none;
         }
 
-        .dashboard-card-header {
-            min-height: 72px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 14px;
-            padding: 20px 22px;
-            border-bottom: 1px solid var(--border);
+        .admin-alert:hover {
+            color: var(--text);
+            border-color: rgba(91, 140, 255, .45);
+            background: rgba(91, 140, 255, .09);
         }
 
-        .dashboard-card-title {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin: 0;
-            font-size: 17px;
-            font-weight: 950;
-            letter-spacing: -0.025em;
+        .admin-alert-icon {
+            width: 44px;
+            height: 44px;
+            display: grid;
+            place-items: center;
+            border-radius: 16px;
+            color: white;
+            background: #5b8cff;
         }
 
-        .dashboard-card-title i {
-            color: #5b8cff;
+        .admin-alert.warning .admin-alert-icon { background: #f59e0b; }
+        .admin-alert.success .admin-alert-icon { background: #16a36a; }
+        .admin-alert.info .admin-alert-icon { background: #5b8cff; }
+
+        .admin-alert strong {
+            display: block;
+            font-weight: 1000;
         }
 
-        .dashboard-card-subtitle {
-            margin-top: 5px;
+        .admin-alert span span {
+            display: block;
+            margin-top: 4px;
             color: var(--text-muted);
             font-size: 13px;
-            line-height: 1.5;
+            line-height: 1.45;
         }
 
-        .dashboard-card-body {
-            padding: 20px 22px 22px;
+        .analytics-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1.35fr) minmax(360px, .65fr);
+            gap: 18px;
         }
 
         .chart-box {
@@ -443,6 +468,16 @@
 
         .chart-box.small {
             height: 300px;
+        }
+
+        .visitor-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1.25fr) minmax(380px, .75fr);
+            gap: 18px;
+        }
+
+        .location-table-wrap {
+            overflow-x: auto;
         }
 
         .dashboard-table {
@@ -455,7 +490,7 @@
             color: var(--text-muted);
             border-bottom: 1px solid var(--border);
             font-size: 12px;
-            font-weight: 900;
+            font-weight: 950;
             text-transform: uppercase;
             letter-spacing: .07em;
             white-space: nowrap;
@@ -471,49 +506,80 @@
             border-bottom: 0;
         }
 
-        .rank-badge {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-width: 38px;
-            height: 30px;
-            border-radius: 999px;
-            color: #dce7ff;
-            background: rgba(91, 140, 255, 0.18);
-            border: 1px solid rgba(91, 140, 255, 0.28);
-            font-size: 12px;
-            font-weight: 950;
+        .location-name {
+            display: grid;
+            gap: 6px;
         }
 
-        .rating-pill {
+        .location-name strong {
+            line-height: 1.35;
+        }
+
+        .location-name small {
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+
+        .menu-badge,
+        .rating-pill,
+        .lang-pill,
+        .rank-badge {
             display: inline-flex;
+            width: fit-content;
             align-items: center;
+            justify-content: center;
             gap: 6px;
-            padding: 7px 10px;
             border-radius: 999px;
-            color: #fbbf24;
-            background: rgba(251, 191, 36, 0.10);
-            font-size: 13px;
-            font-weight: 900;
+            font-weight: 950;
             white-space: nowrap;
         }
 
+        .menu-badge {
+            padding: 6px 9px;
+            color: #fbbf24;
+            background: rgba(251, 191, 36, .10);
+            font-size: 11px;
+        }
+
+        .rating-pill {
+            padding: 7px 10px;
+            color: #fbbf24;
+            background: rgba(251, 191, 36, .10);
+            font-size: 13px;
+        }
+
         .lang-pill {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
             min-width: 42px;
             padding: 6px 9px;
-            border-radius: 999px;
             color: #dce7ff;
-            background: rgba(91, 140, 255, 0.16);
-            border: 1px solid rgba(91, 140, 255, 0.24);
+            background: rgba(91, 140, 255, .16);
+            border: 1px solid rgba(91, 140, 255, .24);
             font-size: 12px;
-            font-weight: 950;
+        }
+
+        .rank-badge {
+            min-width: 38px;
+            height: 30px;
+            color: #dce7ff;
+            background: rgba(91, 140, 255, .18);
+            border: 1px solid rgba(91, 140, 255, .28);
+            font-size: 12px;
+        }
+
+        .content-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1.35fr) minmax(380px, .65fr);
+            gap: 18px;
+            align-items: start;
+        }
+
+        .side-stack {
+            display: grid;
+            gap: 18px;
         }
 
         .dashboard-empty {
-            min-height: 150px;
+            min-height: 145px;
             display: grid;
             place-items: center;
             text-align: center;
@@ -532,7 +598,7 @@
             margin: 0;
         }
 
-        .dashboard-map-card .dashboard-card-body {
+        .map-card .panel-card-body {
             padding: 0;
         }
 
@@ -556,7 +622,7 @@
             display: inline-flex;
             align-items: center;
             gap: 7px;
-            font-weight: 800;
+            font-weight: 850;
         }
 
         .legend-dot {
@@ -584,9 +650,9 @@
             height: 32px;
             border-radius: 50% 50% 50% 0;
             transform: rotate(-45deg);
-            border: 2px solid #ffffff;
-            box-shadow: 0 6px 16px rgba(0,0,0,0.32);
-            color: #ffffff;
+            border: 2px solid #fff;
+            box-shadow: 0 6px 16px rgba(0,0,0,.32);
+            color: #fff;
             font-size: 14px;
         }
 
@@ -599,9 +665,21 @@
         .custom-marker.rejected { background: #ff6577; }
         .custom-marker.admin { background: #5b8cff; }
 
-        .leaflet-container {
-            font-family: inherit;
+        .current-user-marker {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: linear-gradient(180deg, #4f8cff 0%, #2f6df6 100%);
+            border: 3px solid #fff;
+            box-shadow: 0 10px 24px rgba(47, 109, 246, .35);
+            color: #fff;
+            font-size: 15px;
         }
+
+        .leaflet-container { font-family: inherit; }
 
         .leaflet-popup-content-wrapper,
         .leaflet-popup-tip {
@@ -610,42 +688,49 @@
             border: 1px solid var(--border);
         }
 
+        .visitor-note {
+            margin: 12px 0 0;
+            color: var(--text-muted);
+            font-size: 12px;
+            line-height: 1.55;
+        }
+
         @@media (max-width: 1280px) {
-            .operation-grid,
-            .main-analytics-grid,
+            .focus-grid,
+            .analytics-grid,
+            .visitor-grid,
             .content-grid {
                 grid-template-columns: 1fr;
             }
         }
 
         @@media (max-width: 1180px) {
-            .dashboard-hero-inner {
+            .admin-hero-inner {
                 grid-template-columns: 1fr;
             }
 
-            .dashboard-actions {
+            .hero-actions {
                 justify-content: flex-start;
             }
 
-            .dashboard-stats {
+            .overview-grid {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
             }
         }
 
         @@media (max-width: 720px) {
-            .dashboard-hero {
+            .admin-hero {
                 padding: 24px;
                 border-radius: 24px;
             }
 
-            .dashboard-stats,
-            .todo-grid {
+            .overview-grid,
+            .action-summary-grid {
                 grid-template-columns: 1fr;
             }
 
-            .dashboard-card-header,
-            .operation-head,
-            .dashboard-section-title {
+            .panel-card-header,
+            .section-heading {
                 align-items: flex-start;
                 flex-direction: column;
             }
@@ -663,10 +748,10 @@
 }
 
 <div class="dashboard-page">
-    <section class="dashboard-hero">
-        <div class="dashboard-hero-inner">
+    <section class="admin-hero">
+        <div class="admin-hero-inner">
             <div>
-                <div class="dashboard-kicker">
+                <div class="hero-kicker">
                     <i class="fa-solid fa-chart-line"></i>
                     VERSA Admin
                 </div>
@@ -674,15 +759,20 @@
                 <h1>Bảng điều khiển vận hành</h1>
 
                 <p>
-                    Tập trung vào những việc cần xử lý trước, sau đó theo dõi hiệu quả nội dung,
-                    bản đồ POI và hoạt động thực tế của du khách.
+                    Theo dõi nhanh nội dung, điểm tham quan, lượt khách theo khung giờ, doanh thu menu
+                    và các việc cần xử lý trong hệ thống VERSA.
                 </p>
             </div>
 
-            <div class="dashboard-actions">
+            <div class="hero-actions">
                 <a asp-area="" asp-controller="Approval" asp-action="PoiPending" class="btn btn-secondary">
                     <i class="fa-solid fa-circle-check"></i>
                     Duyệt POI
+                </a>
+
+                <a asp-area="" asp-controller="VisitorTraffic" asp-action="Index" class="btn btn-secondary">
+                    <i class="fa-solid fa-users-viewfinder"></i>
+                    Báo cáo khách
                 </a>
 
                 <a asp-area="" asp-controller="Poi" asp-action="Create" class="btn btn-primary">
@@ -693,85 +783,123 @@
         </div>
     </section>
 
-    <div class="dashboard-section-title">
+    <div class="section-heading">
         <div>
             <h2>1. Tổng quan nhanh</h2>
-            <p>Các chỉ số chính để biết hệ thống hiện có bao nhiêu nội dung và lượt tương tác.</p>
+            <p>Nhìn trong vài giây để biết hôm nay hệ thống có gì cần chú ý.</p>
         </div>
     </div>
 
-    <section class="dashboard-stats">
-        <a class="dashboard-stat" asp-area="" asp-controller="Poi" asp-action="Index">
-            <span class="dashboard-stat-icon">
-                <i class="fa-solid fa-map-pin"></i>
+    <section class="overview-grid">
+        <a class="metric-card" asp-area="" asp-controller="Poi" asp-action="Index">
+            <span class="metric-top">
+                <span class="metric-icon"><i class="fa-solid fa-map-pin"></i></span>
+                <span class="metric-pill">Nội dung</span>
             </span>
-            <span class="dashboard-stat-value">@totalPois</span>
-            <span class="dashboard-stat-label">Điểm tham quan</span>
+            <span class="metric-value">@totalPois</span>
+            <span class="metric-label">Điểm tham quan</span>
         </a>
 
-        <a class="dashboard-stat" asp-area="" asp-controller="Tour" asp-action="Index">
-            <span class="dashboard-stat-icon">
-                <i class="fa-solid fa-route"></i>
+        <a class="metric-card" asp-area="" asp-controller="Tour" asp-action="Index">
+            <span class="metric-top">
+                <span class="metric-icon"><i class="fa-solid fa-route"></i></span>
+                <span class="metric-pill">Tour</span>
             </span>
-            <span class="dashboard-stat-value">@totalTours</span>
-            <span class="dashboard-stat-label">Tour du lịch</span>
+            <span class="metric-value">@totalTours</span>
+            <span class="metric-label">Tour du lịch</span>
         </a>
 
-        <a class="dashboard-stat" asp-area="" asp-controller="ActivityLog" asp-action="Index">
-            <span class="dashboard-stat-icon">
-                <i class="fa-solid fa-headphones"></i>
+        <a class="metric-card" asp-area="" asp-controller="ActivityLog" asp-action="Index">
+            <span class="metric-top">
+                <span class="metric-icon"><i class="fa-solid fa-headphones"></i></span>
+                <span class="metric-pill">Tương tác</span>
             </span>
-            <span class="dashboard-stat-value">@totalListens</span>
-            <span class="dashboard-stat-label">Tổng lượt phát</span>
+            <span class="metric-value">@totalListens</span>
+            <span class="metric-label">Tổng lượt nghe/audio</span>
         </a>
 
-        <a class="dashboard-stat" asp-area="" asp-controller="AudioTasks" asp-action="Index">
-            <span class="dashboard-stat-icon">
-                <i class="fa-solid fa-file-audio"></i>
+        <a class="metric-card" href="/Admin/AudioTasks">
+            <span class="metric-top">
+                <span class="metric-icon"><i class="fa-solid fa-file-audio"></i></span>
+                <span class="metric-pill">Media</span>
             </span>
-            <span class="dashboard-stat-value">@totalAudioFiles</span>
-            <span class="dashboard-stat-label">File audio đa ngôn ngữ</span>
+            <span class="metric-value">@totalAudioFiles</span>
+            <span class="metric-label">File audio đa ngôn ngữ</span>
+        </a>
+
+        <a class="metric-card" asp-area="" asp-controller="VisitorTraffic" asp-action="Index">
+            <span class="metric-top">
+                <span class="metric-icon"><i class="fa-solid fa-users"></i></span>
+                <span class="metric-pill">Khách</span>
+            </span>
+            <span class="metric-value">@dashboard.TotalTourists</span>
+            <span class="metric-label">Tài khoản du khách đã đăng ký</span>
+        </a>
+
+        <a class="metric-card" asp-area="" asp-controller="VisitorTraffic" asp-action="Index">
+            <span class="metric-top">
+                <span class="metric-icon"><i class="fa-solid fa-person-walking"></i></span>
+                <span class="metric-pill">Hôm nay</span>
+            </span>
+            <span class="metric-value">@dashboard.ActiveTouristsToday</span>
+            <span class="metric-label">Khách duy nhất có hoạt động hôm nay</span>
+        </a>
+
+        <a class="metric-card" asp-area="" asp-controller="VisitorTraffic" asp-action="Index">
+            <span class="metric-top">
+                <span class="metric-icon"><i class="fa-solid fa-location-crosshairs"></i></span>
+                <span class="metric-pill">GPS</span>
+            </span>
+            <span class="metric-value">@dashboard.CheckInsToday</span>
+            <span class="metric-label">Lượt check-in GPS hôm nay</span>
+        </a>
+
+        <a class="metric-card" asp-area="" asp-controller="VisitorTraffic" asp-action="Index">
+            <span class="metric-top">
+                <span class="metric-icon"><i class="fa-solid fa-utensils"></i></span>
+                <span class="metric-pill">Menu</span>
+            </span>
+            <span class="metric-value">@dashboard.MenuOrdersToday</span>
+            <span class="metric-label">Đơn menu hôm nay · @dashboard.MenuRevenueToday.ToString("N0") đ</span>
         </a>
     </section>
 
-    <div class="dashboard-section-title">
+    <div class="section-heading">
         <div>
             <h2>2. Việc cần xử lý</h2>
-            <p>Ưu tiên các tác vụ vận hành trước khi xem phân tích chi tiết.</p>
+            <p>Ưu tiên các tác vụ quan trọng trước khi xem biểu đồ chi tiết.</p>
         </div>
     </div>
 
-    <section class="operation-grid">
-        <div class="operation-card">
-            <div class="operation-card-inner">
-                <div class="operation-head">
-                    <div>
-                        <h3 class="operation-title">
-                            <i class="fa-solid fa-list-check"></i>
-                            Trạng thái POI
-                        </h3>
-                        <p class="operation-subtitle">
-                            Theo dõi lượng POI đã duyệt, đang chờ duyệt và bị từ chối.
-                        </p>
-                    </div>
-
-                    <a asp-area="" asp-controller="Approval" asp-action="PoiPending" class="btn btn-secondary btn-sm">
-                        Xem duyệt POI
-                    </a>
+    <section class="focus-grid">
+        <div class="panel-card">
+            <div class="panel-card-header">
+                <div>
+                    <h3 class="panel-title">
+                        <i class="fa-solid fa-list-check"></i>
+                        Trạng thái POI
+                    </h3>
+                    <div class="panel-subtitle">Theo dõi POI đã duyệt, chờ duyệt và bị từ chối.</div>
                 </div>
 
-                <div class="todo-grid">
-                    <a class="todo-item" asp-area="" asp-controller="Poi" asp-action="Index">
+                <a asp-area="" asp-controller="Approval" asp-action="PoiPending" class="btn btn-secondary btn-sm">
+                    Xem duyệt POI
+                </a>
+            </div>
+
+            <div class="panel-card-body">
+                <div class="action-summary-grid">
+                    <a class="action-box" asp-area="" asp-controller="Poi" asp-action="Index">
                         <strong>@approvedPois</strong>
                         <span>POI đã duyệt</span>
                     </a>
 
-                    <a class="todo-item" asp-area="" asp-controller="Approval" asp-action="PoiPending">
+                    <a class="action-box" asp-area="" asp-controller="Approval" asp-action="PoiPending">
                         <strong>@pendingPois</strong>
-                        <span>POI chờ duyệt</span>
+                        <span>POI chờ duyệt · @pendingRatio%</span>
                     </a>
 
-                    <a class="todo-item" asp-area="" asp-controller="Poi" asp-action="Index">
+                    <a class="action-box" asp-area="" asp-controller="Poi" asp-action="Index">
                         <strong>@rejectedPois</strong>
                         <span>POI bị từ chối</span>
                     </a>
@@ -783,43 +911,46 @@
                         <strong>@approvalRate%</strong>
                     </div>
                     <div class="health-bar">
-                        <span></span>
+                        <span style="width:@approvalRate%"></span>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="operation-card">
-            <div class="operation-card-inner">
-                <div class="operation-head">
-                    <div>
-                        <h3 class="operation-title">
-                            <i class="fa-solid fa-bolt"></i>
-                            Truy cập nhanh
-                        </h3>
-                        <p class="operation-subtitle">
-                            Những chức năng admin thường dùng nhất.
-                        </p>
-                    </div>
+        <div class="panel-card">
+            <div class="panel-card-header">
+                <div>
+                    <h3 class="panel-title">
+                        <i class="fa-solid fa-bolt"></i>
+                        Truy cập nhanh
+                    </h3>
+                    <div class="panel-subtitle">Những chức năng admin thường dùng nhất.</div>
                 </div>
+            </div>
 
-                <div class="quick-grid">
-                    <a class="quick-link" asp-area="" asp-controller="Poi" asp-action="Create">
+            <div class="panel-card-body">
+                <div class="quick-list">
+                    <a class="quick-card" asp-area="" asp-controller="VisitorTraffic" asp-action="Index">
+                        <span><i class="fa-solid fa-users-viewfinder"></i> Xem khách theo quán & khung giờ</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </a>
+
+                    <a class="quick-card" asp-area="" asp-controller="Poi" asp-action="Create">
                         <span><i class="fa-solid fa-plus"></i> Tạo POI mới</span>
                         <i class="fa-solid fa-arrow-right"></i>
                     </a>
 
-                    <a class="quick-link" asp-area="" asp-controller="Tour" asp-action="Create">
+                    <a class="quick-card" asp-area="" asp-controller="Tour" asp-action="Create">
                         <span><i class="fa-solid fa-route"></i> Tạo tour mới</span>
                         <i class="fa-solid fa-arrow-right"></i>
                     </a>
 
-                    <a class="quick-link" asp-area="" asp-controller="AudioTasks" asp-action="Index">
+                    <a class="quick-card" href="/Admin/AudioTasks">
                         <span><i class="fa-solid fa-wand-magic-sparkles"></i> Tác vụ AI Media</span>
                         <i class="fa-solid fa-arrow-right"></i>
                     </a>
 
-                    <a class="quick-link" asp-area="DuKhach" asp-controller="Home" asp-action="Index" target="_blank" rel="noopener">
+                    <a class="quick-card" asp-area="DuKhach" asp-controller="Home" asp-action="Index" target="_blank" rel="noopener">
                         <span><i class="fa-solid fa-globe"></i> Mở web du khách</span>
                         <i class="fa-solid fa-arrow-up-right-from-square"></i>
                     </a>
@@ -828,22 +959,178 @@
         </div>
     </section>
 
-    <div class="dashboard-section-title">
+    <div class="section-heading">
         <div>
-            <h2>3. Phân tích tương tác</h2>
+            <h2>3. Du khách & mật độ tại địa điểm</h2>
+            <p>Biết khách vào quán nào, khung giờ nào đông và địa điểm nào đang có nhiều tương tác.</p>
+        </div>
+
+        <a asp-area="" asp-controller="VisitorTraffic" asp-action="Index" class="btn btn-primary btn-sm">
+            <i class="fa-solid fa-filter"></i>
+            Lọc theo quán/giờ
+        </a>
+    </div>
+
+    <section class="visitor-grid">
+        <div class="panel-card">
+            <div class="panel-card-header">
+                <div>
+                    <h3 class="panel-title">
+                        <i class="fa-solid fa-clock"></i>
+                        Lượt du khách theo khung giờ hôm nay
+                    </h3>
+                    <div class="panel-subtitle">Check-in là lượt vào; tương tác gồm nghe audio/TTS và hành vi trên web/app.</div>
+                </div>
+            </div>
+
+            <div class="panel-card-body">
+                <div class="chart-box">
+                    <canvas id="visitorTrafficChart"></canvas>
+                </div>
+                <p class="visitor-note">
+                    Hệ thống chưa có nút check-out/rời địa điểm, nên cột “đang hoạt động” được ước tính từ tương tác trong 30 phút gần nhất.
+                </p>
+            </div>
+        </div>
+
+        <div class="panel-card">
+            <div class="panel-card-header">
+                <div>
+                    <h3 class="panel-title">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                        Cần chú ý
+                    </h3>
+                    <div class="panel-subtitle">Gợi ý vận hành nhanh cho admin.</div>
+                </div>
+            </div>
+
+            <div class="panel-card-body">
+                <div class="alert-stack">
+                    @foreach (var alert in dashboard.Alerts)
+                    {
+                        if (!string.IsNullOrWhiteSpace(alert.Url))
+                        {
+                            <a class="admin-alert @alert.Tone" href="@alert.Url">
+                                <span class="admin-alert-icon"><i class="fa-solid @alert.Icon"></i></span>
+                                <span>
+                                    <strong>@alert.Title</strong>
+                                    <span>@alert.Description</span>
+                                </span>
+                            </a>
+                        }
+                        else
+                        {
+                            <div class="admin-alert @alert.Tone">
+                                <span class="admin-alert-icon"><i class="fa-solid @alert.Icon"></i></span>
+                                <span>
+                                    <strong>@alert.Title</strong>
+                                    <span>@alert.Description</span>
+                                </span>
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="panel-card">
+        <div class="panel-card-header">
+            <div>
+                <h3 class="panel-title">
+                    <i class="fa-solid fa-store"></i>
+                    Số lượng du khách theo địa điểm / quán ăn
+                </h3>
+                <div class="panel-subtitle">Sắp xếp theo khách đang hoạt động, khách trong ngày, đơn menu và lượt tương tác.</div>
+            </div>
+
+            <a asp-area="" asp-controller="VisitorTraffic" asp-action="Index" class="btn btn-secondary btn-sm">
+                Báo cáo chi tiết
+            </a>
+        </div>
+
+        <div class="panel-card-body">
+            @if (dashboard.LocationVisitors.Count > 0)
+            {
+                <div class="location-table-wrap">
+                    <table class="dashboard-table">
+                        <thead>
+                            <tr>
+                                <th>Địa điểm / quán ăn</th>
+                                <th>Đang ở đây</th>
+                                <th>Khách hôm nay</th>
+                                <th>Check-in</th>
+                                <th>Tương tác</th>
+                                <th>Đơn menu</th>
+                                <th>Doanh thu</th>
+                                <th>Lần cuối</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            @foreach (var location in dashboard.LocationVisitors)
+                            {
+                                <tr>
+                                    <td>
+                                        <span class="location-name">
+                                            <strong>@location.PoiName</strong>
+                                            @if (!string.IsNullOrWhiteSpace(location.OwnerName))
+                                            {
+                                                <small>@location.OwnerName</small>
+                                            }
+                                            @if (location.HasMenu)
+                                            {
+                                                <span class="menu-badge"><i class="fa-solid fa-utensils"></i> Quán ăn/menu</span>
+                                            }
+                                        </span>
+                                    </td>
+                                    <td><strong>@location.EstimatedActiveVisitors</strong></td>
+                                    <td>@location.UniqueVisitorsToday</td>
+                                    <td>@location.CheckInsToday</td>
+                                    <td>@location.InteractionsToday</td>
+                                    <td>
+                                        <strong>@location.MenuOrdersToday</strong>
+                                        @if (location.PendingOrders > 0)
+                                        {
+                                            <small style="display:block;color:#f59e0b;">@location.PendingOrders cần xử lý</small>
+                                        }
+                                    </td>
+                                    <td>@location.RevenueToday.ToString("N0") đ</td>
+                                    <td>@(location.LastActivityAt.HasValue ? location.LastActivityAt.Value.ToString("HH:mm") : "-")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="dashboard-empty">
+                    <div>
+                        <i class="fa-solid fa-users-viewfinder"></i>
+                        <p>Chưa có POI hoặc dữ liệu du khách để hiển thị.</p>
+                    </div>
+                </div>
+            }
+        </div>
+    </section>
+
+    <div class="section-heading">
+        <div>
+            <h2>4. Phân tích tương tác</h2>
             <p>Xem người dùng đang nghe nội dung như thế nào và chọn ngôn ngữ nào nhiều nhất.</p>
         </div>
     </div>
 
-    <section class="main-analytics-grid">
-        <div class="dashboard-card">
-            <div class="dashboard-card-header">
+    <section class="analytics-grid">
+        <div class="panel-card">
+            <div class="panel-card-header">
                 <div>
-                    <h3 class="dashboard-card-title">
+                    <h3 class="panel-title">
                         <i class="fa-solid fa-chart-line"></i>
                         Lượt phát 7 ngày
                     </h3>
-                    <div class="dashboard-card-subtitle">Số lượt tương tác/nghe audio theo ngày.</div>
+                    <div class="panel-subtitle">Số lượt tương tác/nghe audio theo ngày.</div>
                 </div>
 
                 <a asp-area="" asp-controller="ActivityLog" asp-action="Index" class="btn btn-secondary btn-sm">
@@ -851,25 +1138,25 @@
                 </a>
             </div>
 
-            <div class="dashboard-card-body">
+            <div class="panel-card-body">
                 <div class="chart-box">
                     <canvas id="lineChart"></canvas>
                 </div>
             </div>
         </div>
 
-        <div class="dashboard-card">
-            <div class="dashboard-card-header">
+        <div class="panel-card">
+            <div class="panel-card-header">
                 <div>
-                    <h3 class="dashboard-card-title">
+                    <h3 class="panel-title">
                         <i class="fa-solid fa-chart-pie"></i>
                         Ngôn ngữ được chọn
                     </h3>
-                    <div class="dashboard-card-subtitle">Tỷ trọng ngôn ngữ trong lịch sử phát.</div>
+                    <div class="panel-subtitle">Tỷ trọng ngôn ngữ trong lịch sử phát.</div>
                 </div>
             </div>
 
-            <div class="dashboard-card-body">
+            <div class="panel-card-body">
                 <div class="chart-box small">
                     <canvas id="pieChart"></canvas>
                 </div>
@@ -877,22 +1164,22 @@
         </div>
     </section>
 
-    <div class="dashboard-section-title">
+    <div class="section-heading">
         <div>
-            <h2>4. Bản đồ & chất lượng nội dung</h2>
+            <h2>5. Bản đồ & chất lượng nội dung</h2>
             <p>Kiểm tra vị trí POI, vùng tương tác và những địa điểm đang được đánh giá tốt.</p>
         </div>
     </div>
 
     <section class="content-grid">
-        <div class="dashboard-card dashboard-map-card">
-            <div class="dashboard-card-header">
+        <div class="panel-card map-card">
+            <div class="panel-card-header">
                 <div>
-                    <h3 class="dashboard-card-title">
+                    <h3 class="panel-title">
                         <i class="fa-solid fa-map-location-dot"></i>
                         Bản đồ điểm tham quan
                     </h3>
-                    <div class="dashboard-card-subtitle">
+                    <div class="panel-subtitle">
                         @totalPois POI đã thêm. Heatmap thể hiện vị trí tương tác của du khách.
                     </div>
                 </div>
@@ -903,7 +1190,7 @@
                 </button>
             </div>
 
-            <div class="dashboard-card-body">
+            <div class="panel-card-body">
                 <div id="heatmap-container"></div>
 
                 <div class="map-legend">
@@ -916,18 +1203,18 @@
         </div>
 
         <aside class="side-stack">
-            <div class="dashboard-card">
-                <div class="dashboard-card-header">
+            <div class="panel-card">
+                <div class="panel-card-header">
                     <div>
-                        <h3 class="dashboard-card-title">
+                        <h3 class="panel-title">
                             <i class="fa-solid fa-star" style="color:#f59e0b"></i>
                             Top POI đánh giá cao
                         </h3>
-                        <div class="dashboard-card-subtitle">Dựa trên điểm đánh giá trung bình.</div>
+                        <div class="panel-subtitle">Dựa trên điểm đánh giá trung bình.</div>
                     </div>
                 </div>
 
-                <div class="dashboard-card-body">
+                <div class="panel-card-body">
                     @if (topRatedList.Count > 0)
                     {
                         <table class="dashboard-table">
@@ -941,13 +1228,13 @@
 
                             <tbody>
                                 @{
-                                    var rank = 1;
+                                    var ratingRank = 1;
                                 }
 
                                 @foreach (var poi in topRatedList)
                                 {
                                     <tr>
-                                        <td><span class="rank-badge">#@rank</span></td>
+                                        <td><span class="rank-badge">#@ratingRank</span></td>
                                         <td><strong>@poi.PoiName</strong></td>
                                         <td>
                                             <span class="rating-pill">
@@ -957,7 +1244,7 @@
                                         </td>
                                     </tr>
 
-                                    rank++;
+                                    ratingRank++;
                                 }
                             </tbody>
                         </table>
@@ -974,18 +1261,18 @@
                 </div>
             </div>
 
-            <div class="dashboard-card">
-                <div class="dashboard-card-header">
+            <div class="panel-card">
+                <div class="panel-card-header">
                     <div>
-                        <h3 class="dashboard-card-title">
+                        <h3 class="panel-title">
                             <i class="fa-solid fa-ranking-star"></i>
-                            POI nổi bật
+                            POI được nghe nhiều
                         </h3>
-                        <div class="dashboard-card-subtitle">Các POI có lượt phát cao.</div>
+                        <div class="panel-subtitle">Top địa điểm có nhiều lượt nghe nhất.</div>
                     </div>
                 </div>
 
-                <div class="dashboard-card-body">
+                <div class="panel-card-body">
                     @if (topPois.Count > 0)
                     {
                         <table class="dashboard-table">
@@ -999,18 +1286,18 @@
 
                             <tbody>
                                 @{
-                                    var rank = 1;
+                                    var listenRank = 1;
                                 }
 
                                 @foreach (var poi in topPois)
                                 {
                                     <tr>
-                                        <td><span class="rank-badge">#@rank</span></td>
+                                        <td><span class="rank-badge">#@listenRank</span></td>
                                         <td><strong>@poi.Key</strong></td>
                                         <td><strong>@poi.Value</strong></td>
                                     </tr>
 
-                                    rank++;
+                                    listenRank++;
                                 }
                             </tbody>
                         </table>
@@ -1029,9 +1316,9 @@
         </aside>
     </section>
 
-    <div class="dashboard-section-title">
+    <div class="section-heading">
         <div>
-            <h2>5. Hoạt động gần đây</h2>
+            <h2>6. Hoạt động gần đây</h2>
             <p>Theo dõi các lượt tương tác mới nhất để biết hệ thống đang được sử dụng ra sao.</p>
         </div>
 
@@ -1040,30 +1327,32 @@
         </a>
     </div>
 
-    <section class="dashboard-card">
-        <div class="dashboard-card-body">
+    <section class="panel-card">
+        <div class="panel-card-body">
             @if (recentActivities.Count > 0)
             {
-                <table class="dashboard-table">
-                    <thead>
-                        <tr>
-                            <th>Thời gian</th>
-                            <th>POI</th>
-                            <th>Ngôn ngữ</th>
-                        </tr>
-                    </thead>
-
-                    <tbody>
-                        @foreach (var log in recentActivities)
-                        {
+                <div class="location-table-wrap">
+                    <table class="dashboard-table">
+                        <thead>
                             <tr>
-                                <td>@log.CreatedAt.ToString("dd/MM HH:mm")</td>
-                                <td><strong>@log.PoiName</strong></td>
-                                <td><span class="lang-pill">@log.LanguageCode.ToUpperInvariant()</span></td>
+                                <th>Thời gian</th>
+                                <th>POI</th>
+                                <th>Ngôn ngữ</th>
                             </tr>
-                        }
-                    </tbody>
-                </table>
+                        </thead>
+
+                        <tbody>
+                            @foreach (var log in recentActivities)
+                            {
+                                <tr>
+                                    <td>@log.CreatedAt.ToString("dd/MM HH:mm")</td>
+                                    <td><strong>@log.PoiName</strong></td>
+                                    <td><span class="lang-pill">@log.LanguageCode.ToUpperInvariant()</span></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
             }
             else
             {
@@ -1094,289 +1383,363 @@
         const chartData = @Html.Raw(JsonSerializer.Serialize(ViewBag.ChartData ?? Array.Empty<int>()));
         const pieLabels = @Html.Raw(JsonSerializer.Serialize(ViewBag.PieLabels ?? Array.Empty<string>()));
         const pieData = @Html.Raw(JsonSerializer.Serialize(ViewBag.PieData ?? Array.Empty<int>()));
+        const visitorTrafficLabels = @Html.Raw(JsonSerializer.Serialize(dashboard.HourlyTraffic.Select(item => item.Label)));
+        const visitorTrafficCheckIns = @Html.Raw(JsonSerializer.Serialize(dashboard.HourlyTraffic.Select(item => item.CheckIns)));
+        const visitorTrafficInteractions = @Html.Raw(JsonSerializer.Serialize(dashboard.HourlyTraffic.Select(item => item.Interactions)));
+        const visitorTrafficOrders = @Html.Raw(JsonSerializer.Serialize(dashboard.HourlyTraffic.Select(item => item.MenuOrders)));
+        const visitorTrafficUnique = @Html.Raw(JsonSerializer.Serialize(dashboard.HourlyTraffic.Select(item => item.UniqueVisitors)));
 
-        new Chart(document.getElementById('lineChart'), {
-            type: 'line',
-            data: {
-                labels: chartLabels,
-                datasets: [{
-                    data: chartData,
-                    borderColor: '#5b8cff',
-                    backgroundColor: 'rgba(91,140,255,.16)',
-                    borderWidth: 3,
-                    pointRadius: 4,
-                    pointHoverRadius: 6,
-                    pointBackgroundColor: '#5b8cff',
-                    tension: .35,
-                    fill: true
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: {
-                    intersect: false,
-                    mode: 'index'
+        const visitorTrafficCanvas = document.getElementById('visitorTrafficChart');
+        if (visitorTrafficCanvas) {
+            new Chart(visitorTrafficCanvas, {
+                type: 'bar',
+                data: {
+                    labels: visitorTrafficLabels,
+                    datasets: [
+                        {
+                            label: 'Khách duy nhất',
+                            data: visitorTrafficUnique,
+                            type: 'line',
+                            borderColor: '#f5b942',
+                            backgroundColor: 'rgba(245,185,66,.14)',
+                            borderWidth: 3,
+                            pointRadius: 3,
+                            tension: .35,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Check-in',
+                            data: visitorTrafficCheckIns,
+                            backgroundColor: 'rgba(58,213,139,.72)',
+                            borderRadius: 8
+                        },
+                        {
+                            label: 'Tương tác',
+                            data: visitorTrafficInteractions,
+                            backgroundColor: 'rgba(91,140,255,.72)',
+                            borderRadius: 8
+                        },
+                        {
+                            label: 'Đơn menu',
+                            data: visitorTrafficOrders,
+                            backgroundColor: 'rgba(255,101,119,.70)',
+                            borderRadius: 8
+                        }
+                    ]
                 },
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        backgroundColor: '#111827',
-                        padding: 12,
-                        cornerRadius: 12
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: { precision: 0, color: textMuted },
-                        grid: { color: border }
-                    },
-                    x: {
-                        ticks: { color: textMuted },
-                        grid: { display: false }
-                    }
-                }
-            }
-        });
-
-        new Chart(document.getElementById('pieChart'), {
-            type: 'doughnut',
-            data: {
-                labels: pieLabels,
-                datasets: [{
-                    data: pieData,
-                    backgroundColor: ['#5b8cff', '#3ad58b', '#f5b942', '#ff6577', '#b184ff', '#38bdf8'],
-                    borderColor: surface,
-                    borderWidth: 4,
-                    hoverOffset: 8
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '68%',
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: {
-                            color: textMuted,
-                            usePointStyle: true,
-                            padding: 18
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { intersect: false, mode: 'index' },
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: textMuted, usePointStyle: true }
+                        },
+                        tooltip: {
+                            backgroundColor: '#111827',
+                            padding: 12,
+                            cornerRadius: 12
                         }
                     },
-                    tooltip: {
-                        backgroundColor: '#111827',
-                        padding: 12,
-                        cornerRadius: 12
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { precision: 0, color: textMuted },
+                            grid: { color: border }
+                        },
+                        x: {
+                            ticks: { color: textMuted, maxRotation: 0, autoSkip: true, maxTicksLimit: 12 },
+                            grid: { display: false }
+                        }
                     }
                 }
-            }
-        });
+            });
+        }
 
-        const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '&copy; OpenStreetMap contributors'
-        });
+        const lineCanvas = document.getElementById('lineChart');
+        if (lineCanvas) {
+            new Chart(lineCanvas, {
+                type: 'line',
+                data: {
+                    labels: chartLabels,
+                    datasets: [{
+                        data: chartData,
+                        borderColor: '#5b8cff',
+                        backgroundColor: 'rgba(91,140,255,.16)',
+                        borderWidth: 3,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        pointBackgroundColor: '#5b8cff',
+                        tension: .35,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { intersect: false, mode: 'index' },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#111827',
+                            padding: 12,
+                            cornerRadius: 12
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { precision: 0, color: textMuted },
+                            grid: { color: border }
+                        },
+                        x: {
+                            ticks: { color: textMuted },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
 
-        const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-            maxZoom: 19,
-            attribution: '&copy; Esri'
-        });
+        const pieCanvas = document.getElementById('pieChart');
+        if (pieCanvas) {
+            new Chart(pieCanvas, {
+                type: 'doughnut',
+                data: {
+                    labels: pieLabels,
+                    datasets: [{
+                        data: pieData,
+                        backgroundColor: ['#5b8cff', '#3ad58b', '#f5b942', '#ff6577', '#b184ff', '#38bdf8'],
+                        borderColor: surface,
+                        borderWidth: 4,
+                        hoverOffset: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '68%',
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: textMuted,
+                                usePointStyle: true,
+                                padding: 18
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: '#111827',
+                            padding: 12,
+                            cornerRadius: 12
+                        }
+                    }
+                }
+            });
+        }
 
-        const topo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-            maxZoom: 17,
-            attribution: '&copy; OpenTopoMap'
-        });
-
-        const map = L.map('heatmap-container', {
-            zoomControl: true,
-            layers: [osm]
-        }).setView([10.762622, 106.660172], 13);
-
-        L.control.layers({
-            'Bản đồ tiêu chuẩn': osm,
-            'Vệ tinh': satellite,
-            'Địa hình': topo
-        }).addTo(map);
-
-        const rawData = @Html.Raw(JsonSerializer.Serialize(ViewBag.HeatmapData ?? Array.Empty<object>()));
-        const poiData = @Html.Raw(JsonSerializer.Serialize(ViewBag.PoiMapData ?? Array.Empty<object>()));
-        const mapBounds = [];
-
-        const markerClusterGroup = L.markerClusterGroup({
-            showCoverageOnHover: false,
-            maxClusterRadius: 40,
-            spiderfyOnMaxZoom: true
-        });
-
-        const isValidLatLng = (lat, lng) => {
-            const nLat = Number(lat);
-            const nLng = Number(lng);
-
-            return Number.isFinite(nLat)
-                && Number.isFinite(nLng)
-                && nLat >= -90
-                && nLat <= 90
-                && nLng >= -180
-                && nLng <= 180;
-        };
-
-        poiData?.forEach(poi => {
-            if (!isValidLatLng(poi.latitude, poi.longitude)) return;
-
-            const lat = Number(poi.latitude);
-            const lng = Number(poi.longitude);
-            const radius = Number(poi.radius) > 0 ? Number(poi.radius) : 50;
-
-            let statusClass = 'pending';
-
-            if (poi.status === 'Approved') {
-                statusClass = 'approved';
-            } else if (poi.status === 'Rejected') {
-                statusClass = 'rejected';
-            }
-
-            const customIcon = L.divIcon({
-                className: 'custom-map-icon',
-                html: `<div class="custom-marker ${statusClass}"><i class="fa-solid fa-map-pin"></i></div>`,
-                iconSize: [32, 32],
-                iconAnchor: [16, 32],
-                popupAnchor: [0, -32]
+        const mapContainer = document.getElementById('heatmap-container');
+        if (mapContainer && window.L) {
+            const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; OpenStreetMap contributors'
             });
 
-            const marker = L.marker([lat, lng], { icon: customIcon });
+            const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                maxZoom: 19,
+                attribution: '&copy; Esri'
+            });
 
-            const popup = document.createElement('div');
+            const topo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+                maxZoom: 17,
+                attribution: '&copy; OpenTopoMap'
+            });
 
-            const title = document.createElement('strong');
-            title.textContent = poi.name ?? `POI #${poi.id}`;
+            const map = L.map('heatmap-container', {
+                zoomControl: true,
+                layers: [osm]
+            }).setView([10.762622, 106.660172], 13);
 
-            const details = document.createElement('div');
-            details.textContent = `POI #${poi.id} · ${poi.status ?? 'Pending'} · bán kính ${radius} m`;
-            details.style.margin = '6px 0 10px';
-            details.style.opacity = '.78';
-
-            const editLink = document.createElement('a');
-            editLink.href = `/Poi/Edit/${poi.id}`;
-            editLink.textContent = 'Mở POI';
-            editLink.style.fontWeight = '800';
-
-            popup.append(title, details, editLink);
-            marker.bindPopup(popup);
-
-            markerClusterGroup.addLayer(marker);
-
-            const color = statusClass === 'approved'
-                ? '#3ad58b'
-                : statusClass === 'rejected'
-                    ? '#ff6577'
-                    : '#f5b942';
-
-            L.circle([lat, lng], {
-                radius,
-                color,
-                weight: 1,
-                fillColor: color,
-                fillOpacity: .08
+            L.control.layers({
+                'Bản đồ tiêu chuẩn': osm,
+                'Vệ tinh': satellite,
+                'Địa hình': topo
             }).addTo(map);
 
-            mapBounds.push([lat, lng]);
-        });
+            const rawData = @Html.Raw(JsonSerializer.Serialize(ViewBag.HeatmapData ?? Array.Empty<object>()));
+            const poiData = @Html.Raw(JsonSerializer.Serialize(ViewBag.PoiMapData ?? Array.Empty<object>()));
+            const mapBounds = [];
 
-        map.addLayer(markerClusterGroup);
-
-        if (rawData?.length) {
-            const heatData = rawData
-                .filter(point => isValidLatLng(point.lat, point.lng))
-                .map(point => [Number(point.lat), Number(point.lng), Number(point.intensity) || 1]);
-
-            if (heatData.length) {
-                L.heatLayer(heatData, {
-                    radius: 25,
-                    blur: 16,
-                    maxZoom: 17
-                }).addTo(map);
-
-                mapBounds.push(...heatData.map(point => [point[0], point[1]]));
-            }
-        }
-
-        if (mapBounds.length === 1) {
-            map.setView(mapBounds[0], 16);
-        } else if (mapBounds.length > 1) {
-            map.fitBounds(new L.LatLngBounds(mapBounds), {
-                padding: [35, 35],
-                maxZoom: 16
+            const markerClusterGroup = L.markerClusterGroup({
+                showCoverageOnHover: false,
+                maxClusterRadius: 40,
+                spiderfyOnMaxZoom: true
             });
-        }
 
-        let adminMarker = null;
-        let adminCircle = null;
+            const isValidLatLng = (lat, lng) => {
+                const nLat = Number(lat);
+                const nLng = Number(lng);
 
-        document.getElementById('btnLocateDashboard')?.addEventListener('click', function () {
-            const btn = this;
+                return Number.isFinite(nLat)
+                    && Number.isFinite(nLng)
+                    && nLat >= -90
+                    && nLat <= 90
+                    && nLng >= -180
+                    && nLng <= 180;
+            };
 
-            if (!navigator.geolocation) {
-                alert('Trình duyệt không hỗ trợ định vị.');
-                return;
-            }
+            poiData?.forEach(poi => {
+                if (!isValidLatLng(poi.latitude, poi.longitude)) return;
 
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang tìm...';
-            btn.disabled = true;
+                const lat = Number(poi.latitude);
+                const lng = Number(poi.longitude);
+                const radius = Number(poi.radius) > 0 ? Number(poi.radius) : 50;
 
-            navigator.geolocation.getCurrentPosition(position => {
-                const lat = position.coords.latitude;
-                const lng = position.coords.longitude;
-                const acc = position.coords.accuracy;
+                let statusClass = 'pending';
 
-                if (adminMarker) {
-                    adminMarker.setLatLng([lat, lng]);
-                    adminCircle.setLatLng([lat, lng]);
-                    adminCircle.setRadius(acc);
-                } else {
-                    const adminIcon = L.divIcon({
-                        className: 'custom-map-icon',
-                        html: `<div class="custom-marker admin"><i class="fa-solid fa-user-tie"></i></div>`,
-                        iconSize: [32, 32],
-                        iconAnchor: [16, 32],
-                        popupAnchor: [0, -32]
-                    });
-
-                    adminMarker = L.marker([lat, lng], {
-                        icon: adminIcon
-                    }).addTo(map).bindPopup('Vị trí hiện tại của bạn');
-
-                    adminCircle = L.circle([lat, lng], {
-                        radius: acc,
-                        color: '#5b8cff',
-                        weight: 1,
-                        fillOpacity: 0.1
-                    }).addTo(map);
+                if (poi.status === 'Approved') {
+                    statusClass = 'approved';
+                } else if (poi.status === 'Rejected') {
+                    statusClass = 'rejected';
                 }
 
-                map.setView([lat, lng], 16);
-                adminMarker.openPopup();
+                const customIcon = L.divIcon({
+                    className: 'custom-map-icon',
+                    html: `<div class="custom-marker ${statusClass}"><i class="fa-solid fa-map-pin"></i></div>`,
+                    iconSize: [32, 32],
+                    iconAnchor: [16, 32],
+                    popupAnchor: [0, -32]
+                });
 
-                btn.innerHTML = '<i class="fa-solid fa-location-crosshairs"></i> Vị trí của tôi';
-                btn.disabled = false;
-            }, error => {
-                alert('Lỗi định vị: ' + error.message);
-                btn.innerHTML = '<i class="fa-solid fa-location-crosshairs"></i> Vị trí của tôi';
-                btn.disabled = false;
-            }, {
-                enableHighAccuracy: true,
-                timeout: 12000,
-                maximumAge: 0
+                const marker = L.marker([lat, lng], { icon: customIcon });
+
+                const popup = document.createElement('div');
+
+                const title = document.createElement('strong');
+                title.textContent = poi.name ?? `POI #${poi.id}`;
+
+                const details = document.createElement('div');
+                details.textContent = `POI #${poi.id} · ${poi.status ?? 'Pending'} · bán kính ${radius} m`;
+                details.style.margin = '6px 0 10px';
+                details.style.opacity = '.78';
+
+                const editLink = document.createElement('a');
+                editLink.href = `/Poi/Edit/${poi.id}`;
+                editLink.textContent = 'Mở POI';
+                editLink.style.fontWeight = '800';
+
+                popup.append(title, details, editLink);
+                marker.bindPopup(popup);
+
+                markerClusterGroup.addLayer(marker);
+
+                const color = statusClass === 'approved'
+                    ? '#3ad58b'
+                    : statusClass === 'rejected'
+                        ? '#ff6577'
+                        : '#f5b942';
+
+                L.circle([lat, lng], {
+                    radius,
+                    color,
+                    weight: 1,
+                    fillColor: color,
+                    fillOpacity: .08
+                }).addTo(map);
+
+                mapBounds.push([lat, lng]);
             });
-        });
 
-        setTimeout(() => {
-            map.invalidateSize();
-        }, 350);
+            map.addLayer(markerClusterGroup);
 
-        window.addEventListener('resize', () => {
-            setTimeout(() => map.invalidateSize(), 150);
-        });
+            if (rawData?.length) {
+                const heatData = rawData
+                    .filter(point => isValidLatLng(point.lat, point.lng))
+                    .map(point => [Number(point.lat), Number(point.lng), Number(point.intensity) || 1]);
+
+                if (heatData.length) {
+                    L.heatLayer(heatData, {
+                        radius: 25,
+                        blur: 16,
+                        maxZoom: 17
+                    }).addTo(map);
+
+                    mapBounds.push(...heatData.map(point => [point[0], point[1]]));
+                }
+            }
+
+            if (mapBounds.length === 1) {
+                map.setView(mapBounds[0], 16);
+            } else if (mapBounds.length > 1) {
+                map.fitBounds(new L.LatLngBounds(mapBounds), {
+                    padding: [35, 35],
+                    maxZoom: 16
+                });
+            }
+
+            let adminMarker = null;
+            let adminCircle = null;
+
+            document.getElementById('btnLocateDashboard')?.addEventListener('click', function () {
+                const btn = this;
+
+                if (!navigator.geolocation) {
+                    alert('Trình duyệt không hỗ trợ định vị.');
+                    return;
+                }
+
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang tìm...';
+                btn.disabled = true;
+
+                navigator.geolocation.getCurrentPosition(position => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    const acc = position.coords.accuracy;
+
+                    if (adminMarker) {
+                        adminMarker.setLatLng([lat, lng]);
+                        adminCircle.setLatLng([lat, lng]);
+                        adminCircle.setRadius(acc);
+                    } else {
+                        const adminIcon = L.divIcon({
+                            className: 'custom-map-icon',
+                            html: `<div class="current-user-marker"><i class="fa-solid fa-user"></i></div>`,
+                            iconSize: [32, 32],
+                            iconAnchor: [16, 32],
+                            popupAnchor: [0, -32]
+                        });
+
+                        adminMarker = L.marker([lat, lng], { icon: adminIcon })
+                            .addTo(map)
+                            .bindPopup('Vị trí hiện tại của bạn');
+
+                        adminCircle = L.circle([lat, lng], {
+                            radius: acc,
+                            color: '#5b8cff',
+                            weight: 1,
+                            fillOpacity: .1
+                        }).addTo(map);
+                    }
+
+                    map.setView([lat, lng], 16);
+                    adminMarker.openPopup();
+
+                    btn.innerHTML = '<i class="fa-solid fa-location-crosshairs"></i> Vị trí của tôi';
+                    btn.disabled = false;
+                }, error => {
+                    alert('Lỗi định vị: ' + error.message);
+                    btn.innerHTML = '<i class="fa-solid fa-location-crosshairs"></i> Vị trí của tôi';
+                    btn.disabled = false;
+                }, {
+                    enableHighAccuracy: true,
+                    timeout: 12000,
+                    maximumAge: 0
+                });
+            });
+
+            setTimeout(() => map.invalidateSize(), 350);
+            window.addEventListener('resize', () => setTimeout(() => map.invalidateSize(), 150));
+        }
     </script>
 }

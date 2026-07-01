@@ -1,0 +1,136 @@
+@model AdminWeb.Areas.Editor.Models.EditorMyContentViewModel
+@{
+    ViewData["Title"] = "Nội dung của tôi";
+    string Badge(string status) => status switch
+    {
+        "Approved" => "green",
+        "Rejected" => "red",
+        "Draft" => "gray",
+        _ => "amber"
+    };
+}
+
+<div class="page-heading">
+    <div>
+        <div class="page-title">Nội dung của tôi</div>
+        <div class="page-subtitle">Theo dõi POI/tour bạn đã tạo, trạng thái duyệt và lý do bị từ chối.</div>
+    </div>
+    <div class="page-actions">
+        <a asp-area="Editor" asp-controller="Poi" asp-action="Create" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Tạo POI</a>
+        <a asp-area="Editor" asp-controller="Tour" asp-action="Create" class="btn btn-secondary"><i class="fa-solid fa-route"></i> Tạo tour</a>
+    </div>
+</div>
+
+<section class="metric-grid" style="margin-top:18px;">
+    <div class="metric-card"><span>Tổng POI của tôi</span><strong>@Model.TotalPoiCount</strong><small>Nội dung do tài khoản này tạo.</small></div>
+    <div class="metric-card"><span>Chờ duyệt</span><strong>@Model.PendingPoiCount</strong><small>Đang nằm ở hàng chờ Reviewer.</small></div>
+    <div class="metric-card"><span>Đã duyệt</span><strong>@Model.ApprovedPoiCount</strong><small>Đã hiển thị cho du khách.</small></div>
+    <div class="metric-card"><span>Bị từ chối</span><strong>@Model.RejectedPoiCount</strong><small>Cần xem lý do và chỉnh sửa lại.</small></div>
+</section>
+
+<form method="get" class="card" style="padding:18px;margin-top:18px;">
+    <div style="display:grid;grid-template-columns:1fr 190px auto;gap:12px;align-items:end;">
+        <div>
+            <label class="form-label">Tìm nội dung</label>
+            <input class="form-control" name="q" value="@Model.Search" placeholder="Tên POI hoặc #ID" />
+        </div>
+        <div>
+            <label class="form-label">Trạng thái POI</label>
+            <select class="form-select" name="status">
+                <option value="All" selected="@(Model.StatusFilter == "All")">Tất cả</option>
+                <option value="Draft" selected="@(Model.StatusFilter == "Draft")">Bản nháp</option>
+                <option value="Pending" selected="@(Model.StatusFilter == "Pending")">Chờ duyệt</option>
+                <option value="Approved" selected="@(Model.StatusFilter == "Approved")">Đã duyệt</option>
+                <option value="Rejected" selected="@(Model.StatusFilter == "Rejected")">Bị từ chối</option>
+            </select>
+        </div>
+        <button class="btn btn-primary" type="submit"><i class="fa-solid fa-filter"></i> Lọc</button>
+    </div>
+</form>
+
+<section class="card" style="margin-top:18px;">
+    <div class="card-header">
+        <div>
+            <div class="card-title"><i class="fa-solid fa-map-location-dot"></i> POI tôi đã tạo</div>
+            <div class="card-subtitle">Hiển thị trạng thái duyệt và ghi chú/lý do từ chối.</div>
+        </div>
+    </div>
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr><th>POI</th><th>Trạng thái</th><th>Chất lượng</th><th>Lý do/Ghi chú</th><th>Ngày tạo</th><th></th></tr>
+            </thead>
+            <tbody>
+            @if (Model.Pois.Count == 0)
+            {
+                <tr><td colspan="6"><div class="empty-state compact"><i class="fa-solid fa-folder-open"></i><p>Chưa có POI phù hợp.</p></div></td></tr>
+            }
+            else
+            {
+                foreach (var item in Model.Pois)
+                {
+                    <tr>
+                        <td>
+                            <strong>@item.Name</strong><br />
+                            <small style="color:var(--text-soft)">#@item.Id · @item.Latitude, @item.Longitude</small>
+                        </td>
+                        <td><span class="badge @Badge(item.Status)">@item.Status</span></td>
+                        <td>
+                            <small>@item.TranslationCount bản dịch · @item.AudioCount audio · @item.MenuItemCount món</small>
+                        </td>
+                        <td style="max-width:420px;">
+                            @if (string.IsNullOrWhiteSpace(item.AdminNote))
+                            {
+                                <span style="color:var(--text-soft)">-</span>
+                            }
+                            else
+                            {
+                                <span>@item.AdminNote</span>
+                            }
+                        </td>
+                        <td>@item.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                        <td style="white-space:nowrap;">
+                            <a class="btn btn-secondary btn-sm" asp-area="Editor" asp-controller="Poi" asp-action="Edit" asp-route-id="@item.Id"><i class="fa-solid fa-pen"></i> Sửa</a>
+                            <a class="btn btn-secondary btn-sm" asp-area="Editor" asp-controller="Workspace" asp-action="Board" asp-route-q="#@item.Id"><i class="fa-solid fa-table-list"></i> Board</a>
+                        </td>
+                    </tr>
+                }
+            }
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="card" style="margin-top:18px;">
+    <div class="card-header">
+        <div>
+            <div class="card-title"><i class="fa-solid fa-route"></i> Tour tôi đã tạo</div>
+            <div class="card-subtitle">Tour được ghi nhận từ thời điểm bản này bắt đầu lưu log tạo tour.</div>
+        </div>
+    </div>
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead><tr><th>Tour</th><th>Trạng thái</th><th>Thời lượng</th><th>Số POI</th><th>Ngày tạo</th><th></th></tr></thead>
+            <tbody>
+            @if (Model.Tours.Count == 0)
+            {
+                <tr><td colspan="6"><div class="empty-state compact"><i class="fa-solid fa-route"></i><p>Chưa có tour nào được ghi nhận cho tài khoản này.</p></div></td></tr>
+            }
+            else
+            {
+                foreach (var tour in Model.Tours)
+                {
+                    <tr>
+                        <td><strong>@tour.Title</strong><br /><small style="color:var(--text-soft)">#@tour.Id</small></td>
+                        <td><span class="badge @(tour.Status == "active" ? "green" : "gray")">@tour.Status</span></td>
+                        <td>@tour.EstimatedTime phút</td>
+                        <td>@tour.PoiCount</td>
+                        <td>@tour.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                        <td><a class="btn btn-secondary btn-sm" asp-area="Editor" asp-controller="Tour" asp-action="Edit" asp-route-id="@tour.Id"><i class="fa-solid fa-pen"></i> Sửa</a></td>
+                    </tr>
+                }
+            }
+            </tbody>
+        </table>
+    </div>
+</section>

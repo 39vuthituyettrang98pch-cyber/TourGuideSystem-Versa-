@@ -91,6 +91,39 @@ public sealed class DuKhachChangePasswordViewModel
     public string ConfirmPassword { get; set; } = "";
 }
 
+public sealed class DuKhachForgotPasswordViewModel
+{
+    [Required(ErrorMessage = "Vui lòng nhập email.")]
+    [EmailAddress(ErrorMessage = "Email không hợp lệ.")]
+    [StringLength(160, ErrorMessage = "Email tối đa 160 ký tự.")]
+    [Display(Name = "Địa chỉ email")]
+    public string Email { get; set; } = "";
+}
+
+public sealed class DuKhachResetPasswordViewModel
+{
+    [Required(ErrorMessage = "Vui lòng nhập email.")]
+    [EmailAddress(ErrorMessage = "Email không hợp lệ.")]
+    public string Email { get; set; } = "";
+
+    [Required(ErrorMessage = "Vui lòng nhập mã OTP.")]
+    [RegularExpression(@"^\d{6}$", ErrorMessage = "Mã OTP phải gồm đúng 6 chữ số.")]
+    [Display(Name = "Mã OTP")]
+    public string Otp { get; set; } = "";
+
+    [Required(ErrorMessage = "Vui lòng nhập mật khẩu mới.")]
+    [MinLength(8, ErrorMessage = "Mật khẩu mới phải có ít nhất 8 ký tự.")]
+    [DataType(DataType.Password)]
+    [Display(Name = "Mật khẩu mới")]
+    public string NewPassword { get; set; } = "";
+
+    [Required(ErrorMessage = "Vui lòng nhập lại mật khẩu mới.")]
+    [DataType(DataType.Password)]
+    [Compare(nameof(NewPassword), ErrorMessage = "Mật khẩu xác nhận không khớp.")]
+    [Display(Name = "Xác nhận mật khẩu mới")]
+    public string ConfirmPassword { get; set; } = "";
+}
+
 public sealed class DuKhachDashboardViewModel
 {
     public int ApprovedPoiCount { get; init; }
@@ -110,6 +143,8 @@ public sealed class DuKhachPoiCardViewModel
     public string? CoverImageUrl { get; init; }
     public double Latitude { get; init; }
     public double Longitude { get; init; }
+    public bool IsFeatured { get; init; }
+    public string? OwnerBusinessName { get; init; }
 }
 
 public sealed class DuKhachRecentDiscoveryViewModel
@@ -128,8 +163,26 @@ public sealed class DuKhachMapViewModel
     public string SelectedLanguageCode { get; init; } = "vi";
     public string SelectedLanguageName { get; init; } = "Tiếng Việt";
     public bool IsTouristSignedIn { get; init; }
+    public bool HasPremiumActive { get; init; }
+    public int AudioDailyLimit { get; init; } = 5;
+    public int AudioPlaysUsedToday { get; init; }
+    public int? AudioPlaysRemainingToday { get; init; }
     public int DiscoveredCount { get; init; }
     public int TotalPoiCount { get; init; }
+    public int FeaturedPoiCount { get; init; }
+}
+
+public sealed class DuKhachPoiDetailsPageViewModel
+{
+    public DuKhachPoiMapItemViewModel Poi { get; init; } = new();
+    public IReadOnlyList<DuKhachLanguageOptionViewModel> Languages { get; init; } = [];
+    public string SelectedLanguageCode { get; init; } = "vi";
+    public string SelectedLanguageName { get; init; } = "Tiếng Việt";
+    public bool IsTouristSignedIn { get; init; }
+    public bool HasPremiumActive { get; init; }
+    public int AudioDailyLimit { get; init; } = 5;
+    public int AudioPlaysUsedToday { get; init; }
+    public int? AudioPlaysRemainingToday { get; init; }
 }
 
 public sealed class DuKhachLanguageOptionViewModel
@@ -163,6 +216,10 @@ public sealed class DuKhachPoiMapItemViewModel
     public double Longitude { get; init; }
     public int Radius { get; init; }
     public bool IsDiscovered { get; init; }
+    public bool IsFeatured { get; init; }
+    public bool IsShop { get; init; }
+    public int MenuItemCount { get; init; }
+    public string? OwnerBusinessName { get; init; }
     public bool IsBookmarked { get; set; }
     public double AverageRating { get; set; }
     public int RatingCount { get; set; }
@@ -235,4 +292,5 @@ public sealed class DuKhachLogAudioRequest
 {
     public int PoiId { get; set; }
     public string? LanguageCode { get; set; }
+    public bool IsTts { get; set; }
 }

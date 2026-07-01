@@ -12,12 +12,12 @@
 
 <div class="form-shell">
     <section class="card">
-        <form asp-action="Edit" asp-route-id="@Model.LanguageCode" method="post">
+        <form asp-area="" asp-action="Edit" asp-route-id="@Model.LanguageCode" method="post">
             @Html.AntiForgeryToken()
             <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
             <partial name="_LanguageForm" model="Model" />
             <div class="form-actions">
-                <a asp-action="Index" class="btn btn-secondary">Hủy</a>
+                <a asp-area="" asp-action="Index" class="btn btn-secondary">Hủy</a>
                 <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Lưu thay đổi</button>
             </div>
         </form>

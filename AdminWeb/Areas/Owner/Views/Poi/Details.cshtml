@@ -1,0 +1,23 @@
+@model AdminWeb.Models.Poi
+@{
+    ViewData["Title"] = "Chi tiết POI";
+    var name = Model.Translations.FirstOrDefault(t => t.LanguageCode == "vi")?.Name
+        ?? Model.Translations.FirstOrDefault()?.Name
+        ?? $"POI #{Model.Id}";
+    var menuItemCount = ViewBag.MenuItemCount as int? ?? 0;
+}
+
+<div class="owner-card">
+    <h2 style="font-weight:950;">@name</h2>
+    <p>Trạng thái: <span class="badge-soft @(Model.Status == "Approved" ? "badge-green" : Model.Status == "Rejected" ? "badge-red" : "badge-yellow")">@Model.Status</span></p>
+    <p>Tọa độ: @Model.Latitude, @Model.Longitude · Bán kính @Model.Radius m</p>
+    <p>Đánh giá TB: @(((double)ViewBag.AverageRating).ToString("0.0")) / 5 · @ViewBag.ReviewCount đánh giá</p>
+    <p>Lượt nghe/quét: @Model.PlaybackLogs.Count · Menu/sản phẩm: @menuItemCount</p>
+    <p>QR token: <code>@Model.QrCodeToken</code></p>
+
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;">
+        <a asp-area="Owner" asp-controller="MenuItems" asp-action="Index" asp-route-poiId="@Model.Id" class="btn btn-primary">Quản lý menu/sản phẩm</a>
+        <a asp-area="Owner" asp-controller="Map" asp-action="Index" asp-route-focusPoiId="@Model.Id" class="btn btn-secondary">Xem trên bản đồ</a>
+        <a asp-area="Owner" asp-controller="Poi" asp-action="Index" class="btn btn-secondary">Quay lại</a>
+    </div>
+</div>

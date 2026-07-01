@@ -1,0 +1,105 @@
+@model IEnumerable<AdminWeb.Models.PaymentPlan>
+@{
+    ViewData["Title"] = "Gói dịch vụ";
+    var plans = Model.ToList();
+    var vnPayConfigured = ViewBag.VnPayConfigured as bool? ?? false;
+    var momoConfigured = ViewBag.MomoConfigured as bool? ?? false;
+    var momoDemoMode = ViewBag.MomoDemoMode as bool? ?? false;
+    var momoReady = momoConfigured || momoDemoMode;
+    var hasActivePremium = ViewBag.HasActivePremium as bool? ?? false;
+    string Money(decimal value) => value.ToString("N0") + " đ";
+}
+
+@section Styles{
+<style>
+    .pay-hero{border:1px solid var(--border);border-radius:34px;padding:32px;background:linear-gradient(135deg,rgba(52,211,153,.18),rgba(56,189,248,.12) 52%,rgba(167,139,250,.15)),var(--surface);box-shadow:var(--shadow);margin-bottom:20px}.pay-kicker{display:inline-flex;gap:8px;color:var(--accent);font-size:12px;font-weight:950;letter-spacing:.16em;text-transform:uppercase}.pay-title{font-size:clamp(38px,5vw,64px);font-weight:1000;letter-spacing:-.07em;line-height:.95;margin:12px 0}.pay-sub{max-width:880px;color:var(--muted);font-weight:760}.gateway-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}.gateway-pill{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--border);border-radius:999px;padding:10px 13px;background:rgba(148,163,184,.08);font-weight:900;font-size:13px}.gateway-pill.ok{border-color:rgba(52,211,153,.28);color:#86efac}.gateway-pill.warn{border-color:rgba(251,191,36,.32);color:#fde68a}.plan-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:18px}.plan-card{border:1px solid var(--border);border-radius:30px;background:var(--card);box-shadow:var(--shadow);padding:24px;position:relative;overflow:hidden}.plan-card.featured{border-color:rgba(52,211,153,.45)}.plan-tag{position:absolute;right:16px;top:16px;border-radius:999px;padding:7px 11px;background:linear-gradient(135deg,var(--accent),#38bdf8);color:#03131d;font-size:11px;font-weight:1000}.plan-head{display:flex;gap:12px;align-items:center}.plan-icon{width:50px;height:50px;border-radius:18px;display:grid;place-items:center;background:rgba(52,211,153,.14);color:var(--accent);border:1px solid rgba(52,211,153,.24)}.plan-name{font-size:25px;font-weight:1000;margin:0}.plan-price{font-size:42px;font-weight:1000;letter-spacing:-.07em;margin:16px 0}.benefit-list{display:grid;gap:10px;list-style:none;padding:0;margin:18px 0}.benefit-list li{display:flex;gap:10px;color:var(--muted);font-weight:760;font-size:14px}.benefit-list i{color:var(--accent);margin-top:3px}.pay-action-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}.pay-note{margin:0 0 18px;border:1px solid rgba(251,191,36,.25);border-radius:20px;background:rgba(251,191,36,.08);color:#fde68a;padding:13px;font-weight:850}.locked-pay{opacity:.55;cursor:not-allowed!important;filter:grayscale(.35)}.active-plan-box{border:1px solid rgba(52,211,153,.28);border-radius:22px;background:rgba(52,211,153,.08);padding:14px 16px;margin-top:14px;color:#bbf7d0;font-weight:900}@@media(max-width:860px){.pay-action-grid{grid-template-columns:1fr}.pay-title{font-size:42px}}
+</style>
+}
+
+<section class="pay-hero">
+    <div class="pay-kicker"><i class="fa-solid fa-crown"></i> Premium travel pass</div>
+    <h1 class="pay-title">Mở khóa Du khách Premium</h1>
+    <p class="pay-sub">
+        Premium dùng cho các tính năng nâng cao: nghe audio/thuyết minh không giới hạn, xem tour premium và hỏi AI hướng dẫn viên. Trang này chỉ dùng hai cổng thanh toán: <strong>VNPay</strong> và <strong>MoMo</strong>.
+    </p>
+    <div class="gateway-row">
+        <span class="gateway-pill @(vnPayConfigured ? "ok" : "warn")"><i class="fa-solid @(vnPayConfigured ? "fa-circle-check" : "fa-triangle-exclamation")"></i> VNPay @(vnPayConfigured ? "sẵn sàng" : "chưa cấu hình")</span>
+        <span class="gateway-pill @(momoReady ? "ok" : "warn")"><i class="fa-solid @(momoReady ? "fa-circle-check" : "fa-triangle-exclamation")"></i> MoMo @(momoReady ? "sẵn sàng" : "chưa cấu hình")</span>
+        <a href="/DuKhach/Payments/My" class="dk-btn dk-btn-ghost"><i class="fa-solid fa-wallet"></i> Thanh toán của tôi</a>
+    </div>
+    @if (hasActivePremium)
+    {
+        <div class="active-plan-box"><i class="fa-solid fa-circle-check"></i> Tài khoản của bạn đang có Premium. Các tính năng tour, audio và AI đã được mở khóa.</div>
+    }
+</section>
+
+@if (!vnPayConfigured || !momoReady)
+{
+    <div class="pay-note"><i class="fa-solid fa-circle-info"></i> VNPay cần TmnCode/HashSecret sandbox. MoMo có thể chạy Demo Mode khi chưa có tài khoản doanh nghiệp.</div>
+}
+
+@if (plans.Count == 0)
+{
+    <div class="dk-empty">
+        <i class="fa-solid fa-credit-card"></i>
+        <h3>Chưa có gói dịch vụ</h3>
+        <p>Admin chưa tạo PaymentPlan dành cho Du khách.</p>
+    </div>
+}
+else
+{
+    <div class="plan-grid">
+    @for (var i = 0; i < plans.Count; i++)
+    {
+        var plan = plans[i];
+        var featured = i == plans.Count - 1 || plans.Count == 1;
+        <article class="plan-card @(featured ? "featured" : "")">
+            @if (featured)
+            {
+                <span class="plan-tag">Phổ biến</span>
+            }
+            <div class="plan-head">
+                <div class="plan-icon"><i class="fa-solid @(featured ? "fa-crown" : "fa-ticket")"></i></div>
+                <div>
+                    <h3 class="plan-name">@plan.PlanName</h3>
+                    <div style="color:var(--muted);font-weight:780;font-size:13px;">@plan.PlanCode · @plan.DurationDays ngày</div>
+                </div>
+            </div>
+            <div class="plan-price">@Money(plan.Price)</div>
+            <p style="color:var(--muted);min-height:48px;">@plan.Description</p>
+            <ul class="benefit-list">
+                <li><i class="fa-solid fa-check"></i><span>Nghe audio/thuyết minh POI không giới hạn.</span></li>
+                <li><i class="fa-solid fa-check"></i><span>Mở khóa danh sách tour và chi tiết tour premium.</span></li>
+                <li><i class="fa-solid fa-check"></i><span>Hỏi AI hướng dẫn viên về POI, tour và lịch trình.</span></li>
+                <li><i class="fa-solid fa-check"></i><span>Gói tự kích hoạt sau khi VNPay/MoMo xác nhận thanh toán.</span></li>
+            </ul>
+            <div class="pay-action-grid">
+                <form action="/DuKhach/Payments/PurchaseVnPay" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="planId" value="@plan.Id" />
+                    @if (vnPayConfigured)
+                    {
+                        <button type="submit" class="dk-btn dk-btn-primary" style="width:100%;"><i class="fa-solid fa-building-columns"></i> VNPay</button>
+                    }
+                    else
+                    {
+                        <button type="button" class="dk-btn dk-btn-primary locked-pay" style="width:100%;" disabled><i class="fa-solid fa-lock"></i> VNPay</button>
+                    }
+                </form>
+                <form action="/DuKhach/Payments/PurchaseMomo" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="planId" value="@plan.Id" />
+                    @if (momoReady)
+                    {
+                        <button type="submit" class="dk-btn dk-btn-primary" style="width:100%;"><i class="fa-solid fa-mobile-screen"></i> MoMo</button>
+                    }
+                    else
+                    {
+                        <button type="button" class="dk-btn dk-btn-primary locked-pay" style="width:100%;" disabled><i class="fa-solid fa-lock"></i> MoMo</button>
+                    }
+                </form>
+            </div>
+        </article>
+    }
+    </div>
+}

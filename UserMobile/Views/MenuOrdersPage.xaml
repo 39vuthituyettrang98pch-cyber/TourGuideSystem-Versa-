@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="UserMobile.Views.MenuOrdersPage"
+             Title="Đơn hàng"
+             BackgroundColor="{StaticResource PageBackground}">
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="16">
+            <Border BackgroundColor="{StaticResource Primary}" StrokeShape="RoundRectangle 24" Stroke="Transparent" Padding="20">
+                <VerticalStackLayout Spacing="6">
+                    <Label Text="ĐƠN MENU" TextColor="#DAD7FF" FontSize="12" FontAttributes="Bold" />
+                    <Label Text="Đơn hàng của tôi" TextColor="White" FontSize="26" FontAttributes="Bold" />
+                    <Label Text="Theo dõi trạng thái đơn đã đặt tại các gian hàng." TextColor="#ECEAFF" FontSize="13" />
+                </VerticalStackLayout>
+            </Border>
+
+            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+            <Label Text="{Binding Message}" IsVisible="{Binding HasMessage}" TextColor="#D64545" FontAttributes="Bold" />
+            <Label Text="Bạn chưa có đơn hàng nào." IsVisible="{Binding HasNoOrders}" TextColor="{StaticResource Muted2}" HorizontalTextAlignment="Center" />
+
+            <CollectionView x:Name="OrdersList" ItemsSource="{Binding Orders}" SelectionMode="Single" SelectionChanged="OnOrderSelectionChanged">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Border BackgroundColor="White" Stroke="{StaticResource Outline}" StrokeShape="RoundRectangle 18" Padding="16" Margin="0,0,0,12">
+                            <VerticalStackLayout Spacing="7">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <Label Text="{Binding OrderCode}" FontSize="17" FontAttributes="Bold" TextColor="{StaticResource Ink}" />
+                                    <Label Grid.Column="1" Text="{Binding Status}" FontSize="12" FontAttributes="Bold" TextColor="{StaticResource Primary}" />
+                                </Grid>
+                                <Label Text="{Binding PoiName}" TextColor="{StaticResource Muted2}" FontSize="13" />
+                                <Label Text="{Binding TotalAmount, StringFormat='{0:N0} VND'}" TextColor="#12805C" FontSize="18" FontAttributes="Bold" />
+                                <Label Text="Thanh toán: trả tại quầy / khi nhận hàng" TextColor="{StaticResource Muted2}" FontSize="12" />
+                                <Label Text="Xem chi tiết ›" TextColor="{StaticResource Primary}" FontSize="12" FontAttributes="Bold" />
+                            </VerticalStackLayout>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

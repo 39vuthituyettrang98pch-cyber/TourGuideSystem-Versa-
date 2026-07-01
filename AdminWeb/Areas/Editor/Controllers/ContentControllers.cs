@@ -6,27 +6,36 @@ using Microsoft.AspNetCore.Mvc;
 namespace AdminWeb.Areas.Editor.Controllers;
 
 [Area("Editor")]
-[Authorize(Roles = "Editor")]
+[Authorize(Policy = "EditorAreaPolicy")]
 public sealed class PoiController : AdminWeb.Controllers.PoiController
 {
     public PoiController(AppDbContext context, IWebHostEnvironment environment)
         : base(context, environment)
     {
     }
+
+    [HttpGet("/Areas/Editor/Poi/MapData")]
+    public Task<IActionResult> AreaMapData()
+    {
+        return base.MapData();
+    }
 }
 
 [Area("Editor")]
-[Authorize(Roles = "Editor")]
+[Authorize(Policy = "EditorAreaPolicy")]
 public sealed class PoiTranslationController : AdminWeb.Controllers.PoiTranslationController
 {
-    public PoiTranslationController(AppDbContext context, IWebHostEnvironment environment)
-        : base(context, environment)
+    public PoiTranslationController(
+        AppDbContext context,
+        IWebHostEnvironment environment,
+        IGeminiService geminiService)
+        : base(context, environment, geminiService)
     {
     }
 }
 
 [Area("Editor")]
-[Authorize(Roles = "Editor")]
+[Authorize(Policy = "EditorAreaPolicy")]
 public sealed class TourController : AdminWeb.Controllers.TourController
 {
     public TourController(
@@ -38,7 +47,7 @@ public sealed class TourController : AdminWeb.Controllers.TourController
 }
 
 [Area("Editor")]
-[Authorize(Roles = "Editor")]
+[Authorize(Policy = "EditorAreaPolicy")]
 public sealed class TourTranslationController : AdminWeb.Controllers.TourTranslationController
 {
     public TourTranslationController(AppDbContext context)
@@ -48,7 +57,7 @@ public sealed class TourTranslationController : AdminWeb.Controllers.TourTransla
 }
 
 [Area("Editor")]
-[Authorize(Roles = "Editor")]
+[Authorize(Policy = "EditorAreaPolicy")]
 public sealed class CategoryController : AdminWeb.Controllers.CategoryController
 {
     public CategoryController(
@@ -60,7 +69,7 @@ public sealed class CategoryController : AdminWeb.Controllers.CategoryController
 }
 
 [Area("Editor")]
-[Authorize(Roles = "Editor")]
+[Authorize(Policy = "EditorAreaPolicy")]
 public sealed class CategoryTranslationController : AdminWeb.Controllers.CategoryTranslationController
 {
     public CategoryTranslationController(AppDbContext context)
@@ -70,7 +79,7 @@ public sealed class CategoryTranslationController : AdminWeb.Controllers.Categor
 }
 
 [Area("Editor")]
-[Authorize(Roles = "Editor")]
+[Authorize(Policy = "EditorAreaPolicy")]
 public sealed class MediaController : AdminWeb.Controllers.MediaController
 {
     public MediaController(AppDbContext context, IWebHostEnvironment environment)

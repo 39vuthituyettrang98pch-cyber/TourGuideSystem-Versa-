@@ -1,3 +1,5 @@
+@using Microsoft.AspNetCore.Authentication
+@using System.Security.Claims
 @model AdminWeb.Areas.DuKhach.Models.DuKhachDashboardViewModel
 
 @{
@@ -6,9 +8,18 @@
     var featuredPois = Model.FeaturedPois?.ToList() ?? new();
     var recentDiscoveries = Model.RecentDiscoveries?.ToList() ?? new();
 
-    var isTourist = User.Identity?.IsAuthenticated == true && User.IsInRole("Tourist");
+    var touristAuth = await Context.AuthenticateAsync("TouristScheme");
+    var touristPrincipal = touristAuth.Succeeded ? touristAuth.Principal : null;
+    var isTourist = touristPrincipal?.Identity?.IsAuthenticated == true
+        && touristPrincipal.IsInRole("Tourist")
+        && string.Equals(touristPrincipal.FindFirstValue("AccountType"), "Tourist", StringComparison.OrdinalIgnoreCase);
     var hasPois = featuredPois.Count > 0;
     var hasRecentDiscoveries = recentDiscoveries.Count > 0;
+
+    var selectedLanguageCode = (ViewBag.SelectedLanguageCode as string
+        ?? Context.Request.Query["lang"].FirstOrDefault()
+        ?? Context.Request.Cookies["versa.dukhach.lang"]
+        ?? "vi").ToLowerInvariant();
 }
 
 <style>
@@ -46,6 +57,18 @@
         pointer-events: none;
     }
 
+    .tourist-hero::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background:
+            linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
+        background-size: 36px 36px;
+        opacity: .55;
+    }
+
     .tourist-hero-grid {
         position: relative;
         z-index: 2;
@@ -60,26 +83,31 @@
         display: inline-flex;
         align-items: center;
         gap: 8px;
-        margin-bottom: 18px;
-        padding: 8px 13px;
+        margin-bottom: 22px;
+        padding: 9px 15px;
         border: 1px solid rgba(52, 211, 153, 0.32);
         border-radius: 999px;
         color: var(--accent);
         background: rgba(52, 211, 153, 0.12);
         font-weight: 900;
         font-size: 13px;
+        box-shadow: 0 12px 34px rgba(52, 211, 153, 0.12);
     }
 
     .tourist-hero h1 {
-        max-width: 780px;
+        max-width: 920px;
         margin: 0;
-        font-size: clamp(42px, 6vw, 82px);
-        line-height: 0.92;
-        letter-spacing: -0.075em;
+        font-size: clamp(40px, 5.2vw, 74px);
+        line-height: 1.08;
+        letter-spacing: -0.035em;
         font-weight: 950;
+        word-spacing: 0.02em;
+        text-wrap: balance;
+        overflow: visible;
+        text-shadow: 0 10px 34px rgba(0, 0, 0, 0.26);
     }
 
-    .tourist-hero h1 span {
+    .tourist-hero h1 .gradient-text {
         background: linear-gradient(135deg, var(--accent), var(--accent-2));
         -webkit-background-clip: text;
         background-clip: text;
@@ -87,11 +115,11 @@
     }
 
     .tourist-hero p {
-        max-width: 660px;
+        max-width: 720px;
         margin: 24px 0 0;
         color: var(--muted);
         font-size: 18px;
-        line-height: 1.8;
+        line-height: 1.85;
     }
 
     .tourist-actions {
@@ -99,6 +127,10 @@
         flex-wrap: wrap;
         gap: 12px;
         margin-top: 30px;
+    }
+
+    .tourist-actions .dk-btn {
+        min-height: 44px;
     }
 
     .tourist-preview {
@@ -182,12 +214,14 @@
     .tourist-phone-body h3 {
         margin: 0 0 8px;
         font-weight: 950;
+        line-height: 1.18;
+        letter-spacing: -0.02em;
     }
 
     .tourist-phone-body p {
         margin: 0;
         color: var(--muted);
-        line-height: 1.6;
+        line-height: 1.65;
         font-size: 14px;
     }
 
@@ -210,16 +244,18 @@
     .tourist-stat strong {
         display: block;
         font-size: 38px;
-        line-height: 1;
-        letter-spacing: -0.05em;
+        line-height: 1.08;
+        letter-spacing: -0.025em;
         margin-bottom: 10px;
         word-break: break-word;
     }
 
     .tourist-stat span {
+        display: block;
         color: var(--muted);
         font-weight: 800;
         font-size: 13px;
+        line-height: 1.45;
     }
 
     .tourist-section {
@@ -244,9 +280,11 @@
 
     .tourist-title {
         margin: 6px 0 0;
-        font-size: clamp(28px, 4vw, 46px);
-        letter-spacing: -0.055em;
+        font-size: clamp(28px, 3.6vw, 44px);
+        line-height: 1.12;
+        letter-spacing: -0.025em;
         font-weight: 950;
+        text-wrap: balance;
     }
 
     .tourist-desc {
@@ -256,7 +294,8 @@
         margin: 0;
     }
 
-    .feature-grid {
+    .feature-grid,
+    .poi-grid {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 18px;
@@ -273,7 +312,8 @@
         transition: 0.2s ease;
     }
 
-    .feature-card:hover {
+    .feature-card:hover,
+    .poi-card:hover {
         transform: translateY(-4px);
         box-shadow: var(--shadow);
     }
@@ -299,24 +339,26 @@
         background: linear-gradient(135deg, var(--accent), var(--accent-2));
         margin-bottom: 22px;
         font-size: 22px;
+        position: relative;
+        z-index: 1;
     }
 
     .feature-card h3 {
         margin: 0 0 12px;
         font-size: 20px;
+        line-height: 1.18;
+        letter-spacing: -0.015em;
         font-weight: 950;
+        position: relative;
+        z-index: 1;
     }
 
     .feature-card p {
         margin: 0;
         color: var(--muted);
         line-height: 1.7;
-    }
-
-    .poi-grid {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 18px;
+        position: relative;
+        z-index: 1;
     }
 
     .poi-card {
@@ -325,11 +367,39 @@
         border-radius: 28px;
         background: var(--card);
         transition: 0.2s ease;
+        position: relative;
     }
 
-    .poi-card:hover {
-        transform: translateY(-4px);
-        box-shadow: var(--shadow);
+    .poi-card.featured {
+        border-color: rgba(250, 204, 21, 0.55);
+        box-shadow: 0 0 0 1px rgba(250, 204, 21, 0.10), 0 18px 48px rgba(250, 204, 21, 0.12);
+    }
+
+    .poi-featured-badge {
+        position: absolute;
+        top: 14px;
+        right: 14px;
+        z-index: 2;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 11px;
+        border-radius: 999px;
+        background: linear-gradient(135deg, #facc15, #fb923c);
+        color: #111827;
+        font-size: 12px;
+        font-weight: 950;
+        box-shadow: 0 14px 34px rgba(251, 146, 60, 0.28);
+    }
+
+    .poi-owner-featured {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: #f59e0b;
+        font-size: 12px;
+        font-weight: 900;
+        margin-bottom: 10px;
     }
 
     .poi-cover {
@@ -348,6 +418,8 @@
     .poi-body h3 {
         margin: 0 0 8px;
         font-size: 19px;
+        line-height: 1.2;
+        letter-spacing: -0.015em;
         font-weight: 950;
     }
 
@@ -369,6 +441,13 @@
         background: rgba(148, 163, 184, 0.08);
         font-size: 12px;
         font-weight: 900;
+        transition: 0.18s ease;
+    }
+
+    .pill:hover {
+        color: var(--text);
+        background: rgba(148, 163, 184, 0.14);
+        transform: translateY(-1px);
     }
 
     .empty-showcase {
@@ -387,8 +466,10 @@
     .empty-content h3 {
         margin: 0 0 14px;
         font-size: 34px;
-        letter-spacing: -0.05em;
+        line-height: 1.14;
+        letter-spacing: -0.02em;
         font-weight: 950;
+        text-wrap: balance;
     }
 
     .empty-content p {
@@ -452,6 +533,8 @@
     .step h3 {
         margin: 0 0 8px;
         font-size: 18px;
+        line-height: 1.2;
+        letter-spacing: -0.015em;
         font-weight: 950;
     }
 
@@ -503,9 +586,11 @@
 
     .cta-box h2 {
         margin: 0 0 10px;
-        font-size: clamp(28px, 4vw, 44px);
-        letter-spacing: -0.055em;
+        font-size: clamp(28px, 3.6vw, 42px);
+        line-height: 1.12;
+        letter-spacing: -0.025em;
         font-weight: 950;
+        text-wrap: balance;
     }
 
     .cta-box p {
@@ -556,6 +641,17 @@
             min-height: auto;
         }
 
+        .tourist-hero h1 {
+            font-size: clamp(38px, 13vw, 56px);
+            line-height: 1.1;
+            letter-spacing: -0.025em;
+        }
+
+        .tourist-hero p {
+            font-size: 16px;
+            line-height: 1.7;
+        }
+
         .tourist-stats,
         .steps {
             grid-template-columns: 1fr;
@@ -565,31 +661,15 @@
             flex-direction: column;
             align-items: flex-start;
         }
-    }
 
-        /* AI Chat Widget Styles */
-        .ai-chat-widget { position: fixed; bottom: 30px; right: 30px; z-index: 9999; }
-        .ai-chat-btn { width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #03131d; border: none; font-size: 26px; cursor: pointer; box-shadow: 0 10px 25px rgba(52, 211, 153, 0.4); transition: 0.3s ease; display: grid; place-items: center; }
-        .ai-chat-btn:hover { transform: scale(1.05); }
-        .ai-chat-window { position: absolute; bottom: 80px; right: 0; width: 360px; height: 500px; background: var(--card); border: 1px solid var(--border); border-radius: 28px; box-shadow: 0 20px 50px rgba(0,0,0,0.3); display: flex; flex-direction: column; overflow: hidden; transition: 0.3s ease; opacity: 1; transform: translateY(0); }
-        .ai-chat-window.hidden { opacity: 0; transform: translateY(20px); pointer-events: none; }
-        .ai-chat-header { padding: 18px 22px; background: linear-gradient(135deg, rgba(52, 211, 153, 0.12), rgba(56, 189, 248, 0.12)); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; font-weight: 900; color: var(--text); }
-        .ai-chat-header button { background: transparent; border: none; color: var(--text); cursor: pointer; font-size: 20px; padding: 4px; }
-        .ai-chat-messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
-        .ai-chat-messages::-webkit-scrollbar { width: 6px; }
-        .ai-chat-messages::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.3); border-radius: 10px; }
-        .chat-msg { max-width: 85%; padding: 12px 16px; border-radius: 20px; font-size: 14px; line-height: 1.5; word-wrap: break-word; }
-        .chat-msg.ai { background: rgba(148, 163, 184, 0.1); border: 1px solid var(--border); color: var(--text); align-self: flex-start; border-bottom-left-radius: 4px; }
-        .chat-msg.user { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #03131d; align-self: flex-end; border-bottom-right-radius: 4px; font-weight: 600; }
-        .ai-chat-input { padding: 16px; border-top: 1px solid var(--border); background: var(--surface); display: flex; gap: 10px; align-items: center; }
-        .ai-chat-input input { flex: 1; padding: 12px 16px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); outline: none; font-size: 14px; }
-        .ai-chat-input input:focus { border-color: var(--accent); background: var(--card); }
-        .ai-chat-input button { width: 44px; height: 44px; border-radius: 50%; border: none; background: var(--accent); color: #03131d; cursor: pointer; display: grid; place-items: center; transition: 0.2s; font-size: 16px; flex-shrink: 0; }
-        .ai-chat-input button:hover { background: var(--accent-2); }
-        .chat-typing { font-size: 13px; color: var(--muted); align-self: flex-start; padding: 0 16px; display: none; }
-        .chat-typing.active { display: block; animation: pulse 1.5s infinite; }
-        @@keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
-        @@media (max-width: 480px) { .ai-chat-window { position: fixed; inset: 0; width: 100%; height: 100%; bottom: 0; border-radius: 0; z-index: 10000; border: none; } }
+        .empty-content h3 {
+            font-size: 28px;
+        }
+
+        .cta-box {
+            padding: 28px;
+        }
+    }
 </style>
 
 <section class="tourist-hero">
@@ -597,51 +677,78 @@
         <div>
             <div class="tourist-eyebrow">
                 <i class="fa-solid fa-sparkles"></i>
-                Web cho du khách 
+                <span data-i18n="homeEyebrow">Web cho du khách</span>
             </div>
 
             <h1>
-                Khám phá thành phố bằng <span>bản đồ thông minh.</span>
+                <span data-i18n="homeHeroTitlePrefix">Khám phá thành phố bằng</span>
+                <span class="gradient-text" data-i18n="homeHeroTitleHighlight">bản đồ thông minh.</span>
             </h1>
 
-            <p>
+            <p data-i18n="homeHeroDesc">
                 Du khách có thể đăng ký, đăng nhập, xem bản đồ POI, check-in bằng vị trí
                 và dùng cùng một tài khoản trên app mobile.
             </p>
 
             <div class="tourist-actions">
-                <a class="dk-btn dk-btn-primary" asp-area="DuKhach" asp-controller="Map" asp-action="Index">
+                <a class="dk-btn dk-btn-primary"
+                   asp-area="DuKhach"
+                   asp-controller="Map"
+                   asp-action="Index"
+                   asp-route-lang="@selectedLanguageCode">
                     <i class="fa-solid fa-map-location-dot"></i>
-                    Mở bản đồ
+                    <span data-i18n="homeOpenMap">Mở bản đồ</span>
                 </a>
 
-                <a class="dk-btn dk-btn-ghost" style="background: rgba(148, 163, 184, 0.12); border-color: transparent;" asp-area="DuKhach" asp-controller="Tour" asp-action="Index">
+                <a class="dk-btn dk-btn-ghost"
+                   style="background: rgba(148, 163, 184, 0.12); border-color: transparent;"
+                   asp-area="DuKhach"
+                   asp-controller="Tour"
+                   asp-action="Index"
+                   asp-route-lang="@selectedLanguageCode">
                     <i class="fa-solid fa-route"></i>
-                    Danh sách Tour
+                    <span data-i18n="homeTourList">Danh sách Tour</span>
                 </a>
 
-                <a class="dk-btn dk-btn-ghost" style="background: rgba(245, 158, 11, 0.12); color: #d97706; border-color: transparent;" asp-area="DuKhach" asp-controller="Leaderboard" asp-action="Index">
+                <a class="dk-btn dk-btn-ghost"
+                   style="background: rgba(245, 158, 11, 0.12); color: #d97706; border-color: transparent;"
+                   asp-area="DuKhach"
+                   asp-controller="Leaderboard"
+                   asp-action="Index"
+                   asp-route-lang="@selectedLanguageCode">
                     <i class="fa-solid fa-trophy"></i>
-                    Bảng xếp hạng
+                    <span data-i18n="homeRanking">Bảng xếp hạng</span>
                 </a>
 
                 @if (!isTourist)
                 {
-                    <a class="dk-btn dk-btn-ghost" asp-area="DuKhach" asp-controller="Account" asp-action="Register">
+                    <a class="dk-btn dk-btn-ghost"
+                       asp-area="DuKhach"
+                       asp-controller="Account"
+                       asp-action="Register"
+                       asp-route-lang="@selectedLanguageCode">
                         <i class="fa-solid fa-user-plus"></i>
-                        Tạo tài khoản du khách
+                        <span data-i18n="homeCreateAccount">Tạo tài khoản du khách</span>
                     </a>
 
-                    <a class="dk-btn dk-btn-ghost" asp-area="DuKhach" asp-controller="Account" asp-action="Login">
+                    <a class="dk-btn dk-btn-ghost"
+                       asp-area="DuKhach"
+                       asp-controller="Account"
+                       asp-action="Login"
+                       asp-route-lang="@selectedLanguageCode">
                         <i class="fa-solid fa-right-to-bracket"></i>
-                        Đăng nhập
+                        <span data-i18n="navLogin">Đăng nhập</span>
                     </a>
                 }
                 else
                 {
-                    <a class="dk-btn dk-btn-ghost" asp-area="DuKhach" asp-controller="Account" asp-action="Profile">
+                    <a class="dk-btn dk-btn-ghost"
+                       asp-area="DuKhach"
+                       asp-controller="Account"
+                       asp-action="Profile"
+                       asp-route-lang="@selectedLanguageCode">
                         <i class="fa-solid fa-id-card"></i>
-                        Hồ sơ của tôi
+                        <span data-i18n="homeMyProfile">Hồ sơ của tôi</span>
                     </a>
                 }
             </div>
@@ -664,8 +771,8 @@
                 </div>
 
                 <div class="tourist-phone-body">
-                    <h3>Bản đồ POI gần bạn</h3>
-                    <p>
+                    <h3 data-i18n="homePhoneTitle">Bản đồ POI gần bạn</h3>
+                    <p data-i18n="homePhoneDesc">
                         Xem vị trí, bán kính geofence, mở chỉ đường và check-in khi ở gần điểm tham quan.
                     </p>
                 </div>
@@ -674,122 +781,38 @@
     </div>
 </section>
 
-<!-- Khối Giao Diện AI Chatbox -->
-<div id="aiChatWidget" class="ai-chat-widget">
-    <button id="aiChatBtn" class="ai-chat-btn" aria-label="Mở trợ lý ảo">
-        <i class="fa-solid fa-robot"></i>
-    </button>
-    <div id="aiChatWindow" class="ai-chat-window hidden">
-        <div class="ai-chat-header">
-            <div><i class="fa-solid fa-sparkles" style="color:var(--accent);margin-right:6px;"></i> VERSA AI Guide</div>
-            <button id="aiChatClose"><i class="fa-solid fa-xmark"></i></button>
-        </div>
-        <div id="aiChatMessages" class="ai-chat-messages">
-            <div class="chat-msg ai">Chào bạn! 👋 Mình là trợ lý AI thông minh. Bạn cần gợi ý điểm tham quan hay thắc mắc về chuyến đi nào không?</div>
-            <div id="chatTyping" class="chat-typing">AI đang phản hồi...</div>
-        </div>
-        <div class="ai-chat-input">
-            <input type="text" id="aiChatInputText" placeholder="Nhập câu hỏi..." autocomplete="off" />
-            <button id="aiChatSendBtn"><i class="fa-solid fa-paper-plane"></i></button>
-        </div>
-    </div>
-</div>
-
-<script>
-    document.addEventListener("DOMContentLoaded", function () {
-        const chatBtn = document.getElementById('aiChatBtn');
-        const chatWindow = document.getElementById('aiChatWindow');
-        const chatClose = document.getElementById('aiChatClose');
-        const chatMessages = document.getElementById('aiChatMessages');
-        const chatInput = document.getElementById('aiChatInputText');
-        const chatSendBtn = document.getElementById('aiChatSendBtn');
-        const chatTyping = document.getElementById('chatTyping');
-
-        chatBtn.addEventListener('click', () => {
-            chatWindow.classList.toggle('hidden');
-            if (!chatWindow.classList.contains('hidden')) {
-                chatInput.focus();
-            }
-        });
-
-        chatClose.addEventListener('click', () => {
-            chatWindow.classList.add('hidden');
-        });
-
-        const addMessage = (text, sender) => {
-            const msg = document.createElement('div');
-            msg.className = `chat-msg ${sender}`;
-            msg.textContent = text;
-            chatMessages.insertBefore(msg, chatTyping);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        };
-
-        const sendMessage = async () => {
-            const text = chatInput.value.trim();
-            if (!text) return;
-
-            addMessage(text, 'user');
-            chatInput.value = '';
-            chatInput.disabled = true;
-            chatSendBtn.disabled = true;
-            chatTyping.classList.add('active');
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-
-            try {
-                const res = await fetch('/DuKhach/Home/AskAI', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: text })
-                });
-                const data = await res.json();
-                addMessage(data.reply || data.message || 'Lỗi kết nối AI.', data.success ? 'ai' : 'ai');
-            } catch (err) {
-                addMessage('Mạng có vấn đề. Vui lòng thử lại sau!', 'ai');
-            } finally {
-                chatTyping.classList.remove('active');
-                chatInput.disabled = false;
-                chatSendBtn.disabled = false;
-                chatInput.focus();
-            }
-        };
-
-        chatSendBtn.addEventListener('click', sendMessage);
-        chatInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') sendMessage();
-        });
-    });
-</script>
-
 <div class="tourist-stats">
     <div class="tourist-stat">
         <strong>@Model.ApprovedPoiCount</strong>
-        <span>POI đã duyệt</span>
+        <span data-i18n="homeApprovedPoi">POI đã duyệt</span>
     </div>
 
     <div class="tourist-stat">
         <strong>@Model.TourCount</strong>
-        <span>Tour đang mở</span>
+        <span data-i18n="homeOpenTours">Tour đang mở</span>
     </div>
 
     <div class="tourist-stat">
         <strong>@Model.DiscoveredPoiCount</strong>
-        <span>POI bạn đã khám phá</span>
+        <span data-i18n="homeDiscoveredPoi">POI bạn đã khám phá</span>
     </div>
 
     <div class="tourist-stat">
         <strong>@Model.TotalPoints</strong>
-        <span>Điểm · @Model.RankName</span>
+        <span>
+            <span data-i18n="homePoints">Điểm</span> · @Model.RankName
+        </span>
     </div>
 </div>
 
 <section class="tourist-section">
     <div class="tourist-section-head">
         <div>
-            <div class="tourist-kicker">Tính năng nổi bật</div>
-            <h2 class="tourist-title">Một tài khoản, nhiều trải nghiệm.</h2>
+            <div class="tourist-kicker" data-i18n="homeFeatureKicker">Tính năng nổi bật</div>
+            <h2 class="tourist-title" data-i18n="homeFeatureTitle">Một tài khoản, nhiều trải nghiệm.</h2>
         </div>
 
-        <p class="tourist-desc">
+        <p class="tourist-desc" data-i18n="homeFeatureDesc">
             Giao diện du khách được tách riêng khỏi admin, nhưng vẫn dùng chung dữ liệu tài khoản
             với app mobile.
         </p>
@@ -800,24 +823,27 @@
             <div class="feature-icon">
                 <i class="fa-solid fa-map"></i>
             </div>
-            <h3>Bản đồ tham quan</h3>
-            <p>Xem các điểm tham quan đã duyệt, vị trí, bán kính kích hoạt và mở chỉ đường nhanh.</p>
+
+            <h3 data-i18n="homeFeatureMapTitle">Bản đồ tham quan</h3>
+            <p data-i18n="homeFeatureMapDesc">Xem các điểm tham quan đã duyệt, vị trí, bán kính kích hoạt và mở chỉ đường nhanh.</p>
         </div>
 
         <div class="feature-card">
             <div class="feature-icon">
                 <i class="fa-solid fa-location-crosshairs"></i>
             </div>
-            <h3>Check-in vị trí</h3>
-            <p>Du khách có thể dùng GPS để khám phá POI nằm trong vùng geofence.</p>
+
+            <h3 data-i18n="homeFeatureCheckinTitle">Check-in vị trí</h3>
+            <p data-i18n="homeFeatureCheckinDesc">Du khách có thể dùng GPS để khám phá POI nằm trong vùng geofence.</p>
         </div>
 
         <div class="feature-card">
             <div class="feature-icon">
                 <i class="fa-solid fa-mobile-screen-button"></i>
             </div>
-            <h3>Dùng chung với app</h3>
-            <p>Tài khoản đăng ký trên web được lưu vào bảng du khách, app có thể đăng nhập cùng tài khoản.</p>
+
+            <h3 data-i18n="homeFeatureMobileTitle">Dùng chung với app</h3>
+            <p data-i18n="homeFeatureMobileDesc">Tài khoản đăng ký trên web được lưu vào bảng du khách, app có thể đăng nhập cùng tài khoản.</p>
         </div>
     </div>
 </section>
@@ -825,13 +851,17 @@
 <section class="tourist-section">
     <div class="tourist-section-head">
         <div>
-            <div class="tourist-kicker">Địa điểm</div>
-            <h2 class="tourist-title">Điểm tham quan mới.</h2>
+            <div class="tourist-kicker" data-i18n="homePlaceKicker">Địa điểm</div>
+            <h2 class="tourist-title" data-i18n="homePlaceTitle">Điểm tham quan nổi bật.</h2>
         </div>
 
-        <a asp-area="DuKhach" asp-controller="Map" asp-action="Index" class="dk-btn dk-btn-ghost">
+        <a asp-area="DuKhach"
+           asp-controller="Map"
+           asp-action="Index"
+           asp-route-lang="@selectedLanguageCode"
+           class="dk-btn dk-btn-ghost">
             <i class="fa-solid fa-map-location-dot"></i>
-            Xem trên bản đồ
+            <span data-i18n="homeViewOnMap">Xem trên bản đồ</span>
         </a>
     </div>
 
@@ -840,7 +870,11 @@
         <div class="poi-grid">
             @foreach (var poi in featuredPois)
             {
-                <article class="poi-card">
+                <article class="poi-card @(poi.IsFeatured ? "featured" : "")">
+                    @if (poi.IsFeatured)
+                    {
+                        <div class="poi-featured-badge"><i class="fa-solid fa-crown"></i> Nổi bật</div>
+                    }
                     @if (!string.IsNullOrWhiteSpace(poi.CoverImageUrl))
                     {
                         <div class="poi-cover"
@@ -853,18 +887,30 @@
                     }
 
                     <div class="poi-body">
+                        @if (poi.IsFeatured)
+                        {
+                            <div class="poi-owner-featured"><i class="fa-solid fa-bolt"></i> Ưu tiên hiển thị@(string.IsNullOrWhiteSpace(poi.OwnerBusinessName) ? "" : " · " + poi.OwnerBusinessName)</div>
+                        }
                         <h3>@poi.Name</h3>
                         <p>@poi.ShortDescription</p>
 
                         <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                            <a class="pill" asp-area="DuKhach" asp-controller="Map" asp-action="Index" asp-fragment="poi-@poi.Id">
+                            <a class="pill"
+                               asp-area="DuKhach"
+                               asp-controller="Map"
+                               asp-action="Index"
+                               asp-route-lang="@selectedLanguageCode"
+                               asp-fragment="poi-@poi.Id">
                                 <i class="fa-solid fa-location-crosshairs"></i>
-                                Xem trên bản đồ
+                                <span data-i18n="homeViewOnMap">Xem trên bản đồ</span>
                             </a>
 
-                            <a class="pill" href="https://www.google.com/maps/dir/?api=1&destination=@poi.Latitude,@poi.Longitude" target="_blank">
+                            <a class="pill"
+                               href="https://www.google.com/maps/dir/?api=1&destination=@poi.Latitude,@poi.Longitude"
+                               target="_blank"
+                               rel="noopener">
                                 <i class="fa-solid fa-route"></i>
-                                Chỉ đường
+                                <span data-i18n="homeDirection">Chỉ đường</span>
                             </a>
                         </div>
                     </div>
@@ -876,27 +922,35 @@
     {
         <div class="empty-showcase">
             <div class="empty-content">
-                <div class="tourist-kicker">Chưa có dữ liệu hiển thị</div>
+                <div class="tourist-kicker" data-i18n="homeNoDataKicker">Chưa có dữ liệu hiển thị</div>
 
-                <h3>Hãy duyệt POI để trang du khách sống động hơn.</h3>
+                <h3 data-i18n="homeNoPoiTitle">Hãy duyệt POI để trang du khách sống động hơn.</h3>
 
                 <p>
-                    Hiện chưa có POI trạng thái <strong>Approved</strong>, nên trang chủ chưa có địa điểm thật để hiển thị.
-                    Giao diện vẫn có đầy đủ khối giới thiệu, tính năng, hướng dẫn và nút mở bản đồ.
+                    <span data-i18n="homeNoPoiDescPrefix">Hiện chưa có POI trạng thái</span>
+                    <strong>Approved</strong>,
+                    <span data-i18n="homeNoPoiDescSuffix">nên trang chủ chưa có địa điểm thật để hiển thị. Giao diện vẫn có đầy đủ khối giới thiệu, tính năng, hướng dẫn và nút mở bản đồ.</span>
                 </p>
 
                 <div class="tourist-actions">
                     @if (User.IsInRole("Admin") || User.IsInRole("Editor"))
                     {
-                        <a asp-area="" asp-controller="Poi" asp-action="Index" class="dk-btn dk-btn-primary">
+                        <a asp-area=""
+                           asp-controller="Poi"
+                           asp-action="Index"
+                           class="dk-btn dk-btn-primary">
                             <i class="fa-solid fa-screwdriver-wrench"></i>
-                            Vào quản lý POI
+                            <span data-i18n="homeManagePoi">Vào quản lý POI</span>
                         </a>
                     }
 
-                    <a asp-area="DuKhach" asp-controller="Map" asp-action="Index" class="dk-btn dk-btn-ghost">
+                    <a asp-area="DuKhach"
+                       asp-controller="Map"
+                       asp-action="Index"
+                       asp-route-lang="@selectedLanguageCode"
+                       class="dk-btn dk-btn-ghost">
                         <i class="fa-solid fa-map"></i>
-                        Xem bản đồ
+                        <span data-i18n="homeViewMap">Xem bản đồ</span>
                     </a>
                 </div>
             </div>
@@ -913,8 +967,8 @@
     <section class="tourist-section">
         <div class="tourist-section-head">
             <div>
-                <div class="tourist-kicker">Lịch sử</div>
-                <h2 class="tourist-title">Khám phá gần đây.</h2>
+                <div class="tourist-kicker" data-i18n="homeHistoryKicker">Lịch sử</div>
+                <h2 class="tourist-title" data-i18n="homeHistoryTitle">Khám phá gần đây.</h2>
             </div>
         </div>
 
@@ -922,12 +976,19 @@
         {
             <div class="empty-showcase">
                 <div class="empty-content">
-                    <h3>Bạn chưa check-in POI nào.</h3>
-                    <p>Mở bản đồ và thử check-in khi bạn ở gần điểm tham quan để nhận điểm.</p>
+                    <h3 data-i18n="homeNoCheckinTitle">Bạn chưa check-in POI nào.</h3>
 
-                    <a asp-area="DuKhach" asp-controller="Map" asp-action="Index" class="dk-btn dk-btn-primary">
+                    <p data-i18n="homeNoCheckinDesc">
+                        Mở bản đồ và thử check-in khi bạn ở gần điểm tham quan để nhận điểm.
+                    </p>
+
+                    <a asp-area="DuKhach"
+                       asp-controller="Map"
+                       asp-action="Index"
+                       asp-route-lang="@selectedLanguageCode"
+                       class="dk-btn dk-btn-primary">
                         <i class="fa-solid fa-map-location-dot"></i>
-                        Mở bản đồ
+                        <span data-i18n="homeOpenMap">Mở bản đồ</span>
                     </a>
                 </div>
 
@@ -949,7 +1010,11 @@
                         </div>
 
                         <div>@item.Method</div>
-                        <div>+@item.Points điểm</div>
+
+                        <div>
+                            +@item.Points <span data-i18n="homePointsLower">điểm</span>
+                        </div>
+
                         <div>@item.DiscoveredAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</div>
                     </div>
                 }
@@ -961,34 +1026,34 @@
 <section class="tourist-section">
     <div class="tourist-section-head">
         <div>
-            <div class="tourist-kicker">Quy trình</div>
-            <h2 class="tourist-title">Du khách sử dụng như thế nào?</h2>
+            <div class="tourist-kicker" data-i18n="homeProcessKicker">Quy trình</div>
+            <h2 class="tourist-title" data-i18n="homeProcessTitle">Du khách sử dụng như thế nào?</h2>
         </div>
     </div>
 
     <div class="steps">
         <div class="step">
             <div class="step-number">1</div>
-            <h3>Tạo tài khoản</h3>
-            <p>Đăng ký tài khoản du khách trên web bằng email và mật khẩu.</p>
+            <h3 data-i18n="homeStep1Title">Tạo tài khoản</h3>
+            <p data-i18n="homeStep1Desc">Đăng ký tài khoản du khách trên web bằng email và mật khẩu.</p>
         </div>
 
         <div class="step">
             <div class="step-number">2</div>
-            <h3>Mở bản đồ</h3>
-            <p>Xem các POI đã duyệt, tìm địa điểm và chọn điểm muốn khám phá.</p>
+            <h3 data-i18n="homeStep2Title">Mở bản đồ</h3>
+            <p data-i18n="homeStep2Desc">Xem các POI đã duyệt, tìm địa điểm và chọn điểm muốn khám phá.</p>
         </div>
 
         <div class="step">
             <div class="step-number">3</div>
-            <h3>Đến địa điểm</h3>
-            <p>Dùng chỉ đường để di chuyển tới vị trí POI ngoài thực tế.</p>
+            <h3 data-i18n="homeStep3Title">Đến địa điểm</h3>
+            <p data-i18n="homeStep3Desc">Dùng chỉ đường để di chuyển tới vị trí POI ngoài thực tế.</p>
         </div>
 
         <div class="step">
             <div class="step-number">4</div>
-            <h3>Dùng trên app</h3>
-            <p>Tài khoản web có thể đăng nhập trên app để tiếp tục trải nghiệm.</p>
+            <h3 data-i18n="homeStep4Title">Dùng trên app</h3>
+            <p data-i18n="homeStep4Desc">Tài khoản web có thể đăng nhập trên app để tiếp tục trải nghiệm.</p>
         </div>
     </div>
 </section>
@@ -996,30 +1061,43 @@
 <section class="tourist-section">
     <div class="cta-box">
         <div>
-            <h2>Sẵn sàng khám phá chưa?</h2>
-            <p>
+            <h2 data-i18n="homeCtaTitle">Sẵn sàng khám phá chưa?</h2>
+
+            <p data-i18n="homeCtaDesc">
                 Mở bản đồ du khách để xem các điểm tham quan, hoặc tạo tài khoản để dùng chung với app mobile.
             </p>
         </div>
 
         <div class="cta-actions">
-            <a asp-area="DuKhach" asp-controller="Map" asp-action="Index" class="dk-btn dk-btn-primary">
+            <a asp-area="DuKhach"
+               asp-controller="Map"
+               asp-action="Index"
+               asp-route-lang="@selectedLanguageCode"
+               class="dk-btn dk-btn-primary">
                 <i class="fa-solid fa-map-location-dot"></i>
-                Mở bản đồ
+                <span data-i18n="homeOpenMap">Mở bản đồ</span>
             </a>
 
             @if (!isTourist)
             {
-                <a asp-area="DuKhach" asp-controller="Account" asp-action="Register" class="dk-btn dk-btn-ghost">
+                <a asp-area="DuKhach"
+                   asp-controller="Account"
+                   asp-action="Register"
+                   asp-route-lang="@selectedLanguageCode"
+                   class="dk-btn dk-btn-ghost">
                     <i class="fa-solid fa-user-plus"></i>
-                    Đăng ký
+                    <span data-i18n="navRegister">Đăng ký</span>
                 </a>
             }
             else
             {
-                <a asp-area="DuKhach" asp-controller="Account" asp-action="Profile" class="dk-btn dk-btn-ghost">
+                <a asp-area="DuKhach"
+                   asp-controller="Account"
+                   asp-action="Profile"
+                   asp-route-lang="@selectedLanguageCode"
+                   class="dk-btn dk-btn-ghost">
                     <i class="fa-solid fa-user"></i>
-                    Hồ sơ của tôi
+                    <span data-i18n="homeMyProfile">Hồ sơ của tôi</span>
                 </a>
             }
         </div>

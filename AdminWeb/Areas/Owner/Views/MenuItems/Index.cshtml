@@ -1,0 +1,122 @@
+@using AdminWeb.Models
+@model IEnumerable<AdminWeb.Models.OwnerMenuItem>
+@{
+    ViewData["Title"] = "Menu / sản phẩm";
+    var pois = ViewBag.Pois as List<Poi> ?? new List<Poi>();
+    var selectedPoiId = ViewBag.SelectedPoiId as int?;
+    var items = Model.ToList();
+}
+
+<div class="owner-page-head">
+    <div>
+        <h2>Menu / sản phẩm / dịch vụ</h2>
+        <p>Quản lý danh sách món, sản phẩm hoặc dịch vụ gắn với từng POI của bạn.</p>
+    </div>
+    <a asp-area="Owner" asp-controller="MenuItems" asp-action="Create" asp-route-poiId="@selectedPoiId" class="btn owner-btn-primary">
+        <i class="fa-solid fa-plus"></i>
+        Thêm mục mới
+    </a>
+</div>
+
+<div class="owner-card" style="margin-bottom:16px;">
+    <form method="get" class="owner-filter">
+        <div>
+            <label class="form-label">Lọc theo POI</label>
+            <select name="poiId" class="form-select">
+                <option value="">Tất cả POI</option>
+                @foreach (var poi in pois)
+                {
+                    var name = poi.Translations.FirstOrDefault(t => t.LanguageCode == "vi")?.Name
+                        ?? poi.Translations.FirstOrDefault()?.Name
+                        ?? $"POI #{poi.Id}";
+                    if (selectedPoiId == poi.Id)
+                    {
+                        <option value="@poi.Id" selected>#@poi.Id - @name</option>
+                    }
+                    else
+                    {
+                        <option value="@poi.Id">#@poi.Id - @name</option>
+                    }
+                }
+            </select>
+        </div>
+        <button type="submit" class="btn owner-btn-soft">
+            <i class="fa-solid fa-filter"></i>
+            Lọc
+        </button>
+    </form>
+</div>
+
+@if (items.Count == 0)
+{
+    <div class="owner-empty">
+        <i class="fa-solid fa-utensils"></i>
+        <h3>Chưa có menu/sản phẩm</h3>
+        <p>Thêm món, sản phẩm hoặc dịch vụ để du khách nhìn thấy khi mở POI hoặc quét QR.</p>
+        <a asp-area="Owner" asp-controller="MenuItems" asp-action="Create" asp-route-poiId="@selectedPoiId" class="btn owner-btn-primary mt-3">Thêm mục mới</a>
+    </div>
+}
+else
+{
+    <div class="owner-card-grid">
+        @foreach (var item in items)
+        {
+            var poiName = item.Poi?.Translations.FirstOrDefault(t => t.LanguageCode == "vi")?.Name
+                ?? item.Poi?.Translations.FirstOrDefault()?.Name
+                ?? $"POI #{item.PoiId}";
+            var badgeClass = item.Status == "Active" ? "badge-green" : "badge-yellow";
+            var imageUrl = item.ImageUrl;
+            if (!string.IsNullOrWhiteSpace(imageUrl) && imageUrl.StartsWith("/uploads/demo/menu-items/", StringComparison.OrdinalIgnoreCase))
+            {
+                imageUrl = $"{imageUrl}?v=29";
+            }
+
+            <article class="owner-item-card">
+                <div class="owner-item-cover">
+                    @if (!string.IsNullOrWhiteSpace(imageUrl))
+                    {
+                        <img src="@imageUrl" alt="@item.Name" />
+                    }
+                    else
+                    {
+                        <i class="fa-solid fa-bowl-food"></i>
+                    }
+                </div>
+                <div class="owner-item-body">
+                    <div style="display:flex;justify-content:space-between;gap:10px;align-items:start;">
+                        <div>
+                            <h3 class="owner-card-title" style="margin-bottom:4px;">@item.Name</h3>
+                            <small>@poiName</small>
+                        </div>
+                        <span class="badge-soft @badgeClass">@item.Status</span>
+                    </div>
+                    <p class="owner-muted" style="min-height:48px;">@item.Description</p>
+                    <div class="owner-price">@item.Price.ToString("N0") <small>@item.Currency</small></div>
+                    <div class="owner-actions">
+                        <a asp-area="Owner" asp-controller="MenuItems" asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm owner-btn-soft">
+                            <i class="fa-solid fa-pen"></i>
+                            Sửa
+                        </a>
+                        <form asp-area="Owner" asp-controller="MenuItems" asp-action="ToggleStatus" method="post" onsubmit="return confirm('@(item.Status == "Active" ? "Ẩn sản phẩm này khỏi web du khách?" : "Hiện lại sản phẩm này trên web du khách?")');">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@item.Id" />
+                            <button type="submit" class="btn btn-sm owner-btn-soft">
+                                <i class="fa-solid @(item.Status == "Active" ? "fa-eye-slash" : "fa-eye")"></i>
+                                @(item.Status == "Active" ? "Ẩn" : "Hiện")
+                            </button>
+                        </form>
+                        <form asp-area="Owner" asp-controller="MenuItems" asp-action="Delete" method="post" onsubmit="return confirm('Xóa mục này?');">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@item.Id" />
+                            <button type="submit" class="btn btn-sm btn-danger">
+                                <i class="fa-solid fa-trash"></i>
+                                Xóa
+                            </button>
+                        </form>
+                    </div>
+                    <small>Cập nhật @item.UpdatedAt.ToLocalTime().ToString("dd/MM/yyyy")</small>
+                </div>
+            </article>
+        }
+    </div>
+}

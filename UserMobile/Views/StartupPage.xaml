@@ -1,37 +1,25 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:i18n="clr-namespace:UserMobile.Markup"
              x:Class="UserMobile.Views.StartupPage"
              Shell.NavBarIsVisible="False"
-             BackgroundColor="#F7F8FC">
-    <Grid Padding="32">
-        <VerticalStackLayout VerticalOptions="Center" Spacing="18">
-            <Border WidthRequest="92"
-                    HeightRequest="92"
-                    HorizontalOptions="Center"
-                    BackgroundColor="#5B3FE4"
-                    Stroke="Transparent"
-                    StrokeShape="RoundRectangle 30">
-                <Label Text="V"
-                       HorizontalOptions="Center"
-                       VerticalOptions="Center"
-                       FontSize="40"
-                       FontAttributes="Bold"
-                       TextColor="White" />
+             BackgroundColor="{StaticResource PageBackground}">
+    <Grid Padding="30">
+        <VerticalStackLayout VerticalOptions="Center" Spacing="20">
+            <Border WidthRequest="104" HeightRequest="104" HorizontalOptions="Center" BackgroundColor="{StaticResource Primary}" Stroke="Transparent" StrokeShape="RoundRectangle 34">
+                <Label Text="V" HorizontalOptions="Center" VerticalOptions="Center" FontSize="46" FontAttributes="Bold" TextColor="White" />
             </Border>
-            <VerticalStackLayout Spacing="5">
-                <Label Text="VERSA Guide"
-                       HorizontalTextAlignment="Center"
-                       FontSize="28"
-                       FontAttributes="Bold"
-                       TextColor="#182033" />
-                <Label Text="Khám phá điểm đến theo cách của bạn"
-                       HorizontalTextAlignment="Center"
-                       TextColor="#68748A" />
+            <VerticalStackLayout Spacing="8">
+                <Label Text="{i18n:T WelcomeTitle}" HorizontalTextAlignment="Center" FontSize="30" FontAttributes="Bold" TextColor="{StaticResource Ink}" />
+                <Label Text="{i18n:T WelcomeSubtitle}" HorizontalTextAlignment="Center" TextColor="{StaticResource Muted}" FontSize="14" />
             </VerticalStackLayout>
-            <ActivityIndicator IsRunning="True"
-                               Color="#5B3FE4"
-                               Margin="0,18,0,0" />
+            <Border Style="{StaticResource CompactCard}" HorizontalOptions="Center" Padding="14,10">
+                <HorizontalStackLayout Spacing="10">
+                    <ActivityIndicator IsRunning="True" WidthRequest="22" HeightRequest="22" />
+                    <Label Text="Đang chuẩn bị trải nghiệm..." Style="{StaticResource PageSubtitle}" VerticalTextAlignment="Center" />
+                </HorizontalStackLayout>
+            </Border>
         </VerticalStackLayout>
     </Grid>
 </ContentPage>

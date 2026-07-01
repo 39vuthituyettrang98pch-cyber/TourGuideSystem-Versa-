@@ -30,8 +30,14 @@ public sealed class ToursViewModel : BaseViewModel
     public string Message
     {
         get => _message;
-        set => SetProperty(ref _message, value);
+        set
+        {
+            SetProperty(ref _message, value);
+            OnPropertyChanged(nameof(HasMessage));
+        }
     }
+
+    public bool HasMessage => !string.IsNullOrWhiteSpace(Message);
 
     public CategoryCatalogDto? SelectedCategory
     {
